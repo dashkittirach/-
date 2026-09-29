@@ -28,9 +28,26 @@ int      g_backoff = 0;         // seconds to wait after a failed upload
 string g_gist  = "";            // cleaned-up Gist ID
 string g_token = "";            // cleaned-up token
 
-// accepts the bare ID or a whole gist link (https://gist.github.com/user/<id>)
+bool IsHex(const ushort c) { return((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')); }
+
+// accepts the bare ID, a gist link, or even the <script> embed code: takes the longest run of hex digits (20+)
 string CleanGistId(string s)
   {
+   int bestStart = -1, bestLen = 0, runStart = -1;
+   int n = StringLen(s);
+   for(int i = 0; i <= n; i++)
+     {
+      bool hex = (i < n) && IsHex(StringGetCharacter(s, i));
+      if(hex && runStart < 0)
+         runStart = i;
+      if(!hex && runStart >= 0)
+        {
+         if(i - runStart > bestLen) { bestLen = i - runStart; bestStart = runStart; }
+         runStart = -1;
+        }
+     }
+   if(bestLen >= 20)
+      return(StringSubstr(s, bestStart, bestLen));
    StringTrimLeft(s);
    StringTrimRight(s);
    while(StringLen(s) > 0 && StringSubstr(s, StringLen(s) - 1) == "/")

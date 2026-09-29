@@ -2548,7 +2548,8 @@ setInterval(updateDaily, 60000);
 // anything the user already wrote (mood, hearts, notes, lessons).
 const MT5 = { etag: null, busy: false };
 const MT5_FIELDS = ['date', 'time', 'asset', 'side', 'entry', 'exit', 'size', 'fees', 'pnl'];
-function parseGistId(v) { const s = String(v || '').trim(); const m = s.match(/([0-9a-f]{20,})\/?(?:#.*)?$/i); return m ? m[1] : s; }
+// accepts the ID, a gist link, or the <script> embed code: the longest run of 20+ hex digits
+function parseGistId(v) { const s = String(v || '').trim(); const runs = s.match(/[0-9a-f]{20,}/gi); return runs ? runs.sort((a, b) => b.length - a.length)[0] : s; }
 function mt5Status() {
   const m = state.settings.mt5;
   if (!m.gist) return tr('Not connected', 'ยังไม่ได้เชื่อมต่อ');
