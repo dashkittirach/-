@@ -217,8 +217,11 @@
     .rpg-window { max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 48px); }
     .rpg-window .win-body { -webkit-overflow-scrolling: touch; }
     .rpg-window .x { right: -4px; }
-    .travel { padding: .15rem .35rem; font-size: .72rem; }
-    .travel img { width: 26px; }
+    nav.hud-el { width: calc(100vw - 12px); justify-content: space-between; }
+    .travel { flex: 1 1 0; min-width: 0; padding: .15rem 0; font-size: .64rem; white-space: nowrap; }
+    .travel img { width: 24px; }
+    nav.hud-el .btn { font-size: .74rem; padding: 0 .15rem; margin: 0 2px; flex: 0 0 auto; }
+    .hide-phone { display: none !important; }
   }
   .toast { display: flex; gap: .6rem; align-items: center; animation: toast-in .35s steps(5) both; width: 100%; }
   .toast.out { animation: toast-in .3s steps(5) reverse both; }
@@ -286,8 +289,8 @@
     <div class="flex gap-1 sm:gap-2">
       <button class="btn !px-1" id="btn-sound" aria-label="Toggle sound" data-tip="Sound on/off (M)"><img class="px w-6" data-sprite="speaker" alt=""></button>
       <button class="btn !px-2 font-pixel" id="btn-guide" data-tip="Handbook & daily tasks">📖 <span id="daily-count" class="num"></span></button>
-      <button class="btn !px-2 font-pixel hidden sm:inline-flex" id="btn-lang" data-tip="Switch language">EN</button>
-      <a class="btn !px-2 font-pixel hidden sm:inline-flex" href="2d.html" data-tip="Switch to the lighter 2D version (same data)">2D</a>
+      <button class="btn !px-2 font-pixel hide-phone" id="btn-lang" data-tip="Switch language">EN</button>
+      <a class="btn !px-2 font-pixel hide-phone" href="2d.html" data-tip="Switch to the lighter 2D version (same data)">2D</a>
       <button class="btn !px-1" id="btn-settings" aria-label="Settings" data-tip="Settings, graphics & save file"><img class="px w-6" data-sprite="gear" alt=""></button>
     </div>
   </div>
