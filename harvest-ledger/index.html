@@ -327,6 +327,8 @@
           </div>
           <div id="journal-recent" class="flex flex-col gap-1 mt-2"></div>
         </div>
+        <div class="parch" id="rules-box"></div>
+        <div class="parch" id="boss-box"></div>
         <div class="parch">
           <div class="flex items-center gap-3 mb-2">
             <div class="slot shrink-0"><img class="px w-14 bob" data-sprite="farmer" alt=""></div>
@@ -360,6 +362,7 @@
             <div class="plate font-pixel text-center flex-1 sm:flex-none sm:min-w-[250px]"><span id="cal-season"></span></div>
             <button class="btn !px-1" id="cal-next" aria-label="Next month">▶</button>
             <div id="cal-total" class="ml-auto num text-lg hidden sm:block"></div>
+            <button class="btn text-sm !px-2" data-open-report id="cal-report">📜</button>
           </div>
           <div class="grid grid-cols-7 gap-1 font-pixel text-center text-sm text-[#8b5a2b] mb-1"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
           <div id="cal" class="grid grid-cols-7 gap-1"></div>
@@ -453,6 +456,9 @@
         <div id="chart-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2"></div>
         <div class="slot relative"><canvas id="chart" class="w-full h-[250px] sm:h-[300px] block" style="touch-action: pan-y"></canvas></div>
       </div>
+      <div class="parch lg:col-span-2" id="heat-block"></div>
+      <div class="parch" id="beh-block"></div>
+      <div class="parch" id="dist-block"></div>
       <div class="parch lg:col-span-2">
         <div class="flex gap-4 items-start">
           <div class="slot shrink-0"><img class="px w-12 bob" data-sprite="mug" alt=""></div>
@@ -597,7 +603,7 @@ const TH = {
   'Your data is safe.': 'ข้อมูลของคุณปลอดภัย', '✨ New version — tap to update': '✨ มีเวอร์ชันใหม่ — แตะเพื่ออัปเดต',
   '📓 Daily Journal': '📓 บันทึกประจำวัน', '✎ Write': '✎ เขียน', 'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
   'Enter Farmhouse': 'เข้าบ้านไร่', 'Open Quest Board': 'เปิดกระดานเควส', 'Enter Tavern': 'เข้าโรงเตี๊ยม', 'Open chest': 'เปิดหีบ',
-  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด',
+  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า',
 };
 const TH_RE = [
   [/^(\d+) quests? \(showing (\d+)\)$/, '$1 เควส (แสดง $2)'], [/^(\d+) quests over the last (\d+) days$/, '$1 เควสใน $2 วันที่ผ่านมา'],
@@ -804,8 +810,106 @@ function computeStats(trades, settings) {
   const today = s.daily.get(todayISO());
   s.todayNet = today ? today.net : 0; s.todayN = today ? today.n : 0;
   s.energy = clamp(1 - Math.max(0, -s.todayNet) / Math.max(1, settings.dailyLoss));
+  s.beh = analyzeBehavior(list, s);
+  const counts = [...s.daily.values()].map((d) => d.n).sort((a, b) => a - b); s.medianN = counts.length ? counts[counts.length >> 1] : 0;
+  s.ruleDays = new Map();
+  for (const [iso, D] of s.beh.days) { const c = ruleChecks(D); if (c.length) { const ok = c.every((x) => x.ok); s.ruleDays.set(iso, { ok, broken: c.filter((x) => !x.ok).length }); if (ok) s.xp += 10; } }
+  Object.assign(s, bossWeeks(s)); s.xp += s.bossWins * 40;
   s.level = levelInfo(s.xp);
   return s;
+}
+// ------------------------------------------------------------------ behaviour analysis: time of day, revenge / tilt / oversize, farm rules, weekly boss
+const RULES_DEFAULT = { maxTrades: 0, maxLossStreak: 3, dailyLossRule: true, blockFrom: '', blockTo: '', maxLot: 0, noRevenge: true, revengeMin: 10 };
+const minutesOf = (hm) => { const m = /^(\d{1,2}):(\d{2})/.exec(hm || ''); return m ? +m[1] * 60 + +m[2] : null; };
+// close time from date + time; open time = close - duration (MT5 sends dur in seconds; hand-logged trades have none)
+function tradeClock(t) {
+  const m = minutesOf(t.time);
+  if (m == null) return { close: null, open: null };
+  const close = new Date(`${t.date}T${pad2(Math.floor(m / 60))}:${pad2(m % 60)}:00`).getTime();
+  return { close, open: close - (+t.dur || 0) * 1000 };
+}
+function inBlockedHours(ms) {
+  const R = state.settings.rules, a = minutesOf(R.blockFrom), b = minutesOf(R.blockTo);
+  if (ms == null || a == null || b == null || a === b) return false;
+  const d = new Date(ms), m = d.getHours() * 60 + d.getMinutes();
+  return a < b ? m >= a && m < b : m >= a || m < b;
+}
+const emptyDay = () => ({ n: 0, net: 0, revenge: 0, tilt: 0, oversize: 0, bigLoss: 0, low: 0, blocked: 0, overLot: 0, run: 0, fomo: false, journal: false });
+const FLAG_NAMES = { revenge: ['Revenge', 'แก้แค้น'], tilt: ['Tilt', 'หัวร้อน'], oversize: ['Oversized', 'lot ใหญ่'] };
+function analyzeBehavior(list, s) {
+  const R = state.settings.rules, gap = Math.max(1, +R.revengeMin || 10) * 60000, streakN = +R.maxLossStreak || 3;
+  const bySym = {};
+  for (const t of list) if (+t.size > 0) (bySym[t.asset] ||= []).push(+t.size);
+  const med = {};
+  for (const [a, arr] of Object.entries(bySym)) if (arr.length >= 8) { arr.sort((x, y) => x - y); med[a] = arr[arr.length >> 1]; }
+  const mk = () => ({ n: 0, net: 0, wins: 0 }), add = (g, p) => { g.n++; g.net += p; if (p > 0) g.wins++; };
+  const B = { revenge: mk(), tilt: mk(), oversize: mk(), any: mk(), flags: new Map(), heat: Array.from({ length: 7 }, () => Array.from({ length: 24 }, mk)), hours: Array.from({ length: 24 }, mk), timed: 0, days: new Map(), hold: { win: [0, 0], loss: [0, 0] }, med };
+  let prev = null, run = 0, day = null, cum = 0, D = null;
+  for (const t of list) {
+    const c = tradeClock(t), p = t.pnl;
+    if (t.date !== day) { day = t.date; run = 0; prev = null; cum = 0; D = emptyDay(); B.days.set(day, D); }
+    const f = [];
+    if (prev && prev.t.pnl < 0 && c.open != null && prev.c.close != null) {
+      const dt = c.open - prev.c.close;
+      if (dt >= 0 && dt <= gap && (+t.size > +prev.t.size * 1.001 || (s.avgLoss && -prev.t.pnl >= 2 * s.avgLoss))) f.push('revenge');
+    }
+    if (run >= streakN) f.push('tilt');
+    if (med[t.asset] && +t.size > med[t.asset] * 1.5) f.push('oversize');
+    for (const k of f) { add(B[k], p); D[k]++; }
+    if (f.length) { B.flags.set(t.id, f); add(B.any, p); }
+    if (c.open != null) {
+      const od = new Date(c.open), wd = (od.getDay() + 6) % 7, h = od.getHours();
+      add(B.heat[wd][h], p); add(B.hours[h], p); B.timed++;
+    }
+    if (+t.dur > 0) { const hk = p > 0 ? B.hold.win : B.hold.loss; hk[0] += +t.dur; hk[1]++; }
+    D.n++; D.net += p; cum += p; D.low = Math.min(D.low, cum);
+    if (s.avgLoss && -p > 2 * s.avgLoss) D.bigLoss++;
+    if (inBlockedHours(c.open)) D.blocked++;
+    if (+R.maxLot > 0 && +t.size > +R.maxLot) D.overLot++;
+    if ((t.emotions || []).some((e) => e === 'fomo' || e === 'greedy')) D.fomo = true;
+    run = p < 0 ? run + 1 : p > 0 ? 0 : run; D.run = run;
+    prev = { t, c };
+  }
+  for (const [iso, d] of B.days) {
+    const j = state.days?.[iso];
+    d.journal = !!j;
+    if ((j?.moods || []).some((e) => e === 'fomo' || e === 'greedy')) d.fomo = true;
+  }
+  B.worstFlagged = list.filter((t) => t.pnl < 0 && B.flags.has(t.id)).sort((a, b) => a.pnl - b.pnl).slice(0, 5);
+  return B;
+}
+function ruleChecks(D) {
+  const R = state.settings.rules, st = state.settings, out = [];
+  if (+R.maxTrades > 0) out.push({ id: 'trades', ok: D.n <= R.maxTrades, en: `At most ${R.maxTrades} trades a day`, th: `เทรดไม่เกิน ${R.maxTrades} ไม้/วัน`, val: `${D.n}/${R.maxTrades}` });
+  if (+R.maxLossStreak > 0) out.push({ id: 'streak', ok: D.tilt === 0, en: `Stop after ${R.maxLossStreak} losses in a row`, th: `แพ้ติดกัน ${R.maxLossStreak} ไม้ ให้หยุด`, val: D.tilt ? tr(`+${D.tilt} after`, `ต่ออีก ${D.tilt}`) : `${D.run}/${R.maxLossStreak}` });
+  if (R.dailyLossRule) out.push({ id: 'loss', ok: D.low > -st.dailyLoss, en: `Daily loss under ${money(st.dailyLoss, 0)}`, th: `ขาดทุนต่อวันไม่เกิน ${money(st.dailyLoss, 0)}`, val: `${money(Math.max(0, -D.low), 0)}` });
+  if (R.noRevenge) out.push({ id: 'revenge', ok: D.revenge === 0, en: 'No revenge trades', th: 'ไม่เทรดแก้แค้น', val: String(D.revenge) });
+  if (minutesOf(R.blockFrom) != null && minutesOf(R.blockTo) != null) out.push({ id: 'hours', ok: D.blocked === 0, en: `No trading ${R.blockFrom}–${R.blockTo}`, th: `ห้ามเทรดช่วง ${R.blockFrom}–${R.blockTo}`, val: String(D.blocked) });
+  if (+R.maxLot > 0) out.push({ id: 'lot', ok: D.overLot === 0, en: `Lot size at most ${R.maxLot}`, th: `lot ไม่เกิน ${R.maxLot}`, val: String(D.overLot) });
+  return out;
+}
+
+// weekly boss: a different bad habit every week. Each trading day that avoids it is one hit; 4 hits win.
+const BOSS_HP = 4;
+const BOSSES = [
+  { id: 'slime', color: '#6fbf4a', icon: '🟢', en: 'Revenge Slime', th: 'สไลม์แก้แค้น', ruleEn: 'a trading day with no revenge trades', ruleTh: 'วันที่เทรดโดยไม่มีไม้แก้แค้นเลย', hit: (D) => D.revenge === 0 },
+  { id: 'golem', color: '#9aa0a6', icon: '🗿', en: 'Overtrade Golem', th: 'โกเล็มเทรดเกิน', ruleEn: 'a day within your trade limit', ruleTh: 'วันที่เทรดไม่เกินจำนวนไม้ที่กำหนด', hit: (D, s) => D.n <= golemLimit(s) },
+  { id: 'troll', color: '#8a6bb8', icon: '👹', en: 'Big-Loss Troll', th: 'โทรลล์ขาดทุนหนัก', ruleEn: 'a day with no loss bigger than 2× your average loss', ruleTh: 'วันที่ไม่มีไม้ไหนขาดทุนเกิน 2 เท่าของขาดทุนเฉลี่ย', hit: (D) => D.bigLoss === 0 },
+  { id: 'ghost', color: '#cfd8ea', icon: '👻', en: 'Tilt Ghost', th: 'ผีหัวร้อน', ruleEn: 'a day where you stop after a losing streak', ruleTh: 'วันที่หยุดได้หลังแพ้ติดกัน ไม่เทรดต่อตอนหัวร้อน', hit: (D) => D.tilt === 0 },
+  { id: 'dragon', color: '#d0554b', icon: '🐉', en: 'FOMO Dragon', th: 'มังกร FOMO', ruleEn: 'a day with a journal and no FOMO/Greedy mood', ruleTh: 'วันที่เขียนบันทึก และไม่มีอารมณ์ FOMO/โลภ', hit: (D) => D.journal && !D.fomo },
+];
+const golemLimit = (s) => +state.settings.rules.maxTrades || Math.max(3, s.medianN || 0);
+const weekStart = (iso) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoOf(d); };
+const bossOf = (wk) => BOSSES[((Math.floor(Math.round((new Date(wk + 'T12:00:00') - new Date('2024-01-01T12:00:00')) / 864e5) / 7) % BOSSES.length) + BOSSES.length) % BOSSES.length];
+function bossWeeks(s) {
+  const weeks = new Map();
+  for (const [iso, D] of s.beh.days) { const wk = weekStart(iso); if (!weeks.has(wk)) weeks.set(wk, []); weeks.get(wk).push(D); }
+  let wins = 0;
+  for (const [wk, days] of weeks) { const b = bossOf(wk); if (days.filter((D) => b.hit(D, s)).length >= BOSS_HP) wins++; }
+  const wk = weekStart(todayISO()), b = bossOf(wk), pips = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() + i); const iso = isoOf(d), D = s.beh.days.get(iso); pips.push({ iso, st: D ? (b.hit(D, s) ? 'hit' : 'miss') : null }); }
+  const hits = pips.filter((p) => p.st === 'hit').length;
+  return { bossWins: wins, boss: { wk, b, pips, hits, hp: Math.max(0, BOSS_HP - hits), defeated: hits >= BOSS_HP } };
 }
 const ACHIEVEMENTS = [
   { id: 'first', name: 'First Seed', desc: 'Log your first quest', icon: 'sprout', test: (s) => s.n >= 1 },
@@ -819,7 +923,10 @@ const ACHIEVEMENTS = [
   { id: 'snapshot', name: 'Shutterbug', desc: 'Attach a chart snapshot', icon: 'sun', test: (s, tr) => tr.some((t) => t.shot) },
   { id: 'golden', name: 'Golden Ratio', desc: 'Profit factor ≥ 2 over 20+ quests', icon: 'star', test: (s) => s.n >= 20 && s.pf >= 2 },
   { id: 'lvl5', name: 'Rising Star', desc: 'Reach level 5', icon: 'star', test: (s) => s.level.lvl >= 5 },
-  { id: 'diary', name: 'Diarist', desc: 'Write 7 daily journals', icon: 'note', test: () => Object.keys(state.days || {}).length >= 7 },
+  { id: 'diary', name: tr('Diarist', 'นักบันทึก'), desc: tr('Write 7 daily journals', 'เขียนบันทึกประจำวันครบ 7 วัน'), icon: 'note', test: () => Object.keys(state.days || {}).length >= 7 },
+  { id: 'slayer', name: tr('Boss Slayer', 'ผู้ปราบบอส'), desc: tr('Defeat a weekly boss', 'ปราบบอสประจำสัปดาห์ได้'), icon: 'flame', test: (s) => s.bossWins >= 1 },
+  { id: 'lawful', name: tr('Law of the Land', 'ชาวนาผู้มีวินัย'), desc: tr('Keep every farm rule on 10 trading days', 'ทำตามกฎของฟาร์มครบ 10 วันเทรด'), icon: 'star', test: (s) => [...s.ruleDays.values()].filter((x) => x.ok).length >= 10 },
+  { id: 'builder', name: tr('Homesteader', 'เจ้าของฟาร์ม'), desc: tr('Build 3 farm upgrades', 'สร้างของในฟาร์ม 3 อย่าง'), icon: 'house', test: () => (state.settings.farm.owned || []).length >= 3 },
   { id: 'rich', name: 'Gold Rush', desc: 'Net profit over $1,000', icon: 'coin', test: (s) => s.net >= 1000 },
 ];
 
@@ -844,6 +951,8 @@ function save() {
 }
 Sfx.on = state.settings.sound; Sfx.vol = state.settings.volume;
 state.settings.mt5 = { gist: '', ignored: [], last: null, ...(state.settings.mt5 || {}) };
+state.settings.rules = { ...RULES_DEFAULT, ...(state.settings.rules || {}) };
+state.settings.farm = { owned: [], pet: '', petName: '', festival: '', ...(state.settings.farm || {}) };
 
 // ------------------------------------------------------------------ UI primitives
 function toast(title, body = '', icon = 'star') {
@@ -863,6 +972,9 @@ function showTip(html, x, y) {
   tipEl.style.left = tx + 'px'; tipEl.style.top = ty + 'px';
 }
 const hideTip = () => tipEl.classList.remove('show');
+// touch: a tooltip opened by tapping a chart goes away on the next tap elsewhere or on scroll
+document.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse' && !e.target.closest?.('#chart, #heat')) hideTip(); }, true);
+document.addEventListener('scroll', () => { if (isTouch) hideTip(); }, true);
 document.addEventListener('pointermove', (e) => {
   if (e.pointerType !== 'mouse' || e.target === canvas) return;
   const t = e.target.closest?.('[data-tip]');
@@ -966,7 +1078,7 @@ function openPanel(name, { then } = {}) {
   });
   activePanel = { name, w };
   world?.focusOn(name);
-  if (name === 'tavern') { markDaily('review'); setTimeout(() => { drawChart(); nextWisdom(); }, reduced ? 0 : 520); }
+  if (name === 'tavern') { markDaily('review'); setTimeout(() => { drawChart(); drawInsightCharts(); nextWisdom(); }, reduced ? 0 : 520); }
   if (then) setTimeout(then, reduced ? 0 : 520);
   return w;
 }
@@ -977,6 +1089,7 @@ function render({ worldSync = true, animateId = null } = {}) {
   renderHUD(); renderHouse(); renderBoard(); renderTavern();
   if (worldSync) world?.sync(animateId);
   updateDaily();
+  watchRules();
 }
 function setBar(id, frac, text) { const f = $('#' + id); if (f) f.style.width = pct(clamp(frac), 1); const v = $('#' + id + '-val'); if (v) v.textContent = text; }
 function renderHUD() {
@@ -1018,7 +1131,8 @@ function renderHouse() {
   ].join('');
   renderCalendar();
   const latest = [...state.trades].sort(byTime).reverse().slice(0, 5);
-  renderJournalBox();
+  renderJournalBox(); renderRulesBox(); renderBossBox();
+  $('#cal-report').title = tr('Month report', 'รายงานประจำเดือน');
   $('#latest').innerHTML = latest.map(questRow).join('') || '<div class="font-pixel text-sm text-[#8b5a2b]">No quests yet. Visit the Quest Board!</div>';
 }
 function questRow(t) {
@@ -1071,7 +1185,7 @@ function renderBoard() {
       <div class="flex items-center gap-2">${img(cropOf(t, state.stats.avgWin), 'w-8 shrink-0')}
         <div class="min-w-0 flex-1"><div class="font-pixel font-bold truncate">${esc(t.asset)}</div><div class="font-pixel text-xs side-${t.side}">${t.side === 'long' ? '▲ LONG' : '▼ SHORT'} · <span class="text-[#8b5a2b]">${esc(t.date)}</span></div></div>
         <div class="num text-lg font-bold ${cls(t.pnl)}">${signed(t.pnl, 0)}</div></div>
-      <div class="flex flex-wrap gap-1 mt-2">${t.source === 'mt5' ? `<span class="tag ${(t.emotions || []).length || state.days[t.date] ? 'setup' : 'bad'}">MT5${(t.emotions || []).length || state.days[t.date] ? '' : ' · ' + tr('add notes', 'รอจดบันทึก')}</span>` : ''}${t.setup ? `<span class="tag setup">${esc(t.setup)}</span>` : ''} ${emos}</div>
+      <div class="flex flex-wrap gap-1 mt-2">${t.source === 'mt5' ? `<span class="tag ${(t.emotions || []).length || state.days[t.date] ? 'setup' : 'bad'}">MT5${(t.emotions || []).length || state.days[t.date] ? '' : ' · ' + tr('add notes', 'รอจดบันทึก')}</span>` : ''}${t.setup ? `<span class="tag setup">${esc(t.setup)}</span>` : ''} ${emos}${(state.stats.beh.flags.get(t.id) || []).map((f) => `<span class="tag bad">🌿 ${tr(...FLAG_NAMES[f])}</span>`).join(' ')}</div>
       ${t.lessons ? `<div class="text-sm mt-2 line-clamp-2 italic">“${esc(t.lessons)}”</div>` : ''}
       <div class="flex items-center mt-1">${Array.from({ length: t.rating || 0 }, () => img('heart', 'w-3.5')).join('')}<span class="ml-auto font-pixel text-xs text-sunset">+${t.xp || xpOf(t)} XP</span></div></div>`;
   }).join('');
@@ -1109,7 +1223,8 @@ function renderTavern() {
     return `<div class="slot ${got ? 'hi badge-glow' : ''} grid place-items-center aspect-square" data-tip="${esc(`${a.name} — ${a.desc}${got ? ' ✔' : ' (locked)'}`)}">${img(a.icon, `w-8 ${got ? 'bob' : ''}`, got ? '' : 'style="filter:grayscale(1) brightness(.6) opacity(.5)"')}</div>`;
   }).join('');
   $('#ach-count').textContent = `${state.achievements.length} / ${ACHIEVEMENTS.length} unlocked`;
-  if (activePanel?.name === 'tavern') drawChart();
+  renderInsightsTavern();
+  if (activePanel?.name === 'tavern') { drawChart(); drawInsightCharts(); }
 }
 
 // pixel equity chart (low-res canvas scaled up)
@@ -1419,6 +1534,396 @@ document.addEventListener('click', (e) => {
   const d = e.target.closest('[data-journal-day]'); if (d) { openJournal(d.dataset.journalDay); return; }
   if (e.target.closest('[data-open-journal]')) openJournal(todayISO());
 });
+// ------------------------------------------------------------------ Tavern insights: Clock of Fortune (hour × weekday), weeds (revenge / tilt / oversize), Scale of Harvests
+let heatMetric = 'net', heatHover = null;
+const hourLabel = (h) => `${pad2(h)}:00–${pad2((h + 1) % 24)}:00`;
+const DAYS_MON = () => (LANG === 'th' ? ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์', 'อาทิตย์', 'ทุกวัน'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'All days']);
+const durText = (sec) => (sec >= 3600 ? `${(sec / 3600).toFixed(1)} ${tr('h', 'ชม.')}` : sec >= 60 ? `${Math.round(sec / 60)} ${tr('min', 'นาที')}` : `${Math.round(sec)} ${tr('sec', 'วินาที')}`);
+function renderInsightsTavern() {
+  const s = state.stats, B = s.beh, R = state.settings.rules, hb = $('#heat-block');
+  if (!hb) return;
+  // --- Clock of Fortune
+  const minN = Math.max(3, Math.round(B.timed * 0.01));
+  const hrs = B.hours.map((c, h) => ({ h, ...c })).filter((c) => c.n >= minN);
+  const best = [...hrs].sort((a, b) => b.net - a.net).slice(0, 3).filter((c) => c.net > 0);
+  const worst = [...hrs].sort((a, b) => a.net - b.net).slice(0, 3).filter((c) => c.net < 0);
+  const worstSum = worst.reduce((a, c) => a + c.net, 0);
+  const hr = (c) => `<div class="slot flex items-center gap-2"><span class="num font-bold">${hourLabel(c.h)}</span><span class="text-xs text-[#8b5a2b]">${c.n} ${tr('trades', 'ไม้')} · ${tr('win', 'ชนะ')} ${pct(c.wins / c.n)}</span><span class="ml-auto num ${cls(c.net)}">${signed(c.net, 0)}</span></div>`;
+  hb.innerHTML = `
+    <div class="flex flex-wrap items-center gap-x-2 mb-1"><div class="font-pixel text-xl font-bold">🕰 ${tr('Clock of Fortune', 'นาฬิกาแห่งโชค')}</div><div class="sm:ml-auto font-pixel text-xs text-[#8b5a2b]">${tr('profit by hour × weekday · opening time on this computer', 'กำไร/ขาดทุน แยกตามชั่วโมง × วัน · เวลาเปิดออร์เดอร์ตามเครื่องคุณ')}</div></div>
+    <div class="flex gap-1 mb-2">${[['net', tr('Profit', 'กำไร')], ['wr', tr('Win rate', 'อัตราชนะ')], ['n', tr('Trades', 'จำนวนไม้')]].map(([k, l]) => `<button class="btn text-sm ${heatMetric === k ? 'sel' : ''}" data-hmetric="${k}">${l}</button>`).join('')}</div>
+    ${B.timed ? `<div class="slot"><canvas id="heat" class="w-full h-[240px] block" style="touch-action: pan-y"></canvas></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+      <div><div class="font-pixel font-bold mb-1 up">☀ ${tr('Golden hours', 'ชั่วโมงทอง')}</div><div class="flex flex-col gap-1">${best.map(hr).join('') || '<div class="text-sm text-[#8b5a2b]">—</div>'}</div></div>
+      <div><div class="font-pixel font-bold mb-1 down">⛈ ${tr('Stormy hours', 'ชั่วโมงพายุ')}</div><div class="flex flex-col gap-1">${worst.map(hr).join('') || '<div class="text-sm text-[#8b5a2b]">—</div>'}</div></div>
+    </div>
+    ${worst.length ? `<div class="parch mt-3 text-sm">💡 ${tr(`Skipping your ${worst.length} stormiest hour(s) would have saved <b class="num up">${money(-worstSum, 0)}</b>. Add them as a no-trade window in your Farm Rules.`, `ถ้าไม่เทรดใน ${worst.length} ชั่วโมงที่แย่ที่สุด จะเก็บเงินไว้ได้ <b class="num up">${money(-worstSum, 0)}</b> ลองตั้งเป็นช่วงห้ามเทรดใน กฎของฟาร์ม`)} <button class="underline font-pixel" data-open-rules>${tr('Set rule', 'ตั้งกฎ')} ▶</button></div>` : ''}
+    ${B.timed < s.n ? `<div class="text-xs mt-2 text-[#8b5a2b]">${tr(`${s.n - B.timed} trade(s) have no time and are not shown.`, `มี ${s.n - B.timed} ไม้ที่ไม่มีเวลา จึงไม่อยู่ในตาราง`)}</div>` : ''}`
+    : `<div class="text-sm text-[#8b5a2b]">${tr('Add a time to your trades (MT5 sync does it for you) to see your best and worst hours.', 'ใส่เวลาในเทรด (ซิงก์จาก MT5 ใส่ให้อัตโนมัติ) เพื่อดูชั่วโมงที่ดีและแย่ที่สุด')}</div>`}`;
+  const hc = $('#heat');
+  if (hc) { hc.addEventListener('pointermove', heatTip); hc.addEventListener('pointerdown', heatTip); hc.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse') return; heatHover = null; drawHeat(); hideTip(); }); }
+
+  // --- weeds: emotion-driven trades
+  const any = B.any;
+  const card = (key, icon, name, desc) => { const g = B[key]; return `<div class="slot"><div class="font-pixel font-bold">${icon} ${name}</div><div class="text-xs text-[#8b5a2b] mb-1">${desc}</div>
+    <div class="flex items-baseline gap-2 flex-wrap"><span class="num text-xl ${cls(g.net)}">${signed(g.net, 0)}</span><span class="text-xs">${g.n} ${tr('trades', 'ไม้')}${g.n ? ` · ${tr('win', 'ชนะ')} ${pct(g.wins / g.n)}` : ''}</span></div></div>`; };
+  $('#beh-block').innerHTML = `
+    <div class="font-pixel text-lg font-bold mb-1">🌿 ${tr('Weeds in the Field', 'วัชพืชในแปลง')}</div>
+    <div class="font-pixel text-xs text-[#8b5a2b] mb-2">${tr('Emotion-driven trades, found automatically. They grow weeds next to their crops.', 'เทรดที่มาจากอารมณ์ ตรวจจับให้อัตโนมัติ และจะมีวัชพืชงอกข้างผักของไม้นั้น')}</div>
+    <div class="flex flex-col gap-2">
+      ${card('revenge', '😤', tr('Revenge trades', 'เทรดแก้แค้น'), tr(`Opened within ${R.revengeMin} min of a loss, with a bigger lot or right after a big loss`, `เปิดภายใน ${R.revengeMin} นาทีหลังไม้แพ้ โดยเพิ่ม lot หรือหลังแพ้หนัก`))}
+      ${card('tilt', '🌀', tr('Tilt trades', 'เทรดตอนหัวร้อน'), tr(`Taken after ${+R.maxLossStreak || 3}+ losses in a row on the same day`, `เทรดต่อหลังแพ้ติดกัน ${+R.maxLossStreak || 3} ไม้ขึ้นไปในวันเดียวกัน`))}
+      ${card('oversize', '🐘', tr('Oversized trades', 'ไม้ใหญ่เกินปกติ'), tr('Lot over 1.5× your usual size for that symbol', 'lot ใหญ่กว่า 1.5 เท่าของขนาดปกติในสินทรัพย์นั้น'))}
+    </div>
+    ${any.n ? `<div class="parch mt-3"><div class="text-sm">${tr('Without these weeds your net would be', 'ถ้าไม่มีไม้พวกนี้ กำไรสุทธิจะเป็น')}</div>
+      <div class="num text-2xl ${cls(s.net - any.net)}">${signed(s.net - any.net, 0)}</div><div class="text-xs text-[#8b5a2b]">${tr('instead of', 'แทนที่จะเป็น')} ${signed(s.net, 0)} · ${any.n} ${tr('trades flagged', 'ไม้ที่ถูกจับได้')} (${pct(any.n / Math.max(1, s.n))})</div></div>`
+      : `<div class="parch mt-3 text-sm">✨ ${tr('No weeds found. What a clean field!', 'ไม่พบวัชพืช แปลงสะอาดมาก!')}</div>`}
+    ${B.worstFlagged.length ? `<div class="font-pixel font-bold mt-3 mb-1">${tr('Worst weeds', 'วัชพืชที่แย่ที่สุด')}</div><div class="flex flex-col gap-1">${B.worstFlagged.map(questRow).join('')}</div>` : ''}
+    <button class="btn text-sm mt-3" data-open-rules>📏 ${tr('Farm Rules', 'กฎของฟาร์ม')}</button>`;
+
+  // --- Scale of Harvests: size of wins vs losses
+  const be = s.avgWin + s.avgLoss ? s.avgLoss / (s.avgWin + s.avgLoss) : 0, payoff = s.avgLoss ? s.avgWin / s.avgLoss : 0;
+  const losses = state.trades.filter((t) => t.pnl < 0).map((t) => -t.pnl).sort((a, b) => b - a), k10 = Math.max(1, Math.ceil(losses.length * 0.1));
+  const topShare = losses.length && s.grossLoss ? losses.slice(0, k10).reduce((a, b) => a + b, 0) / s.grossLoss : 0;
+  const hw = B.hold.win[1] ? B.hold.win[0] / B.hold.win[1] : 0, hl = B.hold.loss[1] ? B.hold.loss[0] / B.hold.loss[1] : 0;
+  const cell = (label, val, c = '') => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${label}</div><div class="num text-lg ${c}">${val}</div></div>`;
+  const tips = [];
+  if (s.n >= 10 && payoff && payoff < 1) tips.push(tr(`An average loss is ${(1 / payoff).toFixed(2)}× an average win, so you need a <b>${pct(be)}</b> win rate just to break even (you have ${pct(s.winRate)}).`, `ไม้แพ้เฉลี่ยใหญ่กว่าไม้ชนะ ${(1 / payoff).toFixed(2)} เท่า จึงต้องชนะอย่างน้อย <b>${pct(be)}</b> ถึงจะเสมอตัว (ตอนนี้ชนะ ${pct(s.winRate)})`));
+  if (hw && hl && hl > hw * 1.3) tips.push(tr(`You hold losers ${(hl / hw).toFixed(1)}× longer than winners (${durText(hl)} vs ${durText(hw)}). Cut them sooner.`, `คุณถือไม้แพ้นานกว่าไม้ชนะ ${(hl / hw).toFixed(1)} เท่า (${durText(hl)} เทียบ ${durText(hw)}) ตัดขาดทุนให้เร็วขึ้น`));
+  if (losses.length >= 10 && topShare > 0.3) tips.push(tr(`Your biggest 10% of losses make up ${pct(topShare)} of all losses. A firm stop-loss on every trade would change a lot.`, `ไม้แพ้ใหญ่สุด 10% คิดเป็น ${pct(topShare)} ของขาดทุนทั้งหมด ถ้าตั้ง SL ทุกไม้อย่างเคร่งครัด ผลจะเปลี่ยนไปมาก`));
+  if (s.n >= 10 && payoff >= 1 && s.winRate >= be) tips.push(tr('Wins are bigger than losses and your win rate is above break-even. Keep this shape!', 'ไม้ชนะใหญ่กว่าไม้แพ้ และอัตราชนะสูงกว่าจุดเสมอตัว รักษาทรงนี้ไว้!'));
+  $('#dist-block').innerHTML = `
+    <div class="font-pixel text-lg font-bold mb-1">⚖️ ${tr('Scale of Harvests', 'ตาชั่งผลผลิต')}</div>
+    <div class="font-pixel text-xs text-[#8b5a2b] mb-2">${tr('How big your wins and losses are · each bar = number of trades', 'ขนาดของไม้ชนะและไม้แพ้ · แต่ละแท่ง = จำนวนไม้')}</div>
+    ${s.n ? `<div class="slot"><canvas id="dist" class="w-full h-[170px] block"></canvas></div>
+    <div class="grid grid-cols-2 gap-2 mt-2">
+      ${cell(tr('Avg win / loss', 'ชนะ / แพ้ เฉลี่ย'), `<span class="up">${money(s.avgWin, s.avgWin < 100 ? 2 : 0)}</span> / <span class="down">${money(s.avgLoss, s.avgLoss < 100 ? 2 : 0)}</span>`)}
+      ${cell(tr('Win ÷ loss size', 'ขนาดชนะ ÷ แพ้'), payoff ? payoff.toFixed(2) : '—', payoff >= 1 ? 'up' : payoff ? 'down' : '')}
+      ${cell(tr('Win rate / needed', 'อัตราชนะ / ที่ต้องได้'), `${pct(s.winRate)} / ${pct(be)}`, s.winRate >= be ? 'up' : 'down')}
+      ${cell(tr('Top 10% losses', 'ไม้แพ้ใหญ่สุด 10%'), losses.length ? `${pct(topShare)} ${tr('of losses', 'ของขาดทุน')}` : '—')}
+      ${hw || hl ? cell(tr('Hold: wins', 'ถือไม้ชนะ'), hw ? durText(hw) : '—', 'up') + cell(tr('Hold: losses', 'ถือไม้แพ้'), hl ? durText(hl) : '—', hl > hw * 1.3 ? 'down' : '') : ''}
+    </div>
+    ${tips.map((x) => `<div class="parch mt-2 text-sm">💡 ${x}</div>`).join('')}` : emptyScroll()}`;
+}
+function drawHeat() {
+  const c = $('#heat'); if (!c || !c.clientWidth) return;
+  const B = state.stats.beh, w = c.clientWidth, h = c.clientHeight, dpr = Math.min(3, devicePixelRatio || 1);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const L = 44, T = 16, cw = (w - L - 2) / 24, ch = (h - T - 5) / 8, rows = [...B.heat, B.hours];
+  const val = (x) => (heatMetric === 'net' ? x.net : heatMetric === 'wr' ? (x.n ? x.wins / x.n - 0.5 : 0) : x.n);
+  const minWr = 3;
+  let max = 0; rows.forEach((r, ri) => r.forEach((x) => { if (x.n && (heatMetric !== 'wr' || x.n >= minWr) && ri < 7) max = Math.max(max, Math.abs(val(x))); }));
+  let maxAll = 0; B.hours.forEach((x) => { if (x.n && (heatMetric !== 'wr' || x.n >= minWr)) maxAll = Math.max(maxAll, Math.abs(val(x))); });
+  g.font = '700 10px Nunito, Mali, system-ui, sans-serif'; g.textBaseline = 'middle';
+  const names = DAYS_MON();
+  rows.forEach((r, ri) => {
+    const y = T + ri * ch + (ri === 7 ? 4 : 0), m = ri === 7 ? maxAll : max;
+    g.fillStyle = '#6b4423'; g.textAlign = 'right'; g.fillText(LANG === 'th' ? names[ri].slice(0, ri === 7 ? 6 : 3) : names[ri].slice(0, 3), L - 5, y + ch / 2);
+    r.forEach((x, hi) => {
+      const xx = L + hi * cw;
+      let col = 'rgba(139,90,43,.08)';
+      if (x.n && (heatMetric !== 'wr' || x.n >= minWr)) {
+        const v = val(x), k = m ? Math.min(1, Math.abs(v) / m) : 0, a = (0.18 + k * 0.82).toFixed(2);
+        col = heatMetric === 'n' ? `rgba(217,119,6,${a})` : v >= 0 ? `rgba(47,122,58,${a})` : `rgba(192,68,60,${a})`;
+      } else if (x.n) col = 'rgba(139,90,43,.2)';
+      g.fillStyle = col; g.fillRect(xx + 0.5, y + 0.5, cw - 1, ch - 1);
+      if (heatHover && heatHover[0] === ri && heatHover[1] === hi) { g.strokeStyle = '#d97706'; g.lineWidth = 2; g.strokeRect(xx + 1, y + 1, cw - 2, ch - 2); }
+    });
+  });
+  g.fillStyle = '#8b5a2b'; g.textAlign = 'center';
+  const every = cw < 14 ? 3 : 2;
+  for (let hr = 0; hr < 24; hr += every) g.fillText(String(hr), L + hr * cw + cw / 2, T / 2);
+}
+function heatTip(e) {
+  const c = e.currentTarget, r = c.getBoundingClientRect(), L = 44, T = 16, cw = (r.width - L - 2) / 24, ch = (r.height - T - 5) / 8;
+  const hi = Math.floor((e.clientX - r.left - L) / cw), ri = Math.min(7, Math.floor((e.clientY - r.top - T) / ch));
+  if (hi < 0 || hi > 23 || ri < 0) { heatHover = null; drawHeat(); hideTip(); delete c.dataset.tip; return; }
+  const x = ri === 7 ? state.stats.beh.hours[hi] : state.stats.beh.heat[ri][hi];
+  if (!heatHover || heatHover[0] !== ri || heatHover[1] !== hi) { heatHover = [ri, hi]; drawHeat(); }
+  const html = `<b>${DAYS_MON()[ri]} · ${hourLabel(hi)}</b><br>${x.n ? `${x.n} ${tr('trades', 'ไม้')} · ${tr('win', 'ชนะ')} ${pct(x.wins / x.n)}<br><span class="${cls(x.net)}">${signed(x.net)}</span>` : tr('no trades', 'ไม่มีเทรด')}`;
+  c.dataset.tip = '1'; c.dataset.tipHtml = html;
+  tipEl.innerHTML = html; tipEl.classList.add('show');
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  let tx = e.clientX + 14, ty = e.clientY - h - 14;
+  if (ty < 8) ty = e.clientY + 18;
+  tx = Math.max(8, Math.min(tx, innerWidth - w - 8));
+  tipEl.style.left = tx + 'px'; tipEl.style.top = ty + 'px';
+}
+function drawDist() {
+  const c = $('#dist'); if (!c || !c.clientWidth) return;
+  const vals = state.trades.map((t) => t.pnl).filter((v) => v !== 0);
+  const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(3, devicePixelRatio || 1);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  if (!vals.length) return;
+  const sorted = [...vals].sort((a, b) => a - b), q = (p) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))];
+  let lo = Math.min(0, q(0.02)), hi = Math.max(0, q(0.98));
+  if (hi - lo < 1e-9) hi = lo + 1;
+  const NB = w < 420 ? 20 : 30, step = (hi - lo) / NB;
+  lo = Math.floor(lo / step) * step; const nb = Math.max(1, Math.ceil((hi - lo) / step));
+  const bins = new Array(nb).fill(0);
+  for (const v of vals) bins[Math.min(nb - 1, Math.max(0, Math.floor((v - lo) / step)))]++;
+  const L = 8, R = w - 8, T = 16, Bt = h - 20, bw = (R - L) / nb, top = Math.max(...bins);
+  const x = (v) => L + ((v - lo) / (nb * step)) * (R - L);
+  bins.forEach((n, i) => { if (!n) return; const bh = Math.max(1, (n / top) * (Bt - T)); g.fillStyle = lo + (i + 0.5) * step >= 0 ? '#4a7c59' : '#c0443c'; g.fillRect(L + i * bw + 0.5, Bt - bh, Math.max(1, bw - 1), bh); });
+  g.strokeStyle = 'rgba(92,58,33,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(L, Bt + 0.5); g.lineTo(R, Bt + 0.5); g.stroke();
+  g.font = '700 10px Nunito, Mali, system-ui, sans-serif'; g.textBaseline = 'alphabetic'; g.fillStyle = '#8b5a2b';
+  g.textAlign = 'left'; g.fillText(shortMoney(lo), L, h - 5); g.textAlign = 'right'; g.fillText(shortMoney(lo + nb * step), R, h - 5);
+  g.textAlign = 'center'; g.fillText('$0', Math.min(R - 20, Math.max(L + 20, x(0))), h - 5);
+  const s = state.stats, mark = (v, col, label) => { if (v < lo || v > lo + nb * step) return; const xx = Math.round(x(v)) + 0.5; g.setLineDash([3, 3]); g.strokeStyle = col; g.beginPath(); g.moveTo(xx, T - 4); g.lineTo(xx, Bt); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.textAlign = 'center'; g.fillText(label, Math.min(R - 30, Math.max(L + 30, xx)), T - 6); };
+  if (s.avgLoss) mark(-s.avgLoss, '#b83d34', `${tr('avg loss', 'แพ้เฉลี่ย')} ${shortMoney(-s.avgLoss)}`);
+  if (s.avgWin) mark(s.avgWin, '#2f7a3a', `${tr('avg win', 'ชนะเฉลี่ย')} ${shortMoney(s.avgWin)}`);
+}
+function drawInsightCharts() { drawHeat(); drawDist(); }
+document.addEventListener('click', (e) => {
+  const m = e.target.closest('[data-hmetric]');
+  if (m) { heatMetric = m.dataset.hmetric; heatHover = null; Sfx.select(); renderInsightsTavern(); drawInsightCharts(); return; }
+  if (e.target.closest('[data-open-rules]')) { openRules(); return; }
+  if (e.target.closest('[data-open-shop]')) { openShop(); return; }
+  if (e.target.closest('[data-open-boss]')) { openBoss(); return; }
+  if (e.target.closest('[data-open-report]')) { openMonthReport(state.calMonth || todayISO().slice(0, 7)); }
+});
+addEventListener('resize', () => { if (activePanel?.name === 'tavern') drawInsightCharts(); });
+
+// ------------------------------------------------------------------ Farm Rules: personal limits checked against every day's trades
+function renderRulesBox() {
+  const el = $('#rules-box'); if (!el) return;
+  const s = state.stats, D = s.beh.days.get(todayISO()) || emptyDay(), checks = ruleChecks(D), last = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const iso = isoOf(d), r = s.ruleDays.get(iso);
+    last.push(`<span class="flex-1 h-4" style="background:${r ? (r.ok ? '#4a7c59' : '#c0443c') : '#e3cf9f'}" data-tip="${iso}${r ? (r.ok ? ' ✔' : ` ✖ ${r.broken}`) : ''}"></span>`);
+  }
+  el.innerHTML = `<div class="flex items-center gap-2 mb-1"><div class="font-pixel font-bold flex-1">📏 ${tr('Farm Rules · today', 'กฎของฟาร์ม · วันนี้')}</div><button class="btn text-sm" data-open-rules>✎ ${tr('Edit', 'แก้ไข')}</button></div>
+    ${checks.length ? checks.map((c) => `<div class="flex items-center gap-2 text-sm py-0.5"><span class="font-pixel w-5 text-center ${c.ok ? 'up' : 'down'}">${c.ok ? '✔' : '✖'}</span><span class="flex-1">${esc(tr(c.en, c.th))}</span><span class="num text-xs ${c.ok ? '' : 'down'}">${esc(c.val)}</span></div>`).join('')
+      : `<div class="text-sm text-[#8b5a2b]">${tr('No rules yet. Set a few limits to protect your gold.', 'ยังไม่มีกฎ ตั้งลิมิตสักข้อเพื่อปกป้องทองของคุณ')}</div>`}
+    <div class="flex gap-0.5 mt-2">${last.join('')}</div>
+    <div class="text-xs text-[#8b5a2b] mt-1">${tr('Last 14 days · a day that keeps every rule gives +10 XP and +3 🌰', '14 วันล่าสุด · วันที่ทำตามกฎครบ ได้ +10 XP และ +3 🌰')}</div>`;
+}
+function openRules() {
+  const R = state.settings.rules, s = state.stats;
+  const counts = [...s.daily.values()].map((d) => d.n).sort((a, b) => a - b), p75 = counts.length ? counts[Math.floor(counts.length * 0.75)] : 0;
+  const worst = s.beh.hours.map((c, h) => ({ h, ...c })).filter((c) => c.n >= 3).sort((a, b) => a.net - b.net)[0];
+  const num = (name, val, label, hint, step = 1) => `<label><span class="field-label">${label}</span><input class="inp" type="number" min="0" step="${step}" name="${name}" value="${val}" inputmode="decimal"><span class="text-xs text-[#8b5a2b]">${hint}</span></label>`;
+  openWindow({
+    title: tr('Farm Rules', 'กฎของฟาร์ม'), width: 560, autofocus: false,
+    html: `<p class="text-sm mb-3">${tr('Rules are checked automatically against your trades every day (0 = off). Breaking one shows a warning; keeping all of them earns XP and 🌰 seeds for the farm shop.', 'ระบบตรวจกฎกับเทรดของคุณทุกวันให้อัตโนมัติ (ใส่ 0 = ปิด) ถ้าผิดกฎจะเตือน ถ้าทำตามครบได้ XP และ 🌰 เมล็ดวินัยไว้ซื้อของในร้านค้าฟาร์ม')}</p>
+      <div class="grid grid-cols-2 gap-3">
+        ${num('maxTrades', R.maxTrades, tr('Max trades per day', 'เทรดสูงสุดต่อวัน'), counts.length ? tr(`you usually do ${counts[counts.length >> 1]}, busy days ${p75}`, `ปกติคุณเทรด ${counts[counts.length >> 1]} ไม้ วันที่เยอะ ${p75} ไม้`) : '')}
+        ${num('maxLossStreak', R.maxLossStreak, tr('Stop after N losses in a row', 'แพ้ติดกันกี่ไม้ให้หยุด'), tr('e.g. 3', 'เช่น 3'))}
+        ${num('maxLot', R.maxLot, tr('Max lot size', 'lot สูงสุด'), tr('e.g. 0.05', 'เช่น 0.05'), 'any')}
+        ${num('revengeMin', R.revengeMin, tr('Revenge window (min)', 'ช่วงจับเทรดแก้แค้น (นาที)'), tr('a new trade this soon after a loss', 'เปิดไม้ใหม่เร็วขนาดนี้หลังแพ้'))}
+        <label><span class="field-label">${tr('No trading from', 'ห้ามเทรดตั้งแต่')}</span><input class="inp" type="time" name="blockFrom" value="${esc(R.blockFrom)}"></label>
+        <label><span class="field-label">${tr('until', 'ถึง')}</span><input class="inp" type="time" name="blockTo" value="${esc(R.blockTo)}"></label>
+        ${worst && worst.net < 0 ? `<div class="col-span-2 text-xs text-[#8b5a2b] -mt-2">💡 ${tr(`your worst hour is ${hourLabel(worst.h)} (${signed(worst.net, 0)})`, `ชั่วโมงที่แย่ที่สุดของคุณคือ ${hourLabel(worst.h)} (${signed(worst.net, 0)})`)} <button type="button" class="underline font-pixel" data-fillhour="${worst.h}">${tr('use it', 'ใช้ช่วงนี้')}</button></div>` : ''}
+        <label class="col-span-2 flex items-center gap-2 font-pixel"><input type="checkbox" name="dailyLossRule" ${R.dailyLossRule ? 'checked' : ''}> ${tr('Stop at the daily loss limit', 'หยุดเมื่อขาดทุนถึงลิมิตรายวัน')} <input class="inp !w-28" type="number" min="1" step="10" name="dailyLoss" value="${state.settings.dailyLoss}"> $</label>
+        <label class="col-span-2 flex items-center gap-2 font-pixel"><input type="checkbox" name="noRevenge" ${R.noRevenge ? 'checked' : ''}> ${tr('No revenge trades', 'ห้ามเทรดแก้แค้น')}</label>
+      </div>
+      <div class="flex justify-end gap-2 mt-4"><button class="btn" data-close>${tr('Cancel', 'ยกเลิก')}</button><button class="btn btn-green" data-rsave>✦ ${tr('Save rules', 'บันทึกกฎ')}</button></div>`,
+    onMount(win, w) {
+      const v = (n) => $(`[name=${n}]`, win);
+      $('[data-fillhour]', win)?.addEventListener('click', (e) => { const h = +e.target.dataset.fillhour; v('blockFrom').value = `${pad2(h)}:00`; v('blockTo').value = `${pad2((h + 1) % 24)}:00`; Sfx.select(); });
+      $('[data-rsave]', win).onclick = () => {
+        Object.assign(R, { maxTrades: Math.max(0, Math.round(+v('maxTrades').value || 0)), maxLossStreak: Math.max(0, Math.round(+v('maxLossStreak').value || 0)), maxLot: Math.max(0, +v('maxLot').value || 0), revengeMin: Math.max(1, Math.round(+v('revengeMin').value || 10)), blockFrom: v('blockFrom').value, blockTo: v('blockTo').value, dailyLossRule: v('dailyLossRule').checked, noRevenge: v('noRevenge').checked });
+        state.settings.dailyLoss = Math.max(1, +v('dailyLoss').value || state.settings.dailyLoss);
+        const d = dailyToday(); d.warned = []; saveDaily();
+        save(); w.close(); render(); Sfx.success(); toast(tr('Rules saved', 'บันทึกกฎแล้ว'), '', 'note');
+      };
+    },
+  });
+}
+// warn once per rule per day, the moment a rule is broken (MT5 sync or a logged trade)
+function watchRules() {
+  const D = state.stats?.beh.days.get(todayISO()); if (!D) return;
+  const d = dailyToday(); d.warned ||= [];
+  const broken = ruleChecks(D).filter((c) => !c.ok && !d.warned.includes(c.id));
+  if (!broken.length) return;
+  broken.forEach((c) => d.warned.push(c.id)); saveDaily();
+  broken.forEach((c, i) => setTimeout(() => { Sfx.error(); toast(tr('Rule broken: ', 'ผิดกฎ: ') + tr(c.en, c.th), tr('Take a break. The market will still be here.', 'พักก่อนนะ ตลาดไม่หนีไปไหน'), 'rain'); }, 1500 + i * 1800));
+}
+
+// ------------------------------------------------------------------ weekly boss + discipline seeds + farm shop + pet
+const SHOP = [
+  { id: 'flowers', icon: '🌷', cost: 6, en: 'Flower beds', th: 'แปลงดอกไม้', den: 'Two beds of flowers along the path.', dth: 'แปลงดอกไม้สองแปลงข้างทางเดิน' },
+  { id: 'scarecrow', icon: '🧑‍🌾', cost: 10, en: 'Scarecrow', th: 'หุ่นไล่กา', den: 'Keeps an eye on your field.', dth: 'คอยเฝ้าแปลงผักให้' },
+  { id: 'well', icon: '🪣', cost: 12, en: 'Stone well', th: 'บ่อน้ำหิน', den: 'Fresh water for the farm.', dth: 'น้ำสะอาดสำหรับฟาร์ม' },
+  { id: 'cat', icon: '🐱', cost: 15, pet: true, en: 'Cat', th: 'แมว', den: 'Follows you around. Its mood follows your discipline.', dth: 'เดินตามคุณ อารมณ์ของมันเปลี่ยนตามวินัยของคุณ' },
+  { id: 'dog', icon: '🐶', cost: 15, pet: true, en: 'Dog', th: 'หมา', den: 'A loyal friend. Happy when you keep your rules.', dth: 'เพื่อนซื่อสัตย์ ดีใจเมื่อคุณทำตามกฎ' },
+  { id: 'pond', icon: '🐟', cost: 16, en: 'Fish pond', th: 'บ่อปลา', den: 'A calm pond with koi.', dth: 'บ่อน้ำสงบ มีปลาคาร์ปว่าย' },
+  { id: 'beehive', icon: '🐝', cost: 18, en: 'Beehives', th: 'รังผึ้ง', den: 'Busy bees, patient honey.', dth: 'ผึ้งขยัน น้ำผึ้งต้องรอ' },
+  { id: 'coop', icon: '🐔', cost: 22, en: 'Chicken coop', th: 'เล้าไก่', den: 'Three hens pecking around.', dth: 'แม่ไก่สามตัวจิกกินอยู่รอบเล้า' },
+  { id: 'windmill', icon: '🌬', cost: 30, en: 'Windmill', th: 'กังหันลม', den: 'The pride of a disciplined farmer.', dth: 'ความภูมิใจของชาวนาที่มีวินัย' },
+];
+function seedsInfo() {
+  const s = state.stats, j = Object.keys(state.days || {}).length, r = [...s.ruleDays.values()].filter((x) => x.ok).length, b = s.bossWins, a = state.achievements.length, d = daily.doneDays || 0;
+  const earned = 10 + j * 3 + r * 3 + b * 10 + a * 2 + d * 2;
+  const spent = (state.settings.farm.owned || []).reduce((acc, id) => acc + (SHOP.find((x) => x.id === id)?.cost || 0), 0);
+  return { earned, spent, have: earned - spent, j, r, b, a, d };
+}
+const bossName = (b) => tr(b.en, b.th);
+const bossRuleText = (b) => tr(b.ruleEn, b.ruleTh) + (b.id === 'golem' ? ` (≤ ${golemLimit(state.stats)} ${tr('trades', 'ไม้')})` : '');
+function renderBossBox() {
+  const el = $('#boss-box'); if (!el) return;
+  const { b, pips, hp, defeated } = state.stats.boss, sd = seedsInfo();
+  const DN = LANG === 'th' ? ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  el.innerHTML = `<button class="flex items-center gap-3 w-full text-left" data-open-boss><div class="text-4xl ${defeated ? 'opacity-40' : 'bob'}">${b.icon}</div>
+      <div class="flex-1 min-w-0"><div class="font-pixel font-bold">⚔️ ${tr('Weekly boss', 'บอสประจำสัปดาห์')}: ${bossName(b)}</div>
+      <div class="text-xs text-[#8b5a2b]">${tr('Hit it with', 'โจมตีด้วย')} ${bossRuleText(b)}</div></div></button>
+    <div class="track bar mt-2"><div class="fill" style="width:${pct(hp / BOSS_HP, 1)};background-color:#c0443c"></div><div class="val">${defeated ? tr('DEFEATED! 🏆', 'ชนะแล้ว! 🏆') : `HP ${hp}/${BOSS_HP}`}</div></div>
+    <div class="flex gap-1 mt-2">${pips.map((p, i) => `<div class="flex-1 text-center slot !p-1" style="${p.st === 'hit' ? 'background:#cfe8c0' : p.st === 'miss' ? 'background:#f3c9c0' : ''}"><div class="text-[10px] font-pixel">${DN[i]}</div><div class="text-sm leading-tight">${p.st === 'hit' ? '⚔️' : p.st === 'miss' ? '🛡' : '·'}</div></div>`).join('')}</div>
+    <div class="flex items-center gap-2 mt-3"><div class="font-pixel flex-1">🌰 <span class="num">${sd.have}</span> ${tr('discipline seeds', 'เมล็ดวินัย')}</div><button class="btn btn-orange text-sm" data-open-shop>🛒 ${tr('Farm shop', 'ร้านค้าฟาร์ม')}</button></div>`;
+}
+function openBoss() {
+  const B = state.stats.boss, b = B.b, next = bossOf(isoOf(new Date(new Date(B.wk + 'T12:00:00').getTime() + 7 * 864e5)));
+  openWindow({
+    title: tr('Weekly Boss', 'บอสประจำสัปดาห์'), width: 480,
+    html: `<div class="text-center"><div class="text-6xl ${B.defeated ? '' : 'bob'}">${b.icon}</div><div class="font-pixel text-2xl font-bold mt-1">${bossName(b)}</div>
+      <div class="track bar mt-2"><div class="fill" style="width:${pct(B.hp / BOSS_HP, 1)};background-color:#c0443c"></div><div class="val">${B.defeated ? tr('DEFEATED! 🏆', 'ชนะแล้ว! 🏆') : `HP ${B.hp}/${BOSS_HP}`}</div></div></div>
+      <div class="parch mt-3 text-sm leading-relaxed">${tr(`Each ${bossRuleText(b)} deals one hit. Land ${BOSS_HP} hits before Sunday night to win <b>+10 🌰</b> and <b>+40 XP</b>.`, `ทุก${bossRuleText(b)} = โจมตี 1 ครั้ง ตีให้ครบ ${BOSS_HP} ครั้งก่อนจบวันอาทิตย์ เพื่อรับ <b>+10 🌰</b> และ <b>+40 XP</b>`)}</div>
+      <div class="text-sm mt-3">${tr('Bosses defeated so far', 'ปราบบอสไปแล้ว')}: <b class="num">${state.stats.bossWins}</b> · ${tr('next week', 'สัปดาห์หน้า')}: ${next.icon} ${bossName(next)}</div>`,
+  });
+}
+function petMood() {
+  const s = state.stats, days = [...s.beh.days.keys()].sort().slice(-3);
+  if (!days.length) return { mood: 'ok', emoji: '🙂' };
+  let score = 0;
+  for (const d of days) { if (s.ruleDays.get(d)?.ok) score += 2; if (state.days[d]) score += 1; }
+  const k = score / (days.length * 3);
+  return k >= 0.6 ? { mood: 'happy', emoji: '💖' } : k >= 0.3 ? { mood: 'ok', emoji: '🙂' } : { mood: 'sad', emoji: '💧' };
+}
+function openPet() {
+  const f = state.settings.farm, kind = f.pet, item = SHOP.find((x) => x.id === kind); if (!item) return;
+  const m = petMood(), name = f.petName || tr('Mochi', 'โมจิ');
+  const say = { happy: tr('is overjoyed! You kept your rules and wrote your journal lately.', 'ดีใจสุดๆ! ช่วงนี้คุณทำตามกฎและเขียนบันทึกสม่ำเสมอ'), ok: tr('is doing fine. Keep your rules a few more days to make it happy.', 'สบายดี ทำตามกฎอีกสักสองสามวันจะดีใจมาก'), sad: tr('looks worried… recent days broke the rules. A calm, rule-keeping day will cheer it up.', 'ดูเป็นห่วงคุณ… ช่วงนี้ผิดกฎบ่อย วันที่เทรดใจเย็นและทำตามกฎจะทำให้มันร่าเริงขึ้น') }[m.mood];
+  openWindow({
+    title: `${item.icon} ${esc(name)}`, width: 420,
+    html: `<div class="text-center text-6xl bob">${item.icon}</div><p class="text-center mt-2"><b>${esc(name)}</b> ${say} <span class="text-2xl">${m.emoji}</span></p>
+      <label class="block mt-3"><span class="field-label">${tr('Name', 'ชื่อ')}</span><input class="inp" name="petname" maxlength="16" value="${esc(name)}"></label>
+      ${(f.owned || []).filter((id) => SHOP.find((x) => x.id === id)?.pet && id !== kind).map((id) => `<button class="btn w-full mt-2" data-petswap="${id}">${SHOP.find((x) => x.id === id).icon} ${tr('Walk with the other pet', 'สลับไปเดินกับอีกตัว')}</button>`).join('')}
+      <div class="flex justify-end mt-3"><button class="btn btn-green" data-petsave>OK</button></div>`,
+    onMount(win, w) {
+      $('[data-petsave]', win).onclick = () => { f.petName = $('[name=petname]', win).value.trim().slice(0, 16) || name; save(); w.close(); world?.sync(); };
+      $('[data-petswap]', win)?.addEventListener('click', (e) => { f.pet = e.target.closest('[data-petswap]').dataset.petswap; save(); w.close(); world?.sync(); Sfx.pop(); });
+    },
+  });
+}
+function openShop() {
+  const f = state.settings.farm, sd = seedsInfo();
+  const row = (x) => {
+    const own = (f.owned || []).includes(x.id), can = sd.have >= x.cost;
+    return `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center">${x.icon}</div>
+      <div class="flex-1 min-w-0"><div class="font-pixel font-bold">${tr(x.en, x.th)}</div><div class="text-xs text-[#8b5a2b]">${tr(x.den, x.dth)}</div></div>
+      ${own ? (x.pet ? (f.pet === x.id ? `<span class="tag good">${tr('with you', 'อยู่ด้วยกัน')}</span>` : `<button class="btn text-sm" data-shoppet="${x.id}">${tr('Walk', 'พาเดิน')}</button>`) : `<span class="tag good">✔ ${tr('built', 'สร้างแล้ว')}</span>`)
+        : `<button class="btn ${can ? 'btn-green' : ''} text-sm whitespace-nowrap" data-buy="${x.id}" ${can ? '' : 'disabled style="opacity:.55"'}>🌰 ${x.cost}</button>`}</div>`;
+  };
+  openWindow({
+    title: tr('Farm Shop', 'ร้านค้าฟาร์ม'), width: 560, autofocus: false,
+    html: `<div class="flex items-center gap-3 mb-2"><div class="text-4xl bob">🌰</div><div><div class="num text-3xl">${sd.have}</div><div class="font-pixel text-sm text-[#8b5a2b]">${tr('discipline seeds', 'เมล็ดวินัย')}</div></div></div>
+      <div class="parch text-xs leading-relaxed mb-3">${tr('Seeds come from discipline, never from profit', 'เมล็ดได้มาจากวินัย ไม่ใช่จากกำไร')}: 📓 ${tr('journal day', 'บันทึกประจำวัน')} +3 (${sd.j}) · 📏 ${tr('day keeping every rule', 'วันที่ทำตามกฎครบ')} +3 (${sd.r}) · ⚔️ ${tr('boss defeated', 'ปราบบอส')} +10 (${sd.b}) · 🏆 ${tr('achievement', 'ความสำเร็จ')} +2 (${sd.a}) · 📋 ${tr('daily tasks done', 'ทำภารกิจประจำวันครบ')} +2 (${sd.d}) · 🎁 ${tr('welcome gift', 'ของขวัญต้อนรับ')} +10</div>
+      <div class="flex flex-col gap-2">${SHOP.map(row).join('')}</div>`,
+    onMount(win, w) {
+      win.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-buy]'), p = e.target.closest('[data-shoppet]');
+        if (p) { f.pet = p.dataset.shoppet; save(); w.close(); world?.sync(); Sfx.pop(); return; }
+        if (!b || b.disabled) return;
+        const x = SHOP.find((i) => i.id === b.dataset.buy);
+        if (seedsInfo().have < x.cost) return;
+        f.owned = [...new Set([...(f.owned || []), x.id])];
+        if (x.pet) f.pet = x.id;
+        save(); w.close(); activePanel?.w.close(); Sfx.coin(); setTimeout(() => Sfx.levelUp(), 200);
+        render({ worldSync: false }); world?.build(x.id);
+        toast(tr(`${x.en} built!`, `สร้าง${x.th}แล้ว!`), tr('Your farm grows with your discipline.', 'ฟาร์มเติบโตไปพร้อมวินัยของคุณ'), 'house');
+        checkAchievements(true);
+      });
+    },
+  });
+}
+
+// ------------------------------------------------------------------ monthly harvest festival: report card for a month (+ picture to share)
+function monthStats(ym) {
+  const list = state.trades.filter((t) => t.date.startsWith(ym)), days = new Map();
+  for (const t of list) { const d = days.get(t.date) || { net: 0, n: 0 }; d.net += t.pnl; d.n++; days.set(t.date, d); }
+  const wins = list.filter((t) => t.pnl > 0), gw = wins.reduce((a, t) => a + t.pnl, 0), gl = -list.filter((t) => t.pnl < 0).reduce((a, t) => a + t.pnl, 0);
+  const assets = {}; for (const t of list) { const a = (assets[t.asset] ||= { n: 0, net: 0 }); a.n++; a.net += t.pnl; }
+  const dayArr = [...days].sort((a, b) => b[1].net - a[1].net);
+  let peak = 0, cum = 0, dd = 0; for (const [, d] of [...days].sort((a, b) => a[0].localeCompare(b[0]))) { cum += d.net; peak = Math.max(peak, cum); dd = Math.max(dd, peak - cum); }
+  const flags = state.stats.beh.flags; let weeds = 0, weedNet = 0; for (const t of list) if (flags.has(t.id)) { weeds++; weedNet += t.pnl; }
+  const rd = [...state.stats.ruleDays].filter(([d]) => d.startsWith(ym)), kept = rd.filter(([, v]) => v.ok).length;
+  const journals = Object.keys(state.days).filter((d) => d.startsWith(ym)).length;
+  const pf = gl ? gw / gl : gw ? Infinity : 0;
+  const score = Math.min(1, (isFinite(pf) ? pf : 2) / 2) * 50 + (rd.length ? kept / rd.length : 0) * 30 + (days.size ? Math.min(1, journals / days.size) : 0) * 20;
+  return { ym, n: list.length, net: gw - gl, wr: list.length ? wins.length / list.length : 0, pf, days: days.size, green: [...days.values()].filter((d) => d.net > 0).length,
+    best: dayArr[0], worst: dayArr.at(-1), top: Object.entries(assets).sort((a, b) => b[1].net - a[1].net)[0], dd, weeds, weedNet, kept, ruleDays: rd.length, journals, score,
+    grade: score >= 85 ? 'S' : score >= 70 ? 'A' : score >= 55 ? 'B' : score >= 40 ? 'C' : 'D' };
+}
+const shiftYm = (ym, k) => { const [Y, M] = ym.split('-').map(Number), d = new Date(Y, M - 1 + k, 1); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; };
+const ymName = (ym) => new Date(ym + '-15T12:00:00').toLocaleDateString(LANG === 'th' ? 'th-TH' : 'en-US', { month: 'long', year: 'numeric' });
+function openMonthReport(ym, festival = false) {
+  const M = monthStats(ym), P = monthStats(shiftYm(ym, -1));
+  const delta = (a, b, fmt, good = 1) => (P.n ? `<span class="text-xs ${(a - b) * good > 0 ? 'up' : (a - b) * good < 0 ? 'down' : ''}">${a - b >= 0 ? '▲' : '▼'} ${fmt(Math.abs(a - b))}</span>` : '');
+  const cell = (k, v, d = '', c = '') => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${k}</div><div class="num text-lg ${c}">${v}</div>${d}</div>`;
+  const gradeCol = { S: '#d97706', A: '#2f7a3a', B: '#4f8fd6', C: '#8b5a2b', D: '#b83d34' }[M.grade];
+  openWindow({
+    title: festival ? tr('🎉 Harvest Festival', '🎉 เทศกาลเก็บเกี่ยว') : tr('Month Report', 'รายงานประจำเดือน'), width: 620, autofocus: false,
+    html: `<div class="flex items-center gap-2 mb-2"><button class="btn !px-2" data-mprev aria-label="previous">◀</button><div class="font-pixel text-xl font-bold flex-1 text-center">${ymName(ym)}</div><button class="btn !px-2" data-mnext aria-label="next">▶</button></div>
+      ${M.n ? `
+      <div class="flex items-center gap-4 mb-3"><div class="font-pixel text-6xl font-bold" style="color:${gradeCol};text-shadow:3px 3px 0 rgba(59,35,20,.25)">${M.grade}</div>
+        <div><div class="text-sm text-[#8b5a2b]">${tr('Net for the month', 'กำไรสุทธิทั้งเดือน')}</div><div class="num text-3xl ${cls(M.net)}">${signed(M.net, 0)}</div>${delta(M.net, P.net, (v) => money(v, 0))}</div></div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        ${cell(tr('Trades', 'จำนวนเทรด'), M.n, delta(M.n, P.n, (v) => v, 0))}
+        ${cell(tr('Win rate', 'อัตราชนะ'), pct(M.wr, 1), delta(M.wr * 100, P.wr * 100, (v) => v.toFixed(1) + '%'))}
+        ${cell('Profit Factor', isFinite(M.pf) ? M.pf.toFixed(2) : '∞', P.n && isFinite(M.pf) && isFinite(P.pf) ? delta(M.pf, P.pf, (v) => v.toFixed(2)) : '', M.pf >= 1 ? 'up' : 'down')}
+        ${cell(tr('Green days', 'วันที่กำไร'), `${M.green} / ${M.days}`)}
+        ${cell(tr('Max drawdown', 'ดรอว์ดาวน์สูงสุด'), M.dd ? money(-M.dd, 0) : '$0', '', M.dd ? 'down' : '')}
+        ${cell(tr('Best day', 'วันที่ดีที่สุด'), M.best ? signed(M.best[1].net, 0) : '—', M.best ? `<div class="text-xs">${longDate(M.best[0], { day: 'numeric', month: 'short' })}</div>` : '', 'up')}
+        ${cell(tr('Worst day', 'วันที่แย่ที่สุด'), M.worst ? signed(M.worst[1].net, 0) : '—', M.worst ? `<div class="text-xs">${longDate(M.worst[0], { day: 'numeric', month: 'short' })}</div>` : '', M.worst?.[1].net < 0 ? 'down' : '')}
+        ${cell(tr('Top symbol', 'สินทรัพย์ที่ดีที่สุด'), M.top ? esc(M.top[0]) : '—', M.top ? `<div class="text-xs num ${cls(M.top[1].net)}">${signed(M.top[1].net, 0)}</div>` : '')}
+        ${cell(tr('Weeds', 'วัชพืช'), M.weeds, M.weeds ? `<div class="text-xs num ${cls(M.weedNet)}">${signed(M.weedNet, 0)}</div>` : '', M.weeds ? 'down' : 'up')}
+        ${cell(tr('Rules kept', 'วันที่ทำตามกฎ'), `${M.kept} / ${M.ruleDays}`)}
+        ${cell(tr('Journals', 'บันทึกประจำวัน'), `${M.journals} / ${M.days}`)}
+      </div>
+      <div class="text-xs mt-2 text-[#8b5a2b]">${tr('Grade = 50% profit factor + 30% rules kept + 20% journaling', 'เกรด = Profit Factor 50% + ทำตามกฎ 30% + เขียนบันทึก 20%')}</div>` : `<div class="parch text-center">${tr('No trades this month.', 'เดือนนี้ไม่มีเทรด')}</div>`}
+      <div class="flex flex-wrap justify-end gap-2 mt-4">${M.n ? `<button class="btn" data-mshot>📷 ${tr('Save picture', 'บันทึกเป็นรูป')}</button>` : ''}<button class="btn btn-green" data-close>OK</button></div>`,
+    onMount(win, w) {
+      $('[data-mprev]', win).onclick = () => { w.close(); setTimeout(() => openMonthReport(shiftYm(ym, -1)), 200); };
+      $('[data-mnext]', win).onclick = () => { w.close(); setTimeout(() => openMonthReport(shiftYm(ym, 1)), 200); };
+      $('[data-mshot]', win)?.addEventListener('click', () => monthCard(M, gradeCol));
+      if (festival) { Sfx.levelUp(); world?.fireworks(); }
+    },
+  });
+}
+function monthCard(M, gradeCol) {
+  const W = 720, H = 900, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5c3a21'; g.fillRect(0, 0, W, H); g.fillStyle = '#f7e9c6'; g.fillRect(16, 16, W - 32, H - 32);
+  g.strokeStyle = '#b89968'; g.lineWidth = 4; g.strokeRect(28, 28, W - 56, H - 56);
+  const F = (w, px) => `${w} ${px}px "Pixelify Sans", Mali, Nunito, sans-serif`;
+  g.textAlign = 'center'; g.fillStyle = '#5c3a21'; g.font = F(700, 40); g.fillText(tr('Harvest Festival', 'เทศกาลเก็บเกี่ยว'), W / 2, 96);
+  g.font = F(600, 28); g.fillStyle = '#8b5a2b'; g.fillText(ymName(M.ym), W / 2, 138);
+  g.font = F(700, 150); g.fillStyle = gradeCol; g.fillText(M.grade, W / 2, 300);
+  g.font = '800 64px Nunito, Mali, sans-serif'; g.fillStyle = M.net >= 0 ? '#2f7a3a' : '#b83d34'; g.fillText(signed(M.net, 0), W / 2, 390);
+  const rows = [[tr('Trades', 'จำนวนเทรด'), String(M.n)], [tr('Win rate', 'อัตราชนะ'), pct(M.wr, 1)], ['Profit Factor', isFinite(M.pf) ? M.pf.toFixed(2) : '∞'], [tr('Green days', 'วันที่กำไร'), `${M.green} / ${M.days}`], [tr('Max drawdown', 'ดรอว์ดาวน์สูงสุด'), M.dd ? money(-M.dd, 0) : '$0'], [tr('Rules kept', 'วันที่ทำตามกฎ'), `${M.kept} / ${M.ruleDays}`], [tr('Journals', 'บันทึกประจำวัน'), `${M.journals} / ${M.days}`], [tr('Weeds', 'วัชพืช'), String(M.weeds)]];
+  rows.forEach(([k, v], i) => {
+    const x = i % 2 ? W / 2 + 10 : 60, y = 450 + Math.floor(i / 2) * 92;
+    g.fillStyle = '#efdcae'; g.fillRect(x, y, W / 2 - 70, 76);
+    g.textAlign = 'left'; g.fillStyle = '#8b5a2b'; g.font = '700 20px Nunito, Mali, sans-serif'; g.fillText(k, x + 16, y + 28);
+    g.fillStyle = '#3b2314'; g.font = '800 30px Nunito, Mali, sans-serif'; g.fillText(v, x + 16, y + 64);
+  });
+  g.textAlign = 'center'; g.fillStyle = '#8b5a2b'; g.font = F(600, 22); g.fillText(`🌾 Harvest Ledger · ${esc(state.settings.name)}`, W / 2, H - 50);
+  c.toBlob(async (blob) => {
+    const file = new File([blob], `harvest-${M.ym}.png`, { type: 'image/png' });
+    try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Harvest Ledger' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    Sfx.coin(); toast(tr('Picture saved', 'บันทึกรูปแล้ว'), file.name, 'note');
+  }, 'image/png');
+}
+// first visit in a new month: celebrate last month once
+function festivalCheck() {
+  const prev = shiftYm(todayISO().slice(0, 7), -1), f = state.settings.farm;
+  if (f.festival === prev || windows.length || !state.trades.some((t) => t.date.startsWith(prev))) return;
+  f.festival = prev; save(); openMonthReport(prev, true);
+}
 function openChest() {
   const s = state.stats;
   openWindow({
@@ -1445,6 +1950,8 @@ function openSettings() {
         <label><span class="field-label">${img('coin', 'w-4')} Starting gold ($)</span><input class="inp" type="number" name="startBalance" min="0" step="100" value="${st.startBalance}"></label>
         <label><span class="field-label">${img('bolt', 'w-4')} Daily loss limit ($)</span><input class="inp" type="number" name="dailyLoss" min="1" step="10" value="${st.dailyLoss}"></label>
         <label class="col-span-2"><span class="field-label">${img('speaker', 'w-4')} Sound volume</span><input type="range" name="volume" min="0" max="1" step="0.05" value="${st.volume}" class="w-full"></label>
+        <label class="col-span-2 flex items-center gap-2 font-pixel"><input type="checkbox" name="music" ${st.music !== false ? 'checked' : ''}> 🎵 ${tr('Background music (follows the time of day & weather)', 'เพลงพื้นหลัง (เปลี่ยนตามเวลาและสภาพอากาศ)')}</label>
+        <button type="button" class="btn text-sm col-span-2" data-rules-open>📏 ${tr('Farm Rules', 'กฎของฟาร์ม')}</button>
       </div>
       <div class="parch mt-4">
         <div class="font-pixel font-bold mb-2">🎮 Graphics</div>
@@ -1478,16 +1985,17 @@ function openSettings() {
     onMount(win, w) {
       const v = (n) => $(`[name=${n}]`, win);
       v('volume').oninput = () => { Sfx.setVolume(+v('volume').value); Sfx.coin(); };
+      $('[data-rules-open]', win).onclick = () => { w.close(); setTimeout(openRules, 250); };
       $('[data-lang]', win).onclick = () => { st.lang = LANG === 'th' ? 'en' : 'th'; save(); location.reload(); };
       $('[data-save]', win).onclick = () => {
         st.name = v('name').value.trim() || 'Farmer';
         st.startBalance = Math.max(0, +v('startBalance').value || 0);
         st.dailyLoss = Math.max(1, +v('dailyLoss').value || 300);
-        st.volume = +v('volume').value;
+        st.volume = +v('volume').value; st.music = v('music').checked;
         st.gfx = { pixel: v('pixel').checked, shadows: v('shadows').checked };
         const gist = parseGistId(v('gist').value);
         if (gist !== st.mt5.gist) { st.mt5.gist = gist; MT5.etag = null; }
-        save(); world?.applyGraphics(); render(); w.close(); toast('Settings saved', '', 'gear');
+        save(); world?.applyGraphics(); render(); w.close(); toast('Settings saved', '', 'gear'); Music.sync();
         if (gist) syncMt5({ manual: true });
       };
       $('[data-mt5sync]', win).onclick = async () => {
@@ -1789,8 +2297,13 @@ const LAYOUT = {
   chest: { pos: [-6.2, 0, -5.4], approach: [-6.2, 0, -3.9], radius: 2.0, label: '💰 Chest', collide: 0.9 },
   calendar: { pos: [-4.4, 0, -10.6], approach: [-4.4, 0, -8.7], radius: 2.2, label: '📅 Calendar', collide: 1.3 },
   mailbox: { pos: [-14, 0, -4.2], approach: [-13, 0, -3.2], radius: 2.0, label: '📮 Settings', collide: 0.5 },
+  shop: { pos: [14.5, 0, -1.5], approach: [12.3, 0, -0.4], radius: 2.4, label: '🛒 Shop', collide: 1.6 },
 };
 const FIELD = { cx: 0, cz: 4.2, cols: 6, rows: 4, gap: 1.8 };
+// spots kept free of trees for farm upgrades and the weekly boss: [x, z, radius]
+const RESERVED = [[-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
+const DECOR_POS = { flowers: [[-4.8, -1.6], [4.8, -1.6]], scarecrow: [[0, 10.4]], well: [[-15.5, -0.5]], pond: [[-14, 5]], beehive: [[-10, 12.5]], coop: [[10.5, 12.5]], windmill: [[15.5, 6]] };
+const BOSS_POS = [8.8, 2.5];
 const plotPos = (i) => [FIELD.cx + ((i % FIELD.cols) - (FIELD.cols - 1) / 2) * FIELD.gap, FIELD.cz + (Math.floor(i / FIELD.cols) - (FIELD.rows - 1) / 2) * FIELD.gap];
 
 function createWorld() {
@@ -1851,6 +2364,7 @@ function createWorld() {
     if (Math.hypot(x, z) > 20.5) return false;
     if (x > -7.4 && x < 7.4 && z > -0.4 && z < 9) return false; // field
     if (Math.abs(x) < 1.6 && z > -9 && z < 0) return false; // main path
+    if (RESERVED.some(([rx, rz, rr]) => Math.hypot(x - rx, z - rz) < rr + m * 0.5)) return false;
     return !colliders.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + m);
   };
 
@@ -1858,7 +2372,7 @@ function createWorld() {
   const stoneGeo = cyl(0.42, 0.48, 0.12, 7), stoneMat = M('#d9c7a1');
   const stoneSpots = [];
   const path = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.floor(d / 1.05); for (let i = 0; i <= n; i++) { const t = i / n; stoneSpots.push([lerp(a[0], b[0], t) + (rnd() - 0.5) * 0.3, lerp(a[1], b[1], t) + (rnd() - 0.5) * 0.3]); } };
-  path([0, -0.2], [0, -8.2]); path([0, -5.4], [-10, -6]); path([0, -5.4], [10, -5.9]); path([-10, -6], [-13, -3.4]);
+  path([0, -0.2], [0, -8.2]); path([0, -5.4], [-10, -6]); path([0, -5.4], [10, -5.9]); path([-10, -6], [-13, -3.4]); path([10, -5.9], [12.3, -0.9]);
   const stones = new THREE.InstancedMesh(stoneGeo, stoneMat, stoneSpots.length);
   const tmp = new THREE.Object3D();
   stoneSpots.forEach(([x, z], i) => { tmp.position.set(x, 0.02, z); tmp.rotation.y = rnd() * 3; tmp.scale.setScalar(0.8 + rnd() * 0.3); tmp.updateMatrix(); stones.setMatrixAt(i, tmp.matrix); });
@@ -1960,6 +2474,16 @@ function createWorld() {
   mailbox.add(mesh(box(0.55, 0.45, 0.8), M('#4f8fd6'), 0, 1.3, 0));
   const flag = mesh(box(0.05, 0.4, 0.2), M('#e0453f'), 0.3, 1.5, 0.1); mailbox.add(flag);
   mailbox.position.set(...LAYOUT.mailbox.pos); mailbox.rotation.y = 0.8; scene.add(pickable(mailbox, 'mailbox'));
+
+  // farm shop stall
+  const shop = new THREE.Group();
+  shop.add(mesh(box(2.6, 1.0, 1.1), M('#b57b44'), 0, 0.5, 0));
+  shop.add(mesh(box(2.8, 0.12, 1.3), M('#7a4b2a'), 0, 1.06, 0));
+  for (const [x, z] of [[-1.25, -0.5], [1.25, -0.5], [-1.25, 0.5], [1.25, 0.5]]) shop.add(mesh(cyl(0.07, 0.07, 2.6, 5), M('#7a4b2a'), x, 1.3, z));
+  for (let i = 0; i < 6; i++) { const st = mesh(box(0.5, 0.1, 1.7), M(i % 2 ? '#fff4d6' : '#e0453f'), -1.25 + i * 0.5, 2.62, 0.1); st.rotation.x = 0.25; shop.add(st); }
+  for (const x of [-0.8, 0, 0.8]) shop.add(mesh(new THREE.SphereGeometry(0.2, 8, 6), M(x ? '#ec8a2e' : '#f6c945'), x, 1.3, 0.1));
+  shop.add(mesh(box(0.5, 0.4, 0.5), M('#9a6a4a'), 1.7, 0.2, 0.6));
+  shop.position.set(...LAYOUT.shop.pos); shop.rotation.y = -0.9; scene.add(pickable(shop, 'shop'));
 
   // lamps
   const lampLights = [];
@@ -2074,10 +2598,261 @@ function createWorld() {
   // ---------------- labels (HTML, projected every frame)
   const labels = [];
   const addLabel = (text, pos, cls = '') => { const el = document.createElement('div'); el.className = 'label3d ' + cls; el.textContent = text; $('#labels').appendChild(el); const l = { el, pos: new THREE.Vector3(...pos), visible: true }; labels.push(l); return l; };
-  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2 };
+  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3 };
   for (const [id, o] of Object.entries(LAYOUT)) addLabel(o.label, [o.pos[0], LABEL_H[id], o.pos[2]]);
   addLabel('🌾 Field', [FIELD.cx, 1.6, FIELD.cz - 4.6]);
   const zzz = addLabel('Z z z', [0, 3, 0], 'zzz'); zzz.visible = false;
+
+  // ---------------- farm upgrades (bought with discipline seeds), the pet and the weekly boss
+  const decorTick = [];
+  const built = new Map();
+  const reservedR = (x, z) => RESERVED.find((r) => r[0] === x && r[1] === z)?.[2] || 1;
+  const BUILD = {
+    flowers(x, z, i) {
+      const g = new THREE.Group(), cols = ['#f28fad', '#fff6a8', '#c7a3ff', '#ff9f5a', '#ffffff'];
+      g.add(mesh(box(2.2, 0.28, 1.1), M('#7a4b2a'), 0, 0.14, 0)); g.add(mesh(box(2.0, 0.06, 0.9), M('#5e3a1e'), 0, 0.3, 0, { cast: false }));
+      const heads = [];
+      for (let k = 0; k < 10; k++) {
+        const fx = -0.84 + (k % 5) * 0.42, fz = k < 5 ? -0.22 : 0.22;
+        g.add(mesh(cyl(0.02, 0.02, 0.32, 4), M('#2f6b36'), fx, 0.46, fz, { cast: false }));
+        const f = mesh(new THREE.IcosahedronGeometry(0.11, 0), M(cols[(k * 3 + i) % 5]), fx, 0.64, fz); g.add(f); heads.push(f);
+      }
+      decorTick.push((dt, time) => heads.forEach((f, k) => (f.position.y = 0.64 + Math.sin(time * 2 + k) * 0.02)));
+      return g;
+    },
+    scarecrow() {
+      const g = new THREE.Group();
+      g.add(mesh(cyl(0.07, 0.08, 2.2, 5), M('#7a4b2a'), 0, 1.1, 0));
+      g.add(mesh(box(1.8, 0.1, 0.1), M('#7a4b2a'), 0, 1.55, 0));
+      g.add(mesh(box(0.7, 0.8, 0.35), M('#4f7bb8'), 0, 1.35, 0));
+      for (const x of [-0.62, 0.62]) g.add(mesh(box(0.42, 0.22, 0.26), M('#4f7bb8'), x, 1.55, 0));
+      g.add(mesh(box(0.45, 0.42, 0.42), M('#e3c07a'), 0, 2.05, 0));
+      g.add(mesh(cyl(0.5, 0.5, 0.05, 10), M('#8b5a2b'), 0, 2.28, 0)); g.add(mesh(new THREE.ConeGeometry(0.3, 0.4, 8), M('#8b5a2b'), 0, 2.48, 0));
+      for (const x of [-0.1, 0.1]) g.add(mesh(box(0.07, 0.07, 0.02), M('#3b2314'), x, 2.1, 0.22, { cast: false }));
+      g.add(mesh(box(0.22, 0.04, 0.02), M('#3b2314'), 0, 1.95, 0.22, { cast: false }));
+      decorTick.push((dt, time) => (g.rotation.z = Math.sin(time * 1.3) * 0.03));
+      return g;
+    },
+    well() {
+      const g = new THREE.Group();
+      g.add(mesh(cyl(0.9, 0.95, 0.8, 10), M('#a7a39a'), 0, 0.4, 0));
+      g.add(mesh(new THREE.CircleGeometry(0.72, 12).rotateX(-Math.PI / 2), M('#2f5e8f'), 0, 0.78, 0, { cast: false }));
+      for (const x of [-0.8, 0.8]) g.add(mesh(box(0.14, 1.9, 0.14), M('#7a4b2a'), x, 1.35, 0));
+      g.add(mesh(cyl(0.06, 0.06, 1.7, 6).rotateZ(Math.PI / 2), M('#7a4b2a'), 0, 1.75, 0));
+      const r = mesh(prism(0.8, 2.1), M('#c0443c'), 0, 2.45, 0); r.scale.y = 0.5; g.add(r);
+      const bucket = mesh(cyl(0.16, 0.12, 0.24, 8), M('#8b5a2b'), 0, 1.25, 0); g.add(bucket);
+      decorTick.push((dt, time) => (bucket.position.y = 1.2 + Math.sin(time * 0.7) * 0.15));
+      return g;
+    },
+    pond() {
+      const g = new THREE.Group();
+      g.add(mesh(cyl(2.3, 2.3, 0.06, 22), new THREE.MeshToonMaterial({ color: '#4f9ad6', gradientMap: grad }), 0, 0.03, 0, { cast: false }));
+      for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, s = mesh(new THREE.DodecahedronGeometry(0.28 + (k % 3) * 0.06, 0), M(k % 2 ? '#9aa0a6' : '#b8b0a0'), Math.cos(a) * 2.35, 0.1, Math.sin(a) * 2.35); s.rotation.set(k, k * 2, 0); g.add(s); }
+      for (const [x, z] of [[-0.8, 0.6], [0.9, -0.5], [0.2, 1.2]]) g.add(mesh(cyl(0.28, 0.28, 0.03, 8), M('#5aa04a'), x, 0.08, z, { cast: false }));
+      g.add(mesh(new THREE.IcosahedronGeometry(0.08, 0), M('#f28fad'), -0.8, 0.14, 0.6, { cast: false }));
+      const fish = [0, 1].map((k) => { const f = mesh(box(0.34, 0.08, 0.14), M(k ? '#ffffff' : '#ec8a2e'), 0, 0.02, 0, { cast: false, receive: false }); g.add(f); return f; });
+      decorTick.push((dt, time) => fish.forEach((f, k) => { const a = time * (0.5 + k * 0.2) + k * 3, r = 1.1 + k * 0.4; f.position.set(Math.cos(a) * r, 0.05, Math.sin(a) * r); f.rotation.y = -a; }));
+      return g;
+    },
+    beehive() {
+      const g = new THREE.Group();
+      for (const x of [-0.55, 0.55]) {
+        for (let k = 0; k < 3; k++) g.add(mesh(box(0.7, 0.3, 0.6), M(k % 2 ? '#e9b92c' : '#d99a1c'), x, 0.35 + k * 0.3, 0));
+        g.add(mesh(box(0.85, 0.08, 0.75), M('#7a4b2a'), x, 1.24, 0));
+        g.add(mesh(box(0.8, 0.2, 0.7), M('#7a4b2a'), x, 0.1, 0));
+      }
+      const bees = Array.from({ length: 6 }, () => { const b = mesh(new THREE.SphereGeometry(0.05, 5, 4), M('#1b1b1b'), 0, 1, 0, { cast: false, receive: false }); g.add(b); return b; });
+      decorTick.push((dt, time) => bees.forEach((b, k) => { const a = time * (1.5 + k * 0.3) + k; b.position.set(Math.cos(a) * (0.8 + (k % 3) * 0.3), 1.2 + Math.sin(time * 3 + k) * 0.35, Math.sin(a * 1.3) * 0.8); }));
+      return g;
+    },
+    coop() {
+      const g = new THREE.Group();
+      g.add(mesh(box(2.0, 1.3, 1.6), M('#c0443c'), 0, 0.85, -0.5));
+      g.add(mesh(box(2.1, 0.2, 1.7), M('#8f8778'), 0, 0.1, -0.5));
+      const r = mesh(prism(1.25, 2.3), M('#5c3a21'), 0, 1.75, -0.5); r.scale.y = 0.5; g.add(r);
+      g.add(mesh(box(0.5, 0.6, 0.06), M('#3b2314'), 0.4, 0.5, 0.32, { cast: false }));
+      g.add(mesh(box(0.14, 0.9, 0.06), M('#c69a62'), 0.4, 0.3, 0.7).rotateX(-0.9));
+      const hens = [0, 1, 2].map((k) => {
+        const h = new THREE.Group();
+        h.add(mesh(box(0.3, 0.26, 0.4), M('#fffbf0'), 0, 0.22, 0));
+        const hd = new THREE.Group(); hd.position.set(0, 0.4, 0.2); h.add(hd);
+        hd.add(mesh(box(0.16, 0.18, 0.16), M('#fffbf0'))); hd.add(mesh(box(0.05, 0.08, 0.1), M('#e0453f'), 0, 0.12, 0)); hd.add(mesh(box(0.06, 0.05, 0.08), M('#f6c945'), 0, -0.02, 0.1));
+        for (const x of [-0.07, 0.07]) h.add(mesh(box(0.03, 0.1, 0.03), M('#f6c945'), x, 0.05, 0));
+        h.userData.hd = hd; g.add(h); return h;
+      });
+      decorTick.push((dt, time) => hens.forEach((h, k) => {
+        const a = time * 0.25 + k * 2.1, r = 0.9 + Math.sin(time * 0.3 + k) * 0.3;
+        h.position.set(-0.3 + Math.cos(a) * r, 0, 1.2 + Math.sin(a) * r * 0.6); h.rotation.y = -a + Math.PI;
+        h.userData.hd.rotation.x = Math.max(0, Math.sin(time * 4 + k * 1.7)) * 0.9;
+      }));
+      return g;
+    },
+    windmill() {
+      const g = new THREE.Group();
+      g.add(mesh(cyl(0.8, 1.3, 4.6, 8), M('#f4e1b8'), 0, 2.3, 0));
+      g.add(mesh(new THREE.ConeGeometry(1.05, 1.1, 8), M('#c0443c'), 0, 5.15, 0));
+      g.add(mesh(box(0.6, 0.9, 0.1), M('#7a4b2a'), 0, 0.45, 1.2));
+      g.add(mesh(box(0.5, 0.5, 0.08), windowMat, 0, 3, 0.95));
+      const hub = new THREE.Group(); hub.position.set(0, 4.3, 1.05); g.add(hub);
+      hub.add(mesh(cyl(0.18, 0.18, 0.3, 8).rotateX(Math.PI / 2), M('#7a4b2a')));
+      for (let k = 0; k < 4; k++) { const b = new THREE.Group(); b.rotation.z = (k * Math.PI) / 2; b.add(mesh(box(0.08, 2.3, 0.05), M('#7a4b2a'), 0, 1.2, 0.1)); b.add(mesh(box(0.5, 1.9, 0.03), M('#fff4d6'), 0.28, 1.35, 0.12)); hub.add(b); }
+      g.rotation.y = -0.5;
+      decorTick.push((dt) => (hub.rotation.z -= dt * 0.9));
+      return g;
+    },
+  };
+  function syncDecor(fresh) {
+    const owned = new Set(state.settings.farm.owned || []);
+    for (const [id, spots] of Object.entries(DECOR_POS)) {
+      if (!owned.has(id) || built.has(id)) continue;
+      const groups = spots.map(([x, z], i) => {
+        const g = BUILD[id](x, z, i);
+        g.position.set(x, 0, z); scene.add(pickable(g, 'decor:' + id));
+        colliders.push({ x, z, r: reservedR(x, z) * 0.75 });
+        return g;
+      });
+      built.set(id, groups);
+      if (id === fresh) groups.forEach((g) => {
+        g.scale.setScalar(0.001); const t0 = performance.now();
+        burst(new THREE.Vector3(g.position.x, 0.6, g.position.z), '#ffe08a', 18, { speed: 2.5, up: 4, size: 0.1, gravity: 7 });
+        addTicker(() => { const k = Math.min(1, (performance.now() - t0) / 800); g.scale.setScalar(Math.max(0.001, easeOutBack(k))); return k < 1; });
+      });
+    }
+    syncPet(); syncBoss();
+  }
+  function showDecor(id) {
+    const sp = DECOR_POS[id]?.[0] || (pet ? [pet.position.x, pet.position.z] : null); if (!sp) return;
+    cam.focus = new THREE.Vector3(sp[0], 0.8, sp[1]); cam.dist = Math.min(cam.dist, 16);
+    setTimeout(() => { if (!activePanel) cam.focus = null; }, 2800);
+  }
+
+  // pet: walks behind you, mood (emoji) follows your discipline
+  let pet = null, petKind = null, petMoodNow = 'ok';
+  const petLabel = addLabel('', [0, 0, 0], 'pet'); petLabel.visible = false;
+  function makePet(kind) {
+    const g = new THREE.Group(), c = kind === 'cat' ? '#e9954a' : '#b57b44', c2 = kind === 'cat' ? '#fff1dc' : '#f0dcb8';
+    g.add(mesh(box(0.36, 0.3, 0.62), M(c), 0, 0.36, 0));
+    const hd = new THREE.Group(); hd.position.set(0, 0.6, 0.34); g.add(hd);
+    hd.add(mesh(box(0.34, 0.3, 0.3), M(c)));
+    hd.add(mesh(box(0.2, 0.12, 0.08), M(c2), 0, -0.06, 0.16));
+    for (const x of [-0.08, 0.08]) hd.add(mesh(box(0.05, 0.06, 0.02), M('#3b2314'), x, 0.04, 0.16, { cast: false }));
+    hd.add(mesh(box(0.06, 0.04, 0.03), M('#3b2314'), 0, -0.03, 0.2, { cast: false }));
+    if (kind === 'cat') for (const x of [-0.1, 0.1]) hd.add(mesh(new THREE.ConeGeometry(0.07, 0.14, 4), M(c), x, 0.2, 0));
+    else for (const x of [-0.2, 0.2]) hd.add(mesh(box(0.07, 0.22, 0.14), M('#7a4b2a'), x, 0.02, -0.02));
+    const legs = [[-0.12, 0.2], [0.12, 0.2], [-0.12, -0.2], [0.12, -0.2]].map(([x, z]) => { const l = new THREE.Group(); l.position.set(x, 0.24, z); l.add(mesh(box(0.1, 0.24, 0.1), M(c), 0, -0.12, 0)); g.add(l); return l; });
+    const tail = new THREE.Group(); tail.position.set(0, 0.44, -0.3); tail.add(mesh(box(0.07, 0.07, kind === 'cat' ? 0.42 : 0.26), M(c), 0, 0, -0.17)); tail.rotation.x = kind === 'cat' ? -0.8 : -0.5; g.add(tail);
+    g.userData = { legs, tail, hd, phase: 0, jump: 0 };
+    return g;
+  }
+  function syncPet() {
+    const f = state.settings.farm, kind = f.pet && (f.owned || []).includes(f.pet) ? f.pet : null;
+    if (kind !== petKind) {
+      if (pet) { scene.remove(pet); pickables.splice(pickables.indexOf(pet), 1); }
+      pet = null; petKind = kind;
+      if (kind) { pet = makePet(kind); pet.position.set(player.position.x + 1, 0, player.position.z + 1); pickable(pet, 'pet'); scene.add(pet); }
+    }
+    const m = petMood(); petMoodNow = m.mood;
+    petLabel.visible = !!pet; petLabel.el.textContent = pet ? `${m.emoji} ${f.petName || tr('Mochi', 'โมจิ')}` : '';
+  }
+  function petJump() { if (pet) pet.userData.jump = 1; }
+  function tickPet(dt, time) {
+    if (!pet) return;
+    const P = pet.userData, fw = Math.sin(player.rotation.y), fz = Math.cos(player.rotation.y);
+    const tx = player.position.x - fw * 1.3 + fz * 0.8, tz = player.position.z - fz * 1.3 - fw * 0.8;
+    const dx = tx - pet.position.x, dz = tz - pet.position.z, d = Math.hypot(dx, dz);
+    let moving = false;
+    if (d > 12) pet.position.set(tx, 0, tz);
+    else if (d > 0.3) {
+      const sp = Math.min(d * 3.2, 7.5);
+      pet.position.x += (dx / d) * sp * dt; pet.position.z += (dz / d) * sp * dt; moving = sp > 0.8;
+      let df = Math.atan2(dx, dz) - pet.rotation.y; df = Math.atan2(Math.sin(df), Math.cos(df)); pet.rotation.y += df * Math.min(1, dt * 10);
+    }
+    P.phase += dt * (moving ? 16 : 2);
+    P.legs.forEach((l, i) => (l.rotation.x = moving ? Math.sin(P.phase + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.7 : 0));
+    P.tail.rotation.y = Math.sin(time * (petMoodNow === 'happy' ? 12 : petMoodNow === 'ok' ? 4 : 1.5)) * (petMoodNow === 'sad' ? 0.15 : 0.5);
+    P.hd.rotation.x = lerp(P.hd.rotation.x, petMoodNow === 'sad' ? 0.35 : 0, dt * 4);
+    P.jump = Math.max(0, P.jump - dt * 2.2);
+    pet.position.y = (moving ? Math.abs(Math.sin(P.phase)) * 0.06 : 0) + Math.sin(P.jump * Math.PI) * 0.8;
+    petLabel.pos.set(pet.position.x, 1.35 + pet.position.y, pet.position.z);
+  }
+
+  // weekly boss: stands by the field, shrinks with every hit, falls over when defeated
+  let bossG = null, bossKey = null;
+  colliders.push({ x: BOSS_POS[0], z: BOSS_POS[1], r: 1.1 });
+  const bossLabel = addLabel('', [BOSS_POS[0], 3, BOSS_POS[1]], 'boss'); bossLabel.visible = false;
+  function makeBoss(b) {
+    const g = new THREE.Group(), m = M(b.color), tm = (o) => new THREE.MeshToonMaterial({ color: b.color, gradientMap: grad, transparent: true, opacity: o });
+    let eyeY = 1.6, eyeZ = 0.5;
+    if (b.id === 'slime') { const bd = mesh(new THREE.SphereGeometry(0.9, 14, 10), tm(0.88), 0, 0.62, 0); bd.scale.set(1.15, 0.75, 1.15); g.add(bd); eyeY = 0.85; eyeZ = 0.98; }
+    else if (b.id === 'golem') { g.add(mesh(box(1.3, 1.2, 0.9), m, 0, 1.05, 0)); g.add(mesh(box(0.8, 0.6, 0.7), m, 0, 1.95, 0)); for (const x of [-0.85, 0.85]) g.add(mesh(box(0.4, 1.0, 0.4), m, x, 0.95, 0)); for (const x of [-0.35, 0.35]) g.add(mesh(box(0.42, 0.5, 0.45), m, x, 0.25, 0)); eyeY = 2.0; eyeZ = 0.36; }
+    else if (b.id === 'troll') { g.add(mesh(cyl(0.55, 0.7, 1.3, 8), m, 0, 0.75, 0)); g.add(mesh(new THREE.SphereGeometry(0.5, 10, 8), m, 0, 1.7, 0.05)); for (const x of [-0.18, 0.18]) g.add(mesh(new THREE.ConeGeometry(0.06, 0.22, 4), M('#fff1dc'), x, 1.5, 0.48)); eyeY = 1.82; eyeZ = 0.5; }
+    else if (b.id === 'ghost') { g.add(mesh(new THREE.SphereGeometry(0.7, 12, 8), tm(0.82), 0, 1.5, 0)); g.add(mesh(new THREE.ConeGeometry(0.72, 1.3, 12, 1, true), tm(0.82), 0, 0.75, 0)); eyeY = 1.6; eyeZ = 0.66; }
+    else {
+      g.add(mesh(box(1.0, 0.8, 1.5), m, 0, 0.8, 0)); g.add(mesh(box(0.7, 0.6, 0.7), m, 0, 1.45, 0.75));
+      for (const x of [-0.2, 0.2]) g.add(mesh(new THREE.ConeGeometry(0.08, 0.35, 4), M('#f6c945'), x, 1.9, 0.6));
+      for (const s of [-1, 1]) { const w = mesh(box(1.2, 0.06, 0.8), M('#9e3a33'), s * 1.0, 1.25, -0.1); w.rotation.z = s * 0.4; w.userData.wing = s; g.add(w); }
+      g.add(mesh(box(0.3, 0.3, 0.9), m, 0, 0.6, -1.1)); eyeY = 1.55; eyeZ = 1.11;
+    }
+    for (const x of [-0.2, 0.2]) {
+      g.add(mesh(box(0.16, 0.16, 0.04), M('#ffffff'), x, eyeY, eyeZ, { cast: false }));
+      g.add(mesh(box(0.08, 0.08, 0.05), M('#1b1b1b'), x, eyeY - 0.02, eyeZ + 0.01, { cast: false }));
+      const brow = mesh(box(0.2, 0.05, 0.05), M('#1b1b1b'), x, eyeY + 0.13, eyeZ + 0.01, { cast: false }); brow.rotation.z = x > 0 ? 0.4 : -0.4; g.add(brow);
+    }
+    g.rotation.y = -0.35;
+    return g;
+  }
+  function syncBoss() {
+    const B = state.stats.boss, key = state.stats.n ? B.b.id + (B.defeated ? '-x' : '') : null;
+    if (key !== bossKey) {
+      if (bossG) { scene.remove(bossG); pickables.splice(pickables.indexOf(bossG), 1); }
+      bossG = null; bossKey = key;
+      if (key) { bossG = makeBoss(B.b); bossG.position.set(BOSS_POS[0], 0, BOSS_POS[1]); scene.add(pickable(bossG, 'boss')); }
+    }
+    if (bossG) {
+      bossG.userData.base = B.defeated ? 0.6 : 0.6 + (0.4 * B.hp) / BOSS_HP; bossG.userData.defeated = B.defeated;
+      bossLabel.el.textContent = B.defeated ? `🏆 ${bossName(B.b)}` : `${bossName(B.b)} ${'♥'.repeat(B.hp)}${'♡'.repeat(BOSS_HP - B.hp)}`;
+    }
+    bossLabel.visible = !!bossG;
+  }
+  function tickBoss(dt, time) {
+    if (!bossG) return;
+    const u = bossG.userData, s = u.base || 1;
+    if (u.defeated) { bossG.rotation.z = lerp(bossG.rotation.z, 1.4, Math.min(1, dt * 3)); bossG.scale.setScalar(s); bossG.position.y = 0.3 * s; }
+    else {
+      const k = Math.sin(time * 3) * 0.05;
+      bossG.scale.set(s * (1 + k), s * (1 - k), s * (1 + k));
+      bossG.position.y = bossKey === 'ghost' ? 0.3 + Math.sin(time * 2) * 0.2 : 0;
+      bossG.children.forEach((o) => { if (o.userData.wing) o.rotation.z = o.userData.wing * (0.4 + Math.sin(time * 5) * 0.35); });
+    }
+    bossLabel.pos.set(BOSS_POS[0], (u.defeated ? 1.6 : 2.7) * s + 0.4 + bossG.position.y, BOSS_POS[1]);
+  }
+  // weeds grow next to crops of revenge / tilt / oversized trades
+  const weedMat = M('#3f6b2a');
+  function makeWeed() {
+    const g = new THREE.Group();
+    for (const [a, h] of [[-0.4, 0.45], [0, 0.62], [0.45, 0.4]]) { const c = mesh(new THREE.ConeGeometry(0.05, h, 3), weedMat, Math.sin(a) * 0.14, h / 2, 0, { receive: false }); c.rotation.z = a; g.add(c); }
+    g.add(mesh(new THREE.IcosahedronGeometry(0.07, 0), M('#8a4fb8'), 0, 0.64, 0, { cast: false }));
+    g.position.set(0.5, 0, 0.45);
+    return g;
+  }
+
+  // seasonal particles: spring petals, fall leaves, winter snow
+  const SEASON_N = 160, seasonGeo = new THREE.BufferGeometry(), seasonArr = new Float32Array(SEASON_N * 3), seasonSeed = [];
+  for (let i = 0; i < SEASON_N; i++) { seasonArr.set([(rnd() - 0.5) * 40, rnd() * 14, (rnd() - 0.5) * 40], i * 3); seasonSeed.push(rnd() * 6.28); }
+  seasonGeo.setAttribute('position', new THREE.BufferAttribute(seasonArr, 3));
+  const seasonPts = new THREE.Points(seasonGeo, new THREE.PointsMaterial({ color: '#ffffff', size: 4, sizeAttenuation: false, transparent: true, opacity: 0.9 }));
+  seasonPts.frustumCulled = false; seasonPts.visible = false; scene.add(seasonPts);
+  function tickSeason(dt, time) {
+    if (!seasonPts.visible) return;
+    const snow = seasonPts.userData.season === 'Winter';
+    for (let i = 0; i < SEASON_N; i++) {
+      let y = seasonArr[i * 3 + 1] - dt * (snow ? 1.1 : 0.8);
+      if (y < 0) y += 14;
+      seasonArr[i * 3 + 1] = y; seasonArr[i * 3] += Math.sin(time * 0.9 + seasonSeed[i]) * dt * 0.6; seasonArr[i * 3 + 2] += Math.cos(time * 0.7 + seasonSeed[i]) * dt * 0.3;
+    }
+    seasonGeo.attributes.position.needsUpdate = true; seasonPts.position.set(cam.target.x, 0, cam.target.z);
+  }
+
 
   // ---------------- environment (time of day + weather from today's PnL)
   const env = { phase: 'day', weather: 'cloud' };
@@ -2115,6 +2890,10 @@ function createWorld() {
     cloudMat.color.set(rainy ? '#8d98a8' : night ? '#6f7aa8' : '#ffffff');
     clouds.forEach((cl, i) => (cl.visible = rainy || i < (weather === 'cloud' ? 6 : 3)));
     rain.visible = rainy && !reduced;
+    const season = seasonOf(new Date().getMonth())[0];
+    seasonPts.userData.season = season;
+    seasonPts.material.color.set({ Spring: '#f7a8c4', Fall: '#e8894a', Winter: '#ffffff' }[season] || '#ffffff');
+    seasonPts.visible = season !== 'Summer' && !rainy && !reduced;
   }
 
   // ---------------- dynamic content: crops, notes, calendar, sign
@@ -2162,12 +2941,14 @@ function createWorld() {
       const t = recent[i];
       const kind = t ? cropOf(t, avgWin) : null;
       const scale = t ? clamp(0.75 + Math.abs(t.pnl) / Math.max(1, (t.pnl >= 0 ? avgWin : state.stats.avgLoss) || 1) * 0.2, 0.75, 1.3) : 1;
-      const key = t ? `${t.id}|${kind}|${scale.toFixed(2)}` : null;
+      const weed = t && state.stats.beh.flags.has(t.id);
+      const key = t ? `${t.id}|${kind}|${scale.toFixed(2)}|${weed ? 'w' : ''}` : null;
       if (p.key === key) return;
       if (p.crop) { p.g.remove(p.crop); p.crop = null; }
       p.key = key; p.id = t?.id || null;
       if (!t) return;
       p.crop = makeCrop(kind, scale); p.crop.position.y = 0.2; p.crop.userData.baseScale = scale;
+      if (weed) p.crop.add(makeWeed());
       pickable(p.crop, 'crop:' + t.id);
       if (t.id === animateId) p.crop.scale.setScalar(0.001);
       p.g.add(p.crop);
@@ -2175,7 +2956,7 @@ function createWorld() {
     // drop stale pickables for removed crops
     for (let i = pickables.length - 1; i >= 0; i--) if (String(pickables[i].userData.pick).startsWith('crop:') && !pickables[i].parent) pickables.splice(i, 1);
   }
-  function sync(animateId) { syncField(animateId); syncNotes(); drawCalendarTexture(); applyEnvironment(); zzz.visible = state.stats.energy <= 0 && state.stats.n > 0; sleeping = zzz.visible; }
+  function sync(animateId) { syncField(animateId); syncNotes(); drawCalendarTexture(); applyEnvironment(); syncDecor(); zzz.visible = state.stats.energy <= 0 && state.stats.n > 0; sleeping = zzz.visible; }
 
   // ---------------- camera & player control
   const cam = { yaw: 0.35, pitch: 0.78, dist: isTouch ? 21 : 18, target: new THREE.Vector3(0, 0, -3), focus: null, shake: 0 };
@@ -2194,6 +2975,7 @@ function createWorld() {
     else if (id === 'calendar') { openPanel('house', { then: () => $('#cal-block').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }) }); }
     else if (id === 'chest') { openLid(); openChest(); }
     else if (id === 'mailbox') openSettings();
+    else if (id === 'shop') openShop();
   }
   function walkTo(x, z, pending = null) { nav.target = new THREE.Vector3(x, 0, z); nav.pending = pending; marker.position.set(x, 0.05, z); marker.visible = !pending; marker.scale.setScalar(1); }
   function nearest() {
@@ -2257,7 +3039,12 @@ function createWorld() {
       if (id !== hoverId) { if (id) Sfx.hover(); hoverId = id; }
       if (id?.startsWith('crop:')) {
         const t = state.trades.find((x) => x.id === id.slice(5));
-        if (t) { tipEl.dataset.world = '1'; showTip(`${esc(t.asset)} ${t.side.toUpperCase()} · <span class="${cls(t.pnl)}">${signed(t.pnl)}</span><br><span class="text-xs">${esc(t.date)} · ${tr('click to open', 'คลิกเพื่อเปิด')}</span>`, e.clientX, e.clientY); }
+        const fl = t && state.stats.beh.flags.get(t.id);
+        if (t) { tipEl.dataset.world = '1'; showTip(`${esc(t.asset)} ${t.side.toUpperCase()} · <span class="${cls(t.pnl)}">${signed(t.pnl)}</span>${fl ? `<br>🌿 ${fl.map((f) => tr(...FLAG_NAMES[f])).join(', ')}` : ''}<br><span class="text-xs">${esc(t.date)} · ${tr('click to open', 'คลิกเพื่อเปิด')}</span>`, e.clientX, e.clientY); }
+      } else if (id === 'boss' || id === 'pet' || id?.startsWith('decor:')) {
+        tipEl.dataset.world = '1';
+        const item = id.startsWith('decor:') ? SHOP.find((x) => x.id === id.slice(6)) : null;
+        showTip(id === 'boss' ? `⚔️ ${bossName(state.stats.boss.b)} · ${tr('click for details', 'คลิกดูรายละเอียด')}` : id === 'pet' ? `${esc(state.settings.farm.petName || tr('Mochi', 'โมจิ'))} ${petMood().emoji}` : `${item.icon} ${tr(item.en, item.th)}`, e.clientX, e.clientY);
       } else if (id && LAYOUT[id]) { tipEl.dataset.world = '1'; showTip(`${esc(t(LAYOUT[id].label))} · ${tr('click to go', 'คลิกเพื่อเดินไป')}`, e.clientX, e.clientY); }
       else if (tipEl.dataset.world) { delete tipEl.dataset.world; hideTip(); }
     }
@@ -2271,6 +3058,9 @@ function createWorld() {
     const h = pick(e.clientX, e.clientY);
     if (!h) return;
     if (h.id?.startsWith('crop:')) { Sfx.click(); bounceCrop(h.id.slice(5)); openQuest(h.id.slice(5)); return; }
+    if (h.id === 'boss') { Sfx.click(); openBoss(); return; }
+    if (h.id === 'pet') { Sfx.pop(); petJump(); setTimeout(openPet, 350); return; }
+    if (h.id?.startsWith('decor:')) { const item = SHOP.find((x) => x.id === h.id.slice(6)); Sfx.select(); burst(new THREE.Vector3(h.point.x, h.point.y + 0.3, h.point.z), '#ffe08a', 8, { speed: 1.2, up: 2.5, size: 0.08, gravity: 5 }); toast(`${item.icon} ${tr(item.en, item.th)}`, tr('Bought with discipline seeds 🌰', 'ซื้อด้วยเมล็ดวินัย 🌰'), 'house'); return; }
     if (h.id && LAYOUT[h.id]) {
       const o = LAYOUT[h.id], d = Math.hypot(player.position.x - o.approach[0], player.position.z - o.approach[2]);
       if (d < o.radius) interact(h.id); else { Sfx.select(); walkTo(o.approach[0], o.approach[2], h.id); }
@@ -2513,8 +3303,10 @@ function createWorld() {
         rainGeo.attributes.position.needsUpdate = true; rain.position.set(cam.target.x, 0, cam.target.z);
       }
       if (fireflies.visible) { const fa = flyGeo.attributes.position.array; for (let i = 0; i < fa.length; i += 3) fa[i + 1] = flyBase[i + 1] + Math.sin(time * 1.5 + i) * 0.3; flyGeo.attributes.position.needsUpdate = true; fireflies.material.opacity = 0.6 + Math.sin(time * 3) * 0.3; }
+      decorTick.forEach((f) => f(dt, time)); tickSeason(dt, time);
       plots.forEach((p, i) => { if (!p.crop) return; p.crop.rotation.z = Math.sin(time * 1.6 + i) * 0.04; p.crop.children.forEach((o) => { if (o.userData.spin) { o.rotation.y = Math.sin(time * 1.2 + i) * 1.1; o.position.y = 1.25 + Math.sin(time * 2 + i) * 0.08; } }); });
     }
+    tickPet(dt, time); tickBoss(dt, time);
     lid.rotation.x = lerp(lid.rotation.x, -lidTarget * 1.9, Math.min(1, dt * 8));
     chestGlow.visible = lid.rotation.x < -0.2;
     for (let i = tickers.length - 1; i >= 0; i--) if (tickers[i](dt) === false) tickers.splice(i, 1);
@@ -2534,7 +3326,7 @@ function createWorld() {
     promptFor = near?.id || null;
     promptEl.hidden = !near;
     if (near) {
-      const pt = t({ house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings' }[near.id]);
+      const pt = t({ house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop' }[near.id]);
       if (promptText.textContent !== pt) promptText.textContent = pt;
       const o = LAYOUT[near.id], p = v3.set(o.approach[0], 2.6, o.approach[2]).project(camera);
       promptEl.style.transform = `translate(${((p.x + 1) / 2) * innerWidth}px, ${((1 - p.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
@@ -2548,6 +3340,7 @@ function createWorld() {
   renderer.setAnimationLoop(loop);
   return {
     sync, applyGraphics, plantSequence, fireworks, showCrop, showField, setSleeping, hasCrop, travel, focusOn,
+    build(id) { syncDecor(id); showDecor(id); },
     interactNearest() { if (promptFor) interact(promptFor); },
   };
 }
@@ -2593,9 +3386,9 @@ document.addEventListener('keydown', (e) => {
   if (k === 'm') $('#btn-sound').click();
   if (['1', '2', '3', '4'].includes(k)) world?.travel(['house', 'board', 'field', 'tavern'][+k - 1]);
 });
-['touchend', 'click'].forEach((ev) => document.addEventListener(ev, () => Sfx.unlock(), { passive: true })); // iOS only unlocks audio on these
+['touchend', 'click'].forEach((ev) => document.addEventListener(ev, () => { Sfx.unlock(); Music.sync(); }, { passive: true })); // iOS only unlocks audio on these
 document.addEventListener('gesturestart', (e) => e.preventDefault()); // no page pinch-zoom on iOS
-$('#btn-sound').onclick = () => { Sfx.on = !Sfx.on; state.settings.sound = Sfx.on; save(); Sfx.unlock(); if (Sfx.on) Sfx.toggle(true); renderHUD(); toast(Sfx.on ? 'Sound on' : 'Sound off', '', Sfx.on ? 'speaker' : 'mute'); };
+$('#btn-sound').onclick = () => { Sfx.on = !Sfx.on; state.settings.sound = Sfx.on; save(); Sfx.unlock(); if (Sfx.on) Sfx.toggle(true); Music.sync(); renderHUD(); toast(Sfx.on ? 'Sound on' : 'Sound off', '', Sfx.on ? 'speaker' : 'mute'); };
 $('#btn-settings').onclick = openSettings;
 $('#btn-lang').textContent = LANG === 'th' ? 'EN' : 'ไทย';
 $('#btn-lang').onclick = () => { state.settings.lang = LANG === 'th' ? 'en' : 'th'; save(); location.reload(); };
@@ -2645,7 +3438,7 @@ function updateDaily() {
   if (n === tasks.length && !d.done) {
     const y = new Date(); y.setDate(y.getDate() - 1);
     daily.streak = daily.last === isoOf(y) ? (daily.streak || 0) + 1 : 1;
-    daily.last = d.date; d.done = true; saveDaily();
+    daily.last = d.date; d.done = true; daily.doneDays = (daily.doneDays || 0) + 1; saveDaily();
     Sfx.levelUp(); world?.fireworks();
     toast(tr('Daily quests complete!', 'ภารกิจประจำวันครบแล้ว!'), tr(`Journal streak: ${daily.streak} day(s)`, `จดต่อเนื่อง ${daily.streak} วัน`), 'star');
   }
@@ -2704,9 +3497,11 @@ const GUIDE = {
       ['field', '🌾', 'Field', 'แปลงผัก', 'Your last 24 trades as crops. Tap a crop to open that trade.', 'เทรด 24 ไม้ล่าสุดเป็นผัก แตะผักเพื่อเปิดดูเทรดนั้น'],
       ['chest', '💰', 'Chest', 'หีบสมบัติ', 'Your balance, today\'s result, best and worst trade.', 'ยอดเงิน ผลวันนี้ เทรดดีสุดและแย่สุด'],
       ['calendar', '📅', 'Calendar stone', 'ป้ายหินปฏิทิน', 'This month at a glance: green days and red days.', 'ดูทั้งเดือนในแวบเดียว วันเขียววันแดง'],
+      ['shop', '🛒', 'Farm shop', 'ร้านค้าฟาร์ม', 'Spend discipline seeds 🌰 on a windmill, pond, pets… Seeds come from journals, kept rules and beaten bosses — never from profit.', 'ใช้เมล็ดวินัย 🌰 ซื้อกังหันลม บ่อปลา สัตว์เลี้ยง… เมล็ดได้จากการเขียนบันทึก ทำตามกฎ และปราบบอส ไม่ใช่จากกำไร'],
+      ['field', '⚔️', 'Weekly boss', 'บอสประจำสัปดาห์', 'A bad habit stands by the field. Each good trading day hits it; 4 hits win.', 'นิสัยเสียหนึ่งอย่างยืนอยู่ข้างแปลง วันเทรดที่ดีแต่ละวัน = โจมตี 1 ครั้ง ครบ 4 ครั้งชนะ'],
       ['mailbox', '📮', 'Mailbox', 'ตู้จดหมาย', 'Settings: name, starting gold, daily loss limit, graphics, backup (export/import).', 'ตั้งค่า: ชื่อ ทุนเริ่มต้น ลิมิตขาดทุนรายวัน กราฟิก และสำรองข้อมูล'],
     ];
-    const crops = tr('🎃 pumpkin = win · ⭐ golden pumpkin = big win · 🌱 sprout = small win · 🥀 withered = loss', '🎃 ฟักทอง = ชนะ · ⭐ ฟักทองทอง = ชนะเยอะ · 🌱 ต้นอ่อน = ชนะนิดหน่อย · 🥀 ต้นเหี่ยว = แพ้');
+    const crops = tr('🎃 pumpkin = win · ⭐ golden pumpkin = big win · 🌱 sprout = small win · 🥀 withered = loss · 🌿 weed = revenge / tilt / oversized trade', '🎃 ฟักทอง = ชนะ · ⭐ ฟักทองทอง = ชนะเยอะ · 🌱 ต้นอ่อน = ชนะนิดหน่อย · 🥀 ต้นเหี่ยว = แพ้ · 🌿 วัชพืช = เทรดแก้แค้น / หัวร้อน / lot ใหญ่เกิน');
     return rows.map(([id, ic, en, th, den, dth]) => `
       <button class="slot slot-click flex items-center gap-3 w-full text-left mb-1" data-guide-go="${id}">
         <span class="text-2xl">${ic}</span><span class="flex-1"><b class="font-pixel">${tr(en, th)}</b><br><span class="text-sm">${tr(den, dth)}</span></span>
@@ -2756,7 +3551,7 @@ setInterval(updateDaily, 60000);
 // Every device reads that gist (no token needed to read) and merges new trades in, keeping
 // anything the user already wrote (mood, hearts, notes, lessons).
 const MT5 = { etag: null, busy: false };
-const MT5_FIELDS = ['date', 'time', 'asset', 'side', 'entry', 'exit', 'size', 'fees', 'pnl'];
+const MT5_FIELDS = ['date', 'time', 'asset', 'side', 'entry', 'exit', 'size', 'fees', 'pnl', 'dur'];
 // accepts the ID, a gist link, or the <script> embed code: the longest run of 20+ hex digits
 function parseGistId(v) { const s = String(v || '').trim(); const runs = s.match(/[0-9a-f]{20,}/gi); return runs ? runs.sort((a, b) => b.length - a.length)[0] : s; }
 function mt5Status() {
@@ -2825,6 +3620,105 @@ setTimeout(() => syncMt5(), 2000);
 setInterval(() => { if (!document.hidden) syncMt5(); }, 120000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncMt5(); });
 
+// ------------------------------------------------------------------ background music: procedural 8-bit tunes that follow the clock and the weather
+// morning / day / evening / night each have their own key, tempo and chords; a red day brings a slow minor "rain" tune
+// with rain ambience. Birds chirp in the daytime, crickets at night. A new melody is composed every 16 bars.
+const Music = {
+  gain: null, timer: null, t: 0, step: 0, mood: null, song: null, melody: [], rain: null, nextFx: 0, hatBuf: null,
+  SONGS: {
+    morning: { bpm: 100, key: 60, prog: [0, 7, 9, 5], minor: [0, 0, 1, 0], pent: [0, 2, 4, 7, 9], lead: 'square', hats: true },
+    day: { bpm: 112, key: 55, prog: [0, 5, 9, 7], minor: [0, 0, 1, 0], pent: [0, 2, 4, 7, 9], lead: 'square', hats: true },
+    evening: { bpm: 88, key: 53, prog: [0, 4, 9, 5], minor: [0, 1, 1, 0], pent: [0, 2, 4, 7, 9], lead: 'triangle', hats: false },
+    night: { bpm: 70, key: 57, prog: [0, 8, 3, 10], minor: [1, 0, 0, 0], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: false },
+    rain: { bpm: 76, key: 50, prog: [0, 5, 8, 7], minor: [1, 1, 0, 1], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: false },
+  },
+  want() { return !!Sfx.ctx && Sfx.on && state.settings.music !== false && !document.hidden; },
+  sync() { if (!this.want()) { this.stop(); return; } this.start(); const m = musicMood(); if (m !== this.mood) this.setMood(m); },
+  start() {
+    if (this.timer) return;
+    const c = Sfx.ctx;
+    this.gain = c.createGain(); this.gain.gain.setValueAtTime(0, c.currentTime); this.gain.gain.linearRampToValueAtTime(1, c.currentTime + 3); this.gain.connect(Sfx.master);
+    this.t = c.currentTime + 0.2; this.step = 0; this.mood = null;
+    this.timer = setInterval(() => this.tick(), 100);
+  },
+  stop() {
+    if (!this.timer) return;
+    clearInterval(this.timer); this.timer = null;
+    const c = Sfx.ctx, g = this.gain;
+    g.gain.cancelScheduledValues(c.currentTime); g.gain.setValueAtTime(g.gain.value, c.currentTime); g.gain.linearRampToValueAtTime(0, c.currentTime + 0.5);
+    setTimeout(() => g.disconnect(), 800);
+    this.rain = null; this.mood = null;
+  },
+  setMood(m) {
+    this.mood = m; this.song = this.SONGS[m]; this.step = 0; this.melody = this.compose(this.song);
+    if (m === 'rain' && !this.rain) {
+      const c = Sfx.ctx, n = c.sampleRate * 2, buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
+      const g = c.createGain(); g.gain.value = 0.07;
+      src.connect(f).connect(g).connect(this.gain); src.start(); this.rain = src;
+    } else if (m !== 'rain' && this.rain) { try { this.rain.stop(); } catch (e) { /* already stopped */ } this.rain = null; }
+  },
+  compose(S) { // 4 bars of eighths: a random walk on the pentatonic scale
+    const r = mulberry32((Date.now() / 1000) | 0), out = [];
+    let idx = 5;
+    for (let i = 0; i < 32; i++) {
+      if (r() > (i % 2 === 0 ? 0.7 : 0.3)) { out.push(null); continue; }
+      idx = clamp(idx + Math.round((r() - 0.5) * 4), 0, 9);
+      out.push(Math.floor(idx / 5) * 12 + S.pent[idx % 5]);
+    }
+    return out;
+  },
+  note(midi, at, dur, type, vol) {
+    const c = Sfx.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.value = 440 * 2 ** ((midi - 69) / 12);
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(vol, at + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(this.gain); o.start(at); o.stop(at + dur + 0.05);
+  },
+  hat(at) {
+    const c = Sfx.ctx;
+    if (!this.hatBuf) { const n = Math.floor(c.sampleRate * 0.04); this.hatBuf = c.createBuffer(1, n, c.sampleRate); const d = this.hatBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n); }
+    const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = this.hatBuf; f.type = 'highpass'; f.frequency.value = 7000; g.gain.value = 0.05;
+    src.connect(f).connect(g).connect(this.gain); src.start(at);
+  },
+  chirp(at, f0, f1, dur, vol) {
+    const c = Sfx.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f1, at + dur);
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(vol, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(this.gain); o.start(at); o.stop(at + dur + 0.02);
+  },
+  tick() {
+    const c = Sfx.ctx, S = this.song; if (!S || c.state !== 'running') return;
+    if (this.t < c.currentTime) this.t = c.currentTime + 0.05; // after a stall, don't play catch-up
+    const spb = 30 / S.bpm;
+    while (this.t < c.currentTime + 0.4) {
+      const st = this.step, bar = Math.floor(st / 8) % 4, s = st % 8, root = S.key + S.prog[bar], ch = [0, S.minor[bar] ? 3 : 4, 7];
+      if (s === 0 || s === 4) this.note(root - 12 + (s === 4 ? 7 : 0), this.t, spb * 3.6, 'triangle', 0.14);
+      if (S.bpm > 80 || s % 2 === 0) this.note(root + 12 + ch[[0, 1, 2, 1][s % 4]], this.t, spb * 0.8, 'square', 0.022);
+      const m = this.melody[st % 32];
+      if (m != null && Math.floor(st / 32) % 4 !== 3) this.note(S.key + 12 + m, this.t, spb * 1.7, S.lead, S.lead === 'square' ? 0.045 : 0.085);
+      if (S.hats && s % 2 === 1) this.hat(this.t);
+      this.t += spb; this.step++;
+      if (this.step % 128 === 0) this.melody = this.compose(S);
+    }
+    if (c.currentTime > this.nextFx) {
+      this.nextFx = c.currentTime + 5 + Math.random() * 7;
+      const at = c.currentTime + 0.1;
+      if (this.mood === 'morning' || this.mood === 'day') for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) this.chirp(at + i * 0.11, 2300 + Math.random() * 500, 3400 + Math.random() * 600, 0.07, 0.025);
+      else if (this.mood === 'night') for (let k = 0; k < 2; k++) for (let i = 0; i < 3; i++) this.chirp(at + k * 0.5 + i * 0.06, 4300, 4200, 0.03, 0.012);
+    }
+  },
+};
+function musicMood() {
+  if (weatherNow() === 'rain') return 'rain';
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  return h >= 5 && h < 9 ? 'morning' : h >= 9 && h < 17 ? 'day' : h >= 17 && h < 19.5 ? 'evening' : 'night';
+}
+document.addEventListener('visibilitychange', () => Music.sync());
+setInterval(() => Music.sync(), 30000);
+
 // ------------------------------------------------------------------ live update
 // When a new version is deployed, reload by itself (data lives in localStorage, so nothing is lost).
 // Waits until no window is open and nothing is being typed, so a half-written quest is never thrown away.
@@ -2868,6 +3762,7 @@ const world = createWorld();
 render();
 checkAchievements(false);
 setTimeout(() => $('#loading').classList.add('done'), 350);
+setTimeout(festivalCheck, 4000);
 if (!world) {
   openWindow({ title: '3D not available', width: 440, closable: false, html: `<p class="leading-relaxed">Your browser or device can't run the 3D farm (WebGL is off). The 2D version has every feature and uses the same save.</p><div class="flex justify-end mt-4"><a class="btn btn-green" href="2d.html">Open 2D version</a></div>` });
 } else if (!state.trades.length) {

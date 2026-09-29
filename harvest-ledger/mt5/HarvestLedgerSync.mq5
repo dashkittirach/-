@@ -11,7 +11,7 @@
 //|        "Allow WebRequest for listed URL" + https://api.github.com|
 //+------------------------------------------------------------------+
 #property copyright   "Harvest Ledger"
-#property version     "1.00"
+#property version     "1.10"
 #property description "Exports closed trades to Harvest Ledger (JSON file + optional GitHub Gist sync)."
 
 input string InpGistId  = "";   // Gist ID (the long code at the end of the gist URL)
@@ -181,7 +181,7 @@ string PositionJson(const ulong pid)
    string   sym = "";
    long     side = -1;
    double   inVol = 0, inVal = 0, outVol = 0, outVal = 0, profit = 0, costs = 0;
-   datetime tOut = 0;
+   datetime tOut = 0, tIn = 0;
    int n = HistoryDealsTotal();
    for(int i = 0; i < n; i++)
      {
@@ -202,6 +202,8 @@ string PositionJson(const ulong pid)
         {
          if(side < 0)
             side = type;
+         if(tIn == 0 || tm < tIn)
+            tIn = tm;
          inVol += vol;
          inVal += vol * price;
         }
@@ -235,7 +237,8 @@ string PositionJson(const ulong pid)
           ",\"exit\":" + DoubleToString(outVal / outVol, digits) +
           ",\"size\":" + DoubleToString(inVol, 2) +
           ",\"fees\":" + DoubleToString(-costs, 2) +
-          ",\"pnl\":" + DoubleToString(profit + costs, 2) + "}");
+          ",\"pnl\":" + DoubleToString(profit + costs, 2) +
+          ",\"dur\":" + IntegerToString(tIn > 0 && tOut >= tIn ? (long)(tOut - tIn) : 0) + "}");
   }
 
 //+------------------------------------------------------------------+
