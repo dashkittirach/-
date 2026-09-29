@@ -333,6 +333,8 @@
   <section id="panel-house">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <div class="lg:col-span-4 flex flex-col gap-3">
+        <button class="btn btn-orange w-full" data-enter-house>🚪 <span>Enter the house</span></button>
+        <div class="parch" id="plan-box"></div>
         <div class="parch">
           <div class="flex items-center gap-2">
             <img class="px w-8" data-sprite="note" alt="">
@@ -343,6 +345,8 @@
         </div>
         <div class="parch" id="rules-box"></div>
         <div class="parch" id="boss-box"></div>
+        <div class="parch" id="goals-box"></div>
+        <div class="parch" id="review-box"></div>
         <div class="parch">
           <div class="flex items-center gap-3 mb-2">
             <div class="slot shrink-0"><img class="px w-14 bob" data-sprite="farmer" alt=""></div>
@@ -368,6 +372,7 @@
       <div class="lg:col-span-8 flex flex-col gap-3">
         <div class="parch">
           <div class="flex items-center mb-2"><div class="font-pixel text-lg font-bold">Inventory</div><div class="ml-auto font-pixel text-sm text-[#8b5a2b]">your trading stats</div></div>
+          <div data-viewbar class="mb-2"></div>
           <div id="stats" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
         </div>
         <div class="parch" id="cal-block">
@@ -464,6 +469,7 @@
   <!-- ---------------- Tavern: analytics -->
   <section id="panel-tavern">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="parch lg:col-span-2 !py-2" data-viewbar></div>
       <div class="parch lg:col-span-2">
         <div class="flex items-center gap-2 mb-2"><img class="px w-7" data-sprite="coin" alt=""><div class="font-pixel text-xl font-bold">Gold Chronicle</div><div class="ml-auto font-pixel text-sm text-[#8b5a2b]">balance at the end of each day</div></div>
         <div class="flex gap-1 mb-2"><button class="btn text-sm" data-crange="7">1W</button><button class="btn text-sm sel" data-crange="30">1M</button><button class="btn text-sm" data-crange="90">3M</button><button class="btn text-sm" data-crange="0">All</button></div>
@@ -473,6 +479,7 @@
       <div class="parch lg:col-span-2" id="heat-block"></div>
       <div class="parch" id="beh-block"></div>
       <div class="parch" id="dist-block"></div>
+      <div class="parch lg:col-span-2" id="compare-block"></div>
       <div class="parch lg:col-span-2">
         <div class="flex gap-4 items-start">
           <div class="slot shrink-0"><img class="px w-12 bob" data-sprite="mug" alt=""></div>
@@ -617,7 +624,7 @@ const TH = {
   'Your data is safe.': 'ข้อมูลของคุณปลอดภัย', '✨ New version — tap to update': '✨ มีเวอร์ชันใหม่ — แตะเพื่ออัปเดต',
   '📓 Daily Journal': '📓 บันทึกประจำวัน', '✎ Write': '✎ เขียน', 'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
   'Enter Farmhouse': 'เข้าบ้านไร่', 'Open Quest Board': 'เปิดกระดานเควส', 'Enter Tavern': 'เข้าโรงเตี๊ยม', 'Open chest': 'เปิดหีบ',
-  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า', '🎣 Dock': '🎣 ท่าตกปลา', '🌳 Bench': '🌳 ม้านั่ง', '🔭 Telescope': '🔭 กล้องดูดาว', 'Go fishing': 'ตกปลา', 'Sit & breathe': 'นั่งหายใจ', 'Look at the stars': 'ส่องดาว', '💧 Water crops': '💧 รดน้ำผัก', '🧺 Harvest': '🧺 เก็บเกี่ยว', 'Things to do': 'ทำอะไรดี',
+  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า', '🎣 Dock': '🎣 ท่าตกปลา', '🌳 Bench': '🌳 ม้านั่ง', '🔭 Telescope': '🔭 กล้องดูดาว', 'Go fishing': 'ตกปลา', 'Sit & breathe': 'นั่งหายใจ', 'Look at the stars': 'ส่องดาว', '💧 Water crops': '💧 รดน้ำผัก', '🧺 Harvest': '🧺 เก็บเกี่ยว', 'Things to do': 'ทำอะไรดี', 'Enter the house': 'เข้าไปในบ้าน', '📓 Desk': '📓 โต๊ะเขียน', '🏆 Trophies': '🏆 ถ้วยรางวัล', '🖼 Photos': '🖼 รูปถ่าย', '🛏 Bed': '🛏 เตียง', '🔥 Fireplace': '🔥 เตาผิง', '🚪 Door': '🚪 ประตู', 'Write at the desk': 'นั่งเขียนที่โต๊ะ', 'Look at trophies': 'ดูถ้วยรางวัล', 'Look at photos': 'ดูรูปถ่าย', 'Rest': 'นอนพัก', 'Sit by the fire': 'นั่งผิงไฟ', 'Go outside': 'ออกไปข้างนอก',
 };
 const TH_RE = [
   [/^(\d+) quests? \(showing (\d+)\)$/, '$1 เควส (แสดง $2)'], [/^(\d+) quests over the last (\d+) days$/, '$1 เควสใน $2 วันที่ผ่านมา'],
@@ -844,6 +851,7 @@ function computeStats(trades, settings) {
     s.ratings.push(t.rating || dj?.rating || 0);
   }
   for (const j of Object.values(state.days || {})) s.xp += j.xp || 0;
+  s.xp += Object.keys(state.plans || {}).length * 10 + Object.keys(state.settings?.reviews || {}).length * 30;
   s.streak = run;
   s.winRate = s.n ? s.wins / s.n : 0;
   s.avgWin = s.wins ? s.grossWin / s.wins : 0;
@@ -976,6 +984,10 @@ const ACHIEVEMENTS = [
   { id: 'beach', name: tr('Beachcomber', 'นักเก็บของริมหาด'), desc: tr('Collect 10 beach finds', 'เก็บของริมหาดได้ 10 ชิ้น'), icon: 'star', test: () => Object.values(state.settings.fun.beach).reduce((a, b) => a + b, 0) >= 10 },
   { id: 'breathe', name: tr('Still Water', 'ใจนิ่งดั่งน้ำ'), desc: tr('Finish 5 breathing sessions', 'นั่งหายใจครบ 5 ครั้ง'), icon: 'heart', test: () => state.settings.fun.breath >= 5 },
   { id: 'stars', name: tr('Stargazer', 'นักดูดาว'), desc: tr('Find every constellation', 'พบกลุ่มดาวครบทุกกลุ่ม'), icon: 'star', test: () => state.settings.fun.stars.length >= 8 },
+  { id: 'planner', name: tr('Planner', 'นักวางแผน'), desc: tr('Write 10 trading plans', 'เขียนแผนเทรด 10 วัน'), icon: 'note', test: () => Object.keys(state.plans || {}).length >= 10 },
+  { id: 'reviewer', name: tr('Weekly Ritual', 'พิธีประจำสัปดาห์'), desc: tr('Finish 4 weekly reviews', 'ทบทวนรายสัปดาห์ครบ 4 ครั้ง'), icon: 'mug', test: () => Object.keys(state.settings.reviews || {}).length >= 4 },
+  { id: 'chef', name: tr('Farm Chef', 'เชฟประจำฟาร์ม'), desc: tr('Cook 5 dishes', 'ทำอาหาร 5 จาน'), icon: 'mug', test: () => Object.values(state.settings.fun.dishes || {}).reduce((a, b) => a + b, 0) >= 5 },
+  { id: 'sailor', name: tr('Sailor', 'กะลาสี'), desc: tr('Sail a full lap around the island', 'ล่องเรือครบรอบเกาะ'), icon: 'sun', test: () => (state.settings.fun.laps || 0) >= 1 },
   { id: 'builder', name: tr('Homesteader', 'เจ้าของฟาร์ม'), desc: tr('Build 3 farm upgrades', 'สร้างของในฟาร์ม 3 อย่าง'), icon: 'house', test: () => (state.settings.farm.owned || []).length >= 3 },
   { id: 'rich', name: 'Gold Rush', desc: 'Net profit over $1,000', icon: 'coin', test: (s) => s.net >= 1000 },
 ];
@@ -994,17 +1006,23 @@ const state = {
   settings: { ...DEFAULT_SETTINGS, ...(saved?.settings || {}), gfx: { ...DEFAULT_SETTINGS.gfx, ...(saved?.settings?.gfx || {}) } },
   achievements: saved?.achievements || [],
   days: saved?.days || {}, // daily journal entries by date
+  plans: saved?.plans || {}, // pre-market plans by date
   calMonth: null, filter: 'all', search: '', setupFilter: '', boardLimit: 12, stats: null,
 };
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify({ trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days })); return true; }
+  try { if (!JS.quiet) state.settings.stamp = Date.now(); } catch (e) { /* sync not ready yet */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days, plans: state.plans })); }
   catch (e) { toast('Your storage chest is full!', 'Remove some snapshots or export a backup.', 'rain'); return false; }
+  try { scheduleJournalPush(); } catch (e) { /* sync not ready yet */ }
+  return true;
 }
 Sfx.on = state.settings.sound; Sfx.vol = state.settings.volume;
 state.settings.mt5 = { gist: '', ignored: [], last: null, ...(state.settings.mt5 || {}) };
 state.settings.rules = { ...RULES_DEFAULT, ...(state.settings.rules || {}) };
 state.settings.farm = { owned: [], pet: '', petName: '', festival: '', ...(state.settings.farm || {}) };
 state.settings.fun = { ...JSON.parse(JSON.stringify(FUN_DEFAULT_WORLD)), ...(state.settings.fun || {}) };
+state.settings = { view: { range: 'all', since: '' }, reviews: {}, goals: {}, compare: { date: '' }, deleted: [], notify: false, ...state.settings };
+state.settings.fun = { bag: {}, dishes: {}, fest: null, prizes: 0, laps: 0, thumbs: [], ...state.settings.fun };
 
 // ------------------------------------------------------------------ UI primitives
 function toast(title, body = '', icon = 'star') {
@@ -1138,10 +1156,11 @@ function openPanel(name, { then } = {}) {
 // ------------------------------------------------------------------ rendering (UI)
 function render({ worldSync = true, animateId = null } = {}) {
   state.stats = computeStats(state.trades, state.settings);
-  renderHUD(); renderHouse(); renderBoard(); renderTavern();
+  state.view = state.settings.view.range === 'all' ? state.stats : computeStats(viewTrades(), state.settings);
+  renderHUD(); renderHouse(); renderBoard(); renderTavern(); renderViewBars();
   if (worldSync) world?.sync(animateId);
   updateDaily();
-  watchRules();
+  watchRules(); watchAlerts();
 }
 function setBar(id, frac, text) { const f = $('#' + id); if (f) f.style.width = pct(clamp(frac), 1); const v = $('#' + id + '-val'); if (v) v.textContent = text; }
 function renderHUD() {
@@ -1165,7 +1184,7 @@ function statSlot(icon, label, value, sub = '', tip = '', valueCls = '') {
     <div class="num text-xl sm:text-2xl font-bold ${valueCls}">${value}</div><div class="text-xs text-[#8b5a2b] font-semibold truncate" style="font-variant-numeric:tabular-nums">${sub}</div></div>`;
 }
 function renderHouse() {
-  const s = state.stats, st = state.settings, L = s.level;
+  const s = state.view, st = state.settings, L = state.stats.level;
   $('#p-name').textContent = st.name; $('#p-title').textContent = L.title; $('#p-lvl').textContent = L.lvl; $('#p-xp').textContent = `${L.into}/${L.need} XP`;
   setBar('hp-fill', s.winRate, s.n ? pct(s.winRate) : '—');
   setBar('en-fill', s.energy, `${money(st.dailyLoss * s.energy, 0)} / ${money(st.dailyLoss, 0)}`);
@@ -1183,7 +1202,7 @@ function renderHouse() {
   ].join('');
   renderCalendar();
   const latest = [...state.trades].sort(byTime).reverse().slice(0, 5);
-  renderJournalBox(); renderRulesBox(); renderBossBox();
+  renderJournalBox(); renderRulesBox(); renderBossBox(); renderPlanBox(); renderReviewBox(); renderGoalsBox();
   $('#cal-report').title = tr('Month report', 'รายงานประจำเดือน');
   $('#latest').innerHTML = latest.map(questRow).join('') || '<div class="font-pixel text-sm text-[#8b5a2b]">No quests yet. Visit the Quest Board!</div>';
 }
@@ -1259,7 +1278,8 @@ function barRow(label, g, attrs = '') {
 }
 const emptyScroll = () => '<div class="font-pixel text-sm text-[#8b5a2b]">The pages are still blank. Log a few quests!</div>';
 function renderTavern() {
-  const s = state.stats;
+  const s = state.view;
+  renderCompare();
   $('#by-setup').innerHTML = Object.entries(s.bySetup).sort((a, b) => b[1].net - a[1].net).map(([k, g]) => barRow(k, g, `data-setup="${esc(k)}"`)).join('') || emptyScroll();
   $('#by-mood').innerHTML = Object.entries(s.byMood).sort((a, b) => b[1].net - a[1].net).map(([k, g]) => barRow(EMO[k]?.label || k, g)).join('') || emptyScroll();
   const order = [1, 2, 3, 4, 5, 6, 0], maxAbs = Math.max(1, ...s.byWd.map((d) => Math.abs(d.net)));
@@ -1285,7 +1305,7 @@ const chart = $('#chart');
 let chartHover = -1, chartRange = 30, chartDays = [];
 const CHART_L = 52, CHART_R = 10;
 function chartData() {
-  const days = [...state.stats.daily.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const days = [...state.view.daily.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   let eq = state.settings.startBalance;
   const all = days.map(([date, d]) => { eq += d.net; return { date, net: d.net, n: d.n, eq }; });
   if (!chartRange || !all.length) return all;
@@ -1384,7 +1404,7 @@ addEventListener('resize', () => chart.clientWidth && drawChart());
 
 let wisdomIdx = 0;
 function wisdoms() {
-  const s = state.stats, out = [];
+  const s = state.view, out = [];
   if (!s.n) return ['Pull up a stool, traveler. Log a few quests and I will read your fortune in the numbers.'];
   const setups = Object.entries(s.bySetup).filter(([, g]) => g.n >= 3).sort((a, b) => b[1].net - a[1].net);
   if (setups.length) out.push(tr(`Your best crop is "${setups[0][0]}": ${signed(setups[0][1].net, 0)} over ${setups[0][1].n} quests. Plant more of that.`, `ผักที่ดีที่สุดของเจ้าคือ "${setups[0][0]}": ${signed(setups[0][1].net, 0)} จาก ${setups[0][1].n} เควส ปลูกแบบนี้ให้มากขึ้น`));
@@ -1447,7 +1467,7 @@ function openQuest(id) {
       $('[data-show]', win)?.addEventListener('click', () => { w.close(); activePanel?.w.close(); setTimeout(() => world.showCrop(t.id), 300); });
       $('[data-del]', win).onclick = async () => {
         if (await ask(tr(`Tear the "${t.asset}" quest off the board? This can't be undone.`, `ฉีกเควส "${t.asset}" ออกจากกระดานเลยไหม? ย้อนกลับไม่ได้นะ`), { yes: 'Delete', no: 'Keep', danger: true })) {
-          state.trades = state.trades.filter((x) => x.id !== t.id);
+          state.trades = state.trades.filter((x) => x.id !== t.id); state.settings.deleted = [...(state.settings.deleted || []), t.id];
           if (t.source === 'mt5' && !state.settings.mt5.ignored.includes(t.id)) state.settings.mt5.ignored.push(t.id); // don't re-import it
           save(); Sfx.trash(); w.close(); render(); toast('Quest removed', `${t.asset} ${signed(t.pnl)}`, 'withered');
         }
@@ -1527,6 +1547,7 @@ function openJournal(iso = todayISO()) {
           <div class="slot">${tr('Best trade', 'ไม้ดีสุด')}: <b class="num up">${signed(S.best.pnl)}</b> <span class="text-[#8b5a2b]">${esc(S.best.time || '')}</span></div>
           <div class="slot">${tr('Worst trade', 'ไม้แย่สุด')}: <b class="num ${cls(S.worst.pnl)}">${signed(S.worst.pnl)}</b> <span class="text-[#8b5a2b]">${esc(S.worst.time || '')}</span></div>
         </div>` : ''}
+      <div class="slot mt-2"><div class="font-pixel font-bold text-sm mb-1">☀️ ${tr('Plan vs reality', 'แผน vs ความจริง')}</div>${planHTML(iso)}</div>
       <div class="field-label mt-3">${tr('How did you feel today?', 'วันนี้รู้สึกยังไง?')}</div>
       <div class="flex flex-wrap gap-2" data-jmoods>${EMOTIONS.map((e) => `<button type="button" class="chip ${e.good ? 'good' : 'bad'}" data-jmood="${e.id}" aria-pressed="${moods.has(e.id)}">${e.label}</button>`).join('')}</div>
       <div class="field-label mt-3">${tr('Did you follow your plan today?', 'วันนี้ทำตามแผนแค่ไหน?')}</div>
@@ -1592,7 +1613,7 @@ const hourLabel = (h) => `${pad2(h)}:00–${pad2((h + 1) % 24)}:00`;
 const DAYS_MON = () => (LANG === 'th' ? ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์', 'อาทิตย์', 'ทุกวัน'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'All days']);
 const durText = (sec) => (sec >= 3600 ? `${(sec / 3600).toFixed(1)} ${tr('h', 'ชม.')}` : sec >= 60 ? `${Math.round(sec / 60)} ${tr('min', 'นาที')}` : `${Math.round(sec)} ${tr('sec', 'วินาที')}`);
 function renderInsightsTavern() {
-  const s = state.stats, B = s.beh, R = state.settings.rules, hb = $('#heat-block');
+  const s = state.view, B = s.beh, R = state.settings.rules, hb = $('#heat-block');
   if (!hb) return;
   // --- Clock of Fortune
   const minN = Math.max(3, Math.round(B.timed * 0.01));
@@ -1635,7 +1656,7 @@ function renderInsightsTavern() {
 
   // --- Scale of Harvests: size of wins vs losses
   const be = s.avgWin + s.avgLoss ? s.avgLoss / (s.avgWin + s.avgLoss) : 0, payoff = s.avgLoss ? s.avgWin / s.avgLoss : 0;
-  const losses = state.trades.filter((t) => t.pnl < 0).map((t) => -t.pnl).sort((a, b) => b - a), k10 = Math.max(1, Math.ceil(losses.length * 0.1));
+  const losses = viewTrades().filter((t) => t.pnl < 0).map((t) => -t.pnl).sort((a, b) => b - a), k10 = Math.max(1, Math.ceil(losses.length * 0.1));
   const topShare = losses.length && s.grossLoss ? losses.slice(0, k10).reduce((a, b) => a + b, 0) / s.grossLoss : 0;
   const hw = B.hold.win[1] ? B.hold.win[0] / B.hold.win[1] : 0, hl = B.hold.loss[1] ? B.hold.loss[0] / B.hold.loss[1] : 0;
   const cell = (label, val, c = '') => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${label}</div><div class="num text-lg ${c}">${val}</div></div>`;
@@ -1659,7 +1680,7 @@ function renderInsightsTavern() {
 }
 function drawHeat() {
   const c = $('#heat'); if (!c || !c.clientWidth) return;
-  const B = state.stats.beh, w = c.clientWidth, h = c.clientHeight, dpr = Math.min(3, devicePixelRatio || 1);
+  const B = state.view.beh, w = c.clientWidth, h = c.clientHeight, dpr = Math.min(3, devicePixelRatio || 1);
   c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
   const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
   const L = 44, T = 16, cw = (w - L - 2) / 24, ch = (h - T - 5) / 8, rows = [...B.heat, B.hours];
@@ -1691,7 +1712,7 @@ function heatTip(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect(), L = 44, T = 16, cw = (r.width - L - 2) / 24, ch = (r.height - T - 5) / 8;
   const hi = Math.floor((e.clientX - r.left - L) / cw), ri = Math.min(7, Math.floor((e.clientY - r.top - T) / ch));
   if (hi < 0 || hi > 23 || ri < 0) { heatHover = null; drawHeat(); hideTip(); delete c.dataset.tip; return; }
-  const x = ri === 7 ? state.stats.beh.hours[hi] : state.stats.beh.heat[ri][hi];
+  const x = ri === 7 ? state.view.beh.hours[hi] : state.view.beh.heat[ri][hi];
   if (!heatHover || heatHover[0] !== ri || heatHover[1] !== hi) { heatHover = [ri, hi]; drawHeat(); }
   const html = `<b>${DAYS_MON()[ri]} · ${hourLabel(hi)}</b><br>${x.n ? `${x.n} ${tr('trades', 'ไม้')} · ${tr('win', 'ชนะ')} ${pct(x.wins / x.n)}<br><span class="${cls(x.net)}">${signed(x.net)}</span>` : tr('no trades', 'ไม่มีเทรด')}`;
   c.dataset.tip = '1'; c.dataset.tipHtml = html;
@@ -1704,7 +1725,7 @@ function heatTip(e) {
 }
 function drawDist() {
   const c = $('#dist'); if (!c || !c.clientWidth) return;
-  const vals = state.trades.map((t) => t.pnl).filter((v) => v !== 0);
+  const vals = viewTrades().map((t) => t.pnl).filter((v) => v !== 0);
   const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(3, devicePixelRatio || 1);
   c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
   const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
@@ -1723,7 +1744,7 @@ function drawDist() {
   g.font = '700 10px Nunito, Mali, system-ui, sans-serif'; g.textBaseline = 'alphabetic'; g.fillStyle = '#8b5a2b';
   g.textAlign = 'left'; g.fillText(shortMoney(lo), L, h - 5); g.textAlign = 'right'; g.fillText(shortMoney(lo + nb * step), R, h - 5);
   g.textAlign = 'center'; g.fillText('$0', Math.min(R - 20, Math.max(L + 20, x(0))), h - 5);
-  const s = state.stats, mark = (v, col, label) => { if (v < lo || v > lo + nb * step) return; const xx = Math.round(x(v)) + 0.5; g.setLineDash([3, 3]); g.strokeStyle = col; g.beginPath(); g.moveTo(xx, T - 4); g.lineTo(xx, Bt); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.textAlign = 'center'; g.fillText(label, Math.min(R - 30, Math.max(L + 30, xx)), T - 6); };
+  const s = state.view, mark = (v, col, label) => { if (v < lo || v > lo + nb * step) return; const xx = Math.round(x(v)) + 0.5; g.setLineDash([3, 3]); g.strokeStyle = col; g.beginPath(); g.moveTo(xx, T - 4); g.lineTo(xx, Bt); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.textAlign = 'center'; g.fillText(label, Math.min(R - 30, Math.max(L + 30, xx)), T - 6); };
   if (s.avgLoss) mark(-s.avgLoss, '#b83d34', `${tr('avg loss', 'แพ้เฉลี่ย')} ${shortMoney(-s.avgLoss)}`);
   if (s.avgWin) mark(s.avgWin, '#2f7a3a', `${tr('avg win', 'ชนะเฉลี่ย')} ${shortMoney(s.avgWin)}`);
 }
@@ -1777,8 +1798,8 @@ function openRules() {
       const v = (n) => $(`[name=${n}]`, win);
       $('[data-fillhour]', win)?.addEventListener('click', (e) => { const h = +e.target.dataset.fillhour; v('blockFrom').value = `${pad2(h)}:00`; v('blockTo').value = `${pad2((h + 1) % 24)}:00`; Sfx.select(); });
       $('[data-rsave]', win).onclick = () => {
-        Object.assign(R, { maxTrades: Math.max(0, Math.round(+v('maxTrades').value || 0)), maxLossStreak: Math.max(0, Math.round(+v('maxLossStreak').value || 0)), maxLot: Math.max(0, +v('maxLot').value || 0), revengeMin: Math.max(1, Math.round(+v('revengeMin').value || 10)), blockFrom: v('blockFrom').value, blockTo: v('blockTo').value, dailyLossRule: v('dailyLossRule').checked, noRevenge: v('noRevenge').checked });
-        state.settings.dailyLoss = Math.max(1, +v('dailyLoss').value || state.settings.dailyLoss);
+        Object.assign(R, { maxTrades: Math.max(0, Math.round(+v('maxTrades').value || 0)), maxLossStreak: Math.max(0, Math.round(+v('maxLossStreak').value || 0)), maxLot: Math.max(0, +v('maxLot').value || 0), revengeMin: Math.max(1, Math.round(+v('revengeMin').value || 10)), blockFrom: v('blockFrom').value, blockTo: v('blockTo').value, dailyLossRule: v('dailyLossRule').checked, noRevenge: v('noRevenge').checked, setAt: R.setAt || todayISO() });
+        state.settings.dailyLoss = Math.max(1, +v('dailyLoss').value || state.settings.dailyLoss); state.settings.cfgStamp = Date.now();
         const d = dailyToday(); d.warned = []; saveDaily();
         save(); w.close(); render(); Sfx.success(); toast(tr('Rules saved', 'บันทึกกฎแล้ว'), '', 'note');
       };
@@ -1813,7 +1834,7 @@ const SHOP = [
 ];
 function seedsInfo() {
   const s = state.stats, j = Object.keys(state.days || {}).length, r = [...s.ruleDays.values()].filter((x) => x.ok).length, b = s.bossWins, a = state.achievements.length, d = daily.doneDays || 0;
-  const earned = 10 + j * 3 + r * 3 + b * 10 + a * 2 + d * 2;
+  const earned = 10 + j * 3 + r * 3 + b * 10 + a * 2 + d * 2 + Object.keys(state.settings.reviews || {}).length * 5 + (state.settings.fun.prizes || 0) * 5;
   const spent = (state.settings.farm.owned || []).reduce((acc, id) => acc + (SHOP.find((x) => x.id === id)?.cost || 0), 0) + (state.settings.fun.items || []).reduce((acc, it) => acc + (SHOP.find((x) => x.id === it.k)?.cost || 0), 0);
   return { earned, spent, have: earned - spent, j, r, b, a, d };
 }
@@ -1947,6 +1968,7 @@ function openMonthReport(ym, festival = false) {
         ${cell(tr('Rules kept', 'วันที่ทำตามกฎ'), `${M.kept} / ${M.ruleDays}`)}
         ${cell(tr('Journals', 'บันทึกประจำวัน'), `${M.journals} / ${M.days}`)}
       </div>
+      ${goalsOf(ym).length ? `<div class="font-pixel font-bold mt-3 mb-1">🎯 ${tr('Goals', 'เป้าหมาย')} ${goalsOf(ym).filter((x) => x.ok).length}/${goalsOf(ym).length}</div>${goalsHTML(ym)}` : ''}
       <div class="text-xs mt-2 text-[#8b5a2b]">${tr('Grade = 50% profit factor + 30% rules kept + 20% journaling', 'เกรด = Profit Factor 50% + ทำตามกฎ 30% + เขียนบันทึก 20%')}</div>` : `<div class="parch text-center">${tr('No trades this month.', 'เดือนนี้ไม่มีเทรด')}</div>`}
       <div class="flex flex-wrap justify-end gap-2 mt-4">${M.n ? `<button class="btn" data-mshot>📷 ${tr('Save picture', 'บันทึกเป็นรูป')}</button>` : ''}<button class="btn btn-green" data-close>OK</button></div>`,
     onMount(win, w) {
@@ -2035,6 +2057,19 @@ function openSettings() {
         <div class="text-xs mt-1 font-pixel" data-mt5status>${mt5Status()}</div>
       </div>
       <div class="parch mt-4">
+        <div class="font-pixel font-bold mb-1">☁️ ${tr('Sync journals between devices', 'ซิงก์บันทึกข้ามเครื่อง')}</div>
+        <div class="text-xs mb-2 text-[#8b5a2b]">${tr('Journals, plans, notes, rules, farm and collections travel through the same Gist. Every device with the Gist ID receives them; to SEND from this device, paste a GitHub token with only the "gist" scope (make a new one — never reuse a token you shared anywhere). It stays on this device only.', 'บันทึก แผน โน้ต กฎ ฟาร์ม และของสะสม จะส่งผ่าน Gist เดียวกับ MT5 ทุกเครื่องที่ใส่ Gist ID จะได้รับ ถ้าจะ "ส่ง" จากเครื่องนี้ด้วย ให้ใส่ GitHub token ที่ติ๊กแค่ scope "gist" (สร้างใหม่ อย่าใช้ token ที่เคยแชร์ที่ไหน) token เก็บไว้ในเครื่องนี้เท่านั้น')}</div>
+        <input class="inp" type="password" name="stoken" value="${esc(syncToken())}" placeholder="ghp_… (gist)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="flex flex-wrap gap-2 mt-2"><button type="button" class="btn text-sm" data-syncnow>☁️ ${tr('Sync now', 'ซิงก์ตอนนี้')}</button><a class="btn text-sm" href="https://github.com/settings/tokens/new?scopes=gist&description=Harvest%20Ledger%20journal%20sync" target="_blank" rel="noopener">🔑 ${tr('New token', 'สร้าง token')}</a></div>
+        <div class="text-xs mt-1 font-pixel" data-syncstatus>${syncStatus()}</div>
+      </div>
+      <div class="parch mt-4">
+        <div class="font-pixel font-bold mb-1">🔔 ${tr('Notifications', 'การแจ้งเตือน')}</div>
+        <div class="text-xs mb-2 text-[#8b5a2b]">${tr('Alerts when a rule breaks, at 80% of your loss limit, and a journal reminder after 20:00. On iPhone: add this app to the Home Screen first. Alerts come while the app is open or recently used.', 'เตือนเมื่อผิดกฎ เมื่อขาดทุนถึง 80% ของลิมิต และเตือนเขียนบันทึกหลัง 20:00 บน iPhone ต้องเพิ่มแอปไปที่หน้าจอโฮมก่อน การแจ้งเตือนจะมาตอนที่แอปเปิดอยู่หรือเพิ่งใช้งาน')}</div>
+        <button type="button" class="btn text-sm" data-notify>🔔 ${tr('Turn on notifications', 'เปิดการแจ้งเตือน')}</button>
+        <div class="text-xs mt-1 font-pixel" data-notifystatus>${notifyStatus()}</div>
+      </div>
+      <div class="parch mt-4">
         <div class="font-pixel font-bold mb-2">💾 Save file</div>
         <div class="flex flex-wrap gap-2">
           <button class="btn" data-export>Export JSON</button>
@@ -2055,13 +2090,21 @@ function openSettings() {
         st.name = v('name').value.trim() || 'Farmer';
         st.startBalance = Math.max(0, +v('startBalance').value || 0);
         st.dailyLoss = Math.max(1, +v('dailyLoss').value || 300);
-        st.volume = +v('volume').value; st.music = v('music').checked;
+        st.volume = +v('volume').value; st.music = v('music').checked; st.cfgStamp = Date.now();
         st.gfx = { pixel: v('pixel').checked, shadows: v('shadows').checked };
+        keepToken();
         const gist = parseGistId(v('gist').value);
         if (gist !== st.mt5.gist) { st.mt5.gist = gist; MT5.etag = null; }
         save(); world?.applyGraphics(); render(); w.close(); toast('Settings saved', '', 'gear'); Music.sync();
         if (gist) syncMt5({ manual: true });
       };
+      const keepToken = () => { try { const tk = v('stoken').value.trim(); if (tk) localStorage.setItem(SYNC_TOKEN_KEY, tk); else localStorage.removeItem(SYNC_TOKEN_KEY); } catch (e) { /* ignore */ } };
+      $('[data-syncnow]', win).onclick = async () => {
+        keepToken(); st.mt5.gist = parseGistId(v('gist').value); v('gist').value = st.mt5.gist; save();
+        if (syncToken()) await pushJournal({ manual: true }); else { MT5.etag = null; await syncMt5({ manual: true }); }
+        $('[data-syncstatus]', win).textContent = syncStatus();
+      };
+      $('[data-notify]', win).onclick = async () => { await enableNotify(); $('[data-notifystatus]', win).textContent = notifyStatus(); };
       $('[data-mt5sync]', win).onclick = async () => {
         st.mt5.gist = parseGistId(v('gist').value); v('gist').value = st.mt5.gist; MT5.etag = null; save();
         await syncMt5({ manual: true });
@@ -2069,7 +2112,7 @@ function openSettings() {
       };
       $('[data-export]', win).onclick = () => {
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'harvest-ledger', version: 1, trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days }, null, 2)], { type: 'application/json' }));
+        a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'harvest-ledger', version: 1, trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days, plans: state.plans }, null, 2)], { type: 'application/json' }));
         a.download = `harvest-ledger-${todayISO()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); Sfx.coin();
       };
       const importFile = async (e) => {
@@ -2086,6 +2129,7 @@ function openSettings() {
           if (d.settings) Object.assign(state.settings, d.settings, { gfx: { ...state.settings.gfx, ...(d.settings.gfx || {}) } });
           if (Array.isArray(d.achievements)) state.achievements = [...new Set([...state.achievements, ...d.achievements])];
           if (d.days && typeof d.days === 'object') state.days = { ...d.days, ...state.days };
+          if (d.plans && typeof d.plans === 'object') state.plans = { ...d.plans, ...state.plans };
           save(); render(); w.close(); toast('Save file loaded', `${fresh.length} quests imported`, 'note'); Sfx.success();
         } catch (err) { Sfx.error(); toast('Could not read that file', 'Use a JSON exported from Harvest Ledger.', 'rain'); }
       };
@@ -2204,7 +2248,7 @@ form.addEventListener('submit', async (e) => {
   const t = draftTrade();
   if (!t.asset) return formError('asset', 'Which asset was this quest on?');
   if (!isFinite(t.pnl)) return formError(pnlManual ? 'pnl' : 'entry', 'Fill entry, exit and size — or type the PnL directly.');
-  t.xp = xpOf(t);
+  t.xp = xpOf(t); t.edited = new Date().toISOString();
   const before = state.stats, i = state.trades.findIndex((x) => x.id === t.id), editing = i >= 0;
   if (editing) state.trades[i] = t; else state.trades.push(t);
   if (!save()) { if (!editing) state.trades.pop(); return; }
@@ -2354,6 +2398,7 @@ async function loadDemo() {
    THE 3D WORLD
    ===================================================================== */
 const canvas = $('#world');
+const ROOM = [70, -100]; // the farmhouse interior lives far from the island
 const LAYOUT = {
   house: { pos: [-10, 0, -9.5], approach: [-10, 0, -5.9], radius: 3.2, label: '🏠 Farmhouse', collide: 2.9 },
   board: { pos: [0, 0, -10.4], approach: [0, 0, -8.2], radius: 2.8, label: '📜 Quest Board', collide: 1.3 },
@@ -2365,10 +2410,16 @@ const LAYOUT = {
   dock: { pos: [4, 0, 20.2], approach: [4, 0, 19.3], radius: 2.2, label: '🎣 Dock', collide: 0.05 },
   bench: { pos: [-4.5, 0, 13.2], approach: [-4.5, 0, 11.7], radius: 2.2, label: '🌳 Bench', collide: 0.9 },
   telescope: { pos: [-17, 0, 8.5], approach: [-15.8, 0, 7.3], radius: 2.2, label: '🔭 Telescope', collide: 0.5 },
+  rdesk: { pos: [ROOM[0] - 2.8, 0, ROOM[1] - 3.3], approach: [ROOM[0] - 2.8, 0, ROOM[1] - 1.9], radius: 1.5, label: '📓 Desk', collide: 0.9 },
+  rshelf: { pos: [ROOM[0] + 2.5, 0, ROOM[1] - 3.7], approach: [ROOM[0] + 2.5, 0, ROOM[1] - 2.5], radius: 1.4, label: '🏆 Trophies', collide: 0.6 },
+  rframe: { pos: [ROOM[0] + 0.85, 0, ROOM[1] - 3.9], approach: [ROOM[0] + 0.85, 0, ROOM[1] - 2.7], radius: 1.1, label: '🖼 Photos', collide: 0.1 },
+  rbed: { pos: [ROOM[0] - 3.9, 0, ROOM[1] + 1.3], approach: [ROOM[0] - 2.5, 0, ROOM[1] + 1.3], radius: 1.3, label: '🛏 Bed', collide: 1.0 },
+  rfire: { pos: [ROOM[0] + 4.6, 0, ROOM[1] + 0.3], approach: [ROOM[0] + 3.2, 0, ROOM[1] + 0.3], radius: 1.4, label: '🔥 Fireplace', collide: 0.6 },
+  rdoor: { pos: [ROOM[0] - 5.0, 0, ROOM[1] + 2.6], approach: [ROOM[0] - 3.9, 0, ROOM[1] + 2.6], radius: 1.3, label: '🚪 Door', collide: 0.2 },
 };
 const FIELD = { cx: 0, cz: 4.2, cols: 6, rows: 4, gap: 1.8 };
 // spots kept free of trees for farm upgrades and the weekly boss: [x, z, radius]
-const RESERVED = [[4, 19.5, 2.4], [6.1, 19.2, 1], [-4.5, 13, 2.2], [-6.5, 12.4, 1.2], [-17, 8.5, 1.6], [6.6, -6.4, 0.9], [-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
+const RESERVED = [[12.4, 9.0, 2.2], [-14.2, -9.5, 1.9], [-6.6, -10.5, 1.2], [4, 19.5, 2.4], [6.1, 19.2, 1], [-4.5, 13, 2.2], [-6.5, 12.4, 1.2], [-17, 8.5, 1.6], [6.6, -6.4, 0.9], [-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
 const DECOR_POS = { flowers: [[-4.8, -1.6], [4.8, -1.6]], scarecrow: [[0, 10.4]], well: [[-15.5, -0.5]], pond: [[-14, 5]], beehive: [[-10, 12.5]], coop: [[10.5, 12.5]], windmill: [[15.5, 6]] };
 const BOSS_POS = [8.8, 2.5];
 const plotPos = (i) => [FIELD.cx + ((i % FIELD.cols) - (FIELD.cols - 1) / 2) * FIELD.gap, FIELD.cz + (Math.floor(i / FIELD.cols) - (FIELD.rows - 1) / 2) * FIELD.gap];
@@ -2665,7 +2716,7 @@ function createWorld() {
   // ---------------- labels (HTML, projected every frame)
   const labels = [];
   const addLabel = (text, pos, cls = '') => { const el = document.createElement('div'); el.className = 'label3d ' + cls; el.textContent = text; $('#labels').appendChild(el); const l = { el, pos: new THREE.Vector3(...pos), visible: true }; labels.push(l); return l; };
-  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3, dock: 1.4, bench: 1.6, telescope: 2.3 };
+  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3, dock: 1.4, bench: 1.6, telescope: 2.3, rdesk: 1.6, rshelf: 2.9, rframe: 2.8, rbed: 1.4, rfire: 2.7, rdoor: 2.5 };
   for (const [id, o] of Object.entries(LAYOUT)) addLabel(o.label, [o.pos[0], LABEL_H[id], o.pos[2]]);
   addLabel('🌾 Field', [FIELD.cx, 1.6, FIELD.cz - 4.6]);
   const zzz = addLabel('Z z z', [0, 3, 0], 'zzz'); zzz.visible = false;
@@ -3254,17 +3305,174 @@ function createWorld() {
   const restoreCam = () => { if (savedCam) { Object.assign(cam, savedCam); savedCam = null; } };
   function seat(kind) {
     nav.target = null; nav.pending = null; marker.visible = false;
-    if (kind && kind !== 'scope') keepCam();
+    if (kind && kind !== 'scope' && kind !== 'fire') keepCam();
     if (kind === 'fish') { player.position.set(4, 0, 22.4); player.rotation.y = 0; cam.focus = new THREE.Vector3(4, 0.3, 23.8); cam.yaw = Math.PI - 0.5; cam.pitch = 0.8; cam.dist = isTouch ? 15 : 12; fishVisual('ready'); }
     else if (kind === 'bench') { player.position.set(LAYOUT.bench.pos[0], 0, LAYOUT.bench.pos[2] + 0.05); player.rotation.y = 0; pose = 'sit'; cam.focus = new THREE.Vector3(LAYOUT.bench.pos[0], 0.8, LAYOUT.bench.pos[2] + 2); cam.yaw = Math.PI - 0.35; cam.pitch = 0.32; cam.dist = 9; }
+    else if (kind === 'fire') { player.position.set(RX + 3.0, 0, RZ + 0.3); player.rotation.y = Math.PI / 2; pose = 'sit'; }
     else if (kind === 'scope') { player.position.set(LAYOUT.telescope.approach[0], 0, LAYOUT.telescope.approach[2]); player.rotation.y = Math.atan2(LAYOUT.telescope.pos[0] - player.position.x, LAYOUT.telescope.pos[2] - player.position.z); pose = 'look'; }
+    else if (inside) { pose = null; }
     else { fishVisual('off'); pose = null; cam.focus = null; restoreCam(); if (Math.hypot(player.position.x, player.position.z) > 20.6) player.position.set(4, 0, 19.4); }
   }
   function applyPose(time) {
     head.rotation.x = pose === 'look' ? lerp(head.rotation.x, -0.5, 0.1) : lerp(head.rotation.x, 0, 0.2);
-    if (pose === 'sit') { legL.rotation.x = legR.rotation.x = -1.5; armL.rotation.x = armR.rotation.x = -0.35; rig.position.y = -0.12 + Math.sin(time * 0.8) * 0.01; }
+    if (pose === 'sit' || pose === 'boat') { legL.rotation.x = legR.rotation.x = -1.5; armL.rotation.x = armR.rotation.x = -0.35; rig.position.y = -0.12 + Math.sin(time * 0.8) * 0.01; }
     else if (pose === 'fish') { armR.rotation.x = fishSt.mode === 'bite' || fishSt.mode === 'reel' ? -1.45 + Math.sin(time * 30) * 0.06 : -1.1; armL.rotation.x = -0.7; }
     else if (pose === 'water') { armR.rotation.x = -1.4; armL.rotation.x = -0.3; }
+  }
+
+  // ================= tree of discipline, house upgrades, the house interior, boat, weather extras, festival bunting
+  // --- tree of discipline: grows with every rule-keeping day, golden apples = streak, drops leaves after a broken day
+  const DT = [12.4, 9.0];
+  const dtree = new THREE.Group(); dtree.position.set(DT[0], 0, DT[1]);
+  const dtTrunk = mesh(cyl(0.22, 0.34, 1.6, 7), M('#7a4b2a'), 0, 0.8, 0); dtree.add(dtTrunk);
+  const dtCrown = new THREE.Group(); dtCrown.position.y = 1.6; dtree.add(dtCrown);
+  dtree.add(hitBox(1.4).translateY(1.8));
+  scene.add(pickable(dtree, 'dtree')); colliders.push({ x: DT[0], z: DT[1], r: 0.6 });
+  const dtLabel = addLabel(tr('🌳 Tree of Discipline', '🌳 ต้นไม้แห่งวินัย'), [DT[0], 4, DT[1]]);
+  let dtKey = '', dtFalling = false;
+  function syncDTree() {
+    const I = dtreeInfo(), n = 2 + Math.round(I.stage * 8), key = `${n}|${Math.round(I.health * 10)}|${Math.min(10, I.streak)}|${I.lastBroken}`;
+    const s = 0.5 + I.stage * 1.1; dtree.scale.setScalar(s); dtLabel.pos.set(DT[0], 1.6 * s + 1.2 * s + 1.4, DT[1]);
+    dtFalling = I.lastBroken;
+    if (key === dtKey) return; dtKey = key;
+    dtCrown.clear();
+    const green = new THREE.Color('#4f9a45'), brown = new THREE.Color('#c98b3a'), r = mulberry32(7);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, rad = i === 0 ? 0 : 0.55 + r() * 0.3, c = green.clone().lerp(brown, (1 - I.health) * (0.5 + r() * 0.5));
+      dtCrown.add(mesh(new THREE.IcosahedronGeometry(0.62 + r() * 0.25, 0), M('#' + c.getHexString()), Math.cos(a) * rad, 0.7 + (i % 3) * 0.35, Math.sin(a) * rad));
+    }
+    for (let i = 0; i < Math.min(10, I.streak); i++) { const a = i * 2.4, y = 0.7 + (i % 3) * 0.4; dtCrown.add(mesh(new THREE.SphereGeometry(0.1, 6, 4), goldMat, Math.cos(a) * 0.95, y, Math.sin(a) * 0.95, { cast: false })); }
+  }
+  let dtLeafT = 0;
+  function tickDTree(dt, time) {
+    dtCrown.rotation.z = Math.sin(time * 1.1) * 0.03;
+    if (!dtFalling || reduced) return;
+    dtLeafT -= dt; if (dtLeafT > 0) return; dtLeafT = 1.4 + Math.random() * 1.5;
+    const s = dtree.scale.x, p = new THREE.Vector3(DT[0] + (Math.random() - 0.5) * 1.6 * s, 2.4 * s, DT[1] + (Math.random() - 0.5) * 1.6 * s);
+    const leaf = mesh(box(0.14, 0.02, 0.1), M('#c98b3a'), p.x, p.y, p.z, { cast: false, receive: false }); scene.add(leaf);
+    let t = 0; addTicker((d) => { t += d; leaf.position.y -= d * 0.7; leaf.position.x += Math.sin(t * 3) * d * 0.6; leaf.rotation.z += d * 3; if (leaf.position.y < 0.05) { scene.remove(leaf); return false; } return true; });
+  }
+
+  // --- the farmhouse grows with your level
+  const houseParts = {};
+  function syncHouse() {
+    const lvl = state.stats.level.lvl;
+    const add = (k, fn) => { if (houseParts[k]) return; const g = fn(); house.add(g); houseParts[k] = g; };
+    if (lvl >= 5) add('porch', () => { const g = new THREE.Group(); g.add(mesh(box(5.2, 0.2, 1.3), M('#a8703d'), 0, 0.3, 2.65)); for (const x of [-2.4, 2.4]) g.add(mesh(box(0.14, 1.9, 0.14), M('#7a4b2a'), x, 1.3, 3.2)); const aw = mesh(box(5.4, 0.1, 1.5), M('#e0453f'), 0, 2.3, 2.75); aw.rotation.x = 0.18; g.add(aw); for (const x of [-1.9, 1.9]) g.add(mesh(box(0.7, 0.3, 0.3), M('#7a4b2a'), x, 0.55, 3.1)); for (const x of [-2.1, -1.7, 1.7, 2.1]) g.add(mesh(new THREE.IcosahedronGeometry(0.12, 0), M(x < 0 ? '#f28fad' : '#fff6a8'), x, 0.8, 3.1, { cast: false })); return g; });
+    if (lvl >= 10) add('wing', () => { const g = new THREE.Group(); g.add(mesh(box(2.8, 2.4, 3.2), M('#efd7a8'), -3.9, 1.4, 0)); const r = mesh(prism(2.1, 3.4), M('#b33b34'), -3.9, 3.05, 0); r.rotation.y = Math.PI / 2; r.scale.y = 0.42; g.add(r); g.add(mesh(box(0.9, 0.8, 0.1), windowMat, -3.9, 1.7, 1.62)); return g; });
+    if (lvl >= 15) add('silo', () => { const g = new THREE.Group(); g.add(mesh(cyl(0.85, 0.9, 4.6, 12), M('#c9c2b4'), 3.4, 2.3, -1)); g.add(mesh(new THREE.SphereGeometry(0.88, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), M('#4f7bb8'), 3.4, 4.6, -1)); for (let i = 0; i < 3; i++) g.add(mesh(cyl(0.92, 0.92, 0.08, 12), M('#9aa0a6'), 3.4, 1 + i * 1.3, -1)); return g; });
+    if (lvl >= 20) add('vane', () => { const g = new THREE.Group(); g.add(mesh(cyl(0.04, 0.04, 1.2, 5), M('#3b3b3b'), 0, 5.3, 0)); const v = new THREE.Group(); v.position.set(0, 5.8, 0); v.add(mesh(box(0.9, 0.2, 0.04), goldMat)); v.add(mesh(new THREE.ConeGeometry(0.14, 0.3, 4).rotateZ(-Math.PI / 2), goldMat, 0.5, 0, 0)); g.add(v); g.userData.vane = v; return g; });
+  }
+
+  // --- the inside of the farmhouse (a cozy room far from the island; the camera cuts to it)
+  const RX = ROOM[0], RZ = ROOM[1];
+  const room = new THREE.Group(); room.position.set(RX, 0, RZ); scene.add(room);
+  const roomFloor = mesh(box(10, 0.2, 8), M('#b57b44'), RX, -0.1, RZ, { cast: false }); scene.add(roomFloor);
+  for (let i = 0; i < 8; i++) room.add(mesh(box(10, 0.02, 0.04), M('#8b5a2b'), 0, 0.01, -3.5 + i, { cast: false }));
+  room.add(mesh(box(10.4, 3.4, 0.3), M('#efd7a8'), 0, 1.7, -4.1)); room.add(mesh(box(0.3, 3.4, 8.2), M('#e8cc98'), -5.1, 1.7, 0)); room.add(mesh(box(0.3, 3.4, 8.2), M('#e8cc98'), 5.1, 1.7, 0));
+  room.add(mesh(box(10.4, 0.3, 0.34), M('#8b5a2b'), 0, 0.15, -4.08)); room.add(mesh(box(1.6, 1.1, 0.1), windowMat, -1.4, 2.0, -3.93)); room.add(mesh(box(1.8, 0.1, 0.2), M('#7a4b2a'), -1.4, 1.42, -3.9));
+  room.add(mesh(cyl(1.6, 1.6, 0.03, 16), M('#c0443c'), 0.2, 0.02, 0.4, { cast: false })); room.add(mesh(cyl(1.2, 1.2, 0.035, 16), M('#e9b92c'), 0.2, 0.025, 0.4, { cast: false }));
+  // desk + chair + open book
+  room.add(mesh(box(1.8, 0.1, 0.9), M('#9a6a4a'), -2.8, 0.85, -3.3)); for (const [x, z] of [[-3.6, -3.65], [-2, -3.65], [-3.6, -2.95], [-2, -2.95]]) room.add(mesh(box(0.1, 0.85, 0.1), M('#7a4b2a'), x, 0.42, z));
+  room.add(mesh(box(0.7, 0.04, 0.5), M('#fff4d6'), -2.9, 0.92, -3.2)); room.add(mesh(box(0.02, 0.2, 0.2), M('#1b1b1b'), -2.4, 1.0, -3.3));
+  room.add(mesh(box(0.6, 0.1, 0.6), M('#a8703d'), -2.8, 0.5, -2.4)); room.add(mesh(box(0.6, 0.8, 0.1), M('#a8703d'), -2.8, 0.9, -2.12));
+  // trophy shelf
+  room.add(mesh(box(2.2, 2.6, 0.5), M('#7a4b2a'), 2.5, 1.3, -3.7)); for (let i = 0; i < 3; i++) room.add(mesh(box(2.0, 0.06, 0.45), M('#a8703d'), 2.5, 0.5 + i * 0.8, -3.62));
+  const trophies = new THREE.Group(); room.add(trophies);
+  // photo frames
+  const frames = [0, 1].map((i) => { const tex = new THREE.CanvasTexture(document.createElement('canvas')); tex.colorSpace = THREE.SRGBColorSpace; const f = new THREE.Group(); f.add(mesh(box(1.1, 0.8, 0.06), M('#7a4b2a'), 0, 0, 0, { cast: false })); const pic = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.65), new THREE.MeshBasicMaterial({ map: tex, color: '#d8c8a8' })); pic.position.z = 0.035; f.add(pic); f.position.set(0.2 + i * 1.3, 2.1, -3.92); room.add(f); return { tex, pic }; });
+  // bed
+  room.add(mesh(box(1.6, 0.5, 2.6), M('#7a4b2a'), -3.9, 0.25, 1.3)); room.add(mesh(box(1.5, 0.2, 2.5), M('#fff4d6'), -3.9, 0.6, 1.3)); room.add(mesh(box(1.52, 0.22, 1.6), M('#4f8fd6'), -3.9, 0.62, 1.8)); room.add(mesh(box(1.1, 0.2, 0.5), M('#ffffff'), -3.9, 0.75, 0.3)); room.add(mesh(box(1.6, 1.1, 0.14), M('#7a4b2a'), -3.9, 0.8, 0));
+  // fireplace
+  room.add(mesh(box(0.8, 2.4, 2.0), M('#a7a39a'), 4.6, 1.2, 0.3)); room.add(mesh(box(0.2, 1.0, 1.2), M('#2b1b12'), 4.25, 0.55, 0.3));
+  const flameMat = new THREE.MeshBasicMaterial({ color: '#ffb45e' }), flames = [0, 1, 2].map((i) => { const f = mesh(new THREE.ConeGeometry(0.16, 0.5, 5), flameMat, 4.15, 0.35, -0.1 + i * 0.35, { cast: false, receive: false }); room.add(f); return f; });
+  const fireLight = new THREE.PointLight('#ffb45e', 0, 9, 1.5); fireLight.position.set(RX + 3.8, 1.2, RZ + 0.3); scene.add(fireLight);
+  // door
+  room.add(mesh(box(0.14, 2.2, 1.1), M('#7a4b2a'), -5.0, 1.1, 2.6)); room.add(mesh(new THREE.SphereGeometry(0.06, 6, 4), M('#f6c945'), -4.9, 1.1, 2.25));
+  const roomLight = new THREE.PointLight('#fff1d0', 0, 16, 1.2); roomLight.position.set(RX, 3, RZ); scene.add(roomLight);
+  let inside = false;
+  function syncRoom() {
+    trophies.clear();
+    const n = Math.min(24, state.achievements.length + (state.settings.fun.prizes || 0) + state.stats.bossWins);
+    for (let i = 0; i < n; i++) { const x = 1.65 + (i % 8) * 0.24, y = 0.55 + Math.floor(i / 8) * 0.8, cup = new THREE.Group(); cup.add(mesh(cyl(0.07, 0.04, 0.14, 6), goldMat, 0, 0.1, 0, { cast: false })); cup.add(mesh(box(0.1, 0.04, 0.08), M('#7a4b2a'), 0, 0.02, 0, { cast: false })); cup.position.set(x, y, -3.55); trophies.add(cup); }
+    const th = state.settings.fun.thumbs || [];
+    frames.forEach((f, i) => {
+      const src = th[i];
+      if (!src) { f.pic.material.color.set('#d8c8a8'); f.pic.material.map = null; f.pic.material.needsUpdate = true; return; }
+      const im = new Image(); im.onload = () => { const c = f.tex.image; c.width = 256; c.height = 176; c.getContext('2d').drawImage(im, 0, 0, 256, 176); f.tex.needsUpdate = true; f.pic.material.map = f.tex; f.pic.material.color.set('#ffffff'); f.pic.material.needsUpdate = true; }; im.src = src;
+    });
+  }
+  function enterHouse() {
+    if (activity) stopActivity();
+    const fade = $('#fade'); Sfx.warp(); fade.classList.add('on');
+    setTimeout(() => {
+      inside = true; keepCam(); syncRoom();
+      player.position.set(RX - 3.6, 0, RZ + 2.6); player.rotation.y = Math.PI / 2; nav.target = null;
+      cam.focus = new THREE.Vector3(RX, 0.2, RZ - 0.6); cam.yaw = 0; cam.pitch = 0.95; cam.dist = clamp(12.5 / Math.min(1, (innerWidth / innerHeight) * 1.25), 13, 27);
+      roomLight.intensity = 14; fireLight.intensity = 10;
+      fade.classList.remove('on');
+      toast(tr('Home sweet home 🏡', 'บ้านแสนสุข 🏡'), tr('Desk, trophies, photos, bed and fireplace. Door to go out.', 'มีโต๊ะเขียน ถ้วยรางวัล รูปถ่าย เตียง และเตาผิง ออกทางประตู'), 'house');
+    }, reduced ? 0 : 260);
+  }
+  function leaveHouse() {
+    if (activity) stopActivity();
+    const fade = $('#fade'); Sfx.warp(); fade.classList.add('on');
+    setTimeout(() => { inside = false; const o = LAYOUT.house; player.position.set(o.approach[0], 0, o.approach[2]); player.rotation.y = 0; cam.focus = null; restoreCam(); cam.target.copy(player.position); roomLight.intensity = 0; fireLight.intensity = 0; fade.classList.remove('on'); }, reduced ? 0 : 260);
+  }
+
+  // --- boat ride
+  const boatG = new THREE.Group();
+  boatG.add(mesh(box(1.3, 0.45, 2.6), M('#9a5a26'), 0, 0, 0)); boatG.add(mesh(new THREE.ConeGeometry(0.66, 0.9, 4).rotateX(Math.PI / 2).rotateZ(Math.PI / 4), M('#9a5a26'), 0, 0, 1.7));
+  boatG.add(mesh(box(1.1, 0.08, 2.4), M('#c69a62'), 0, 0.2, 0)); boatG.add(mesh(box(1.2, 0.1, 0.4), M('#7a4b2a'), 0, 0.32, -0.4));
+  const mast = mesh(cyl(0.05, 0.05, 2.6, 5), M('#7a4b2a'), 0, 1.4, 0.5); boatG.add(mast);
+  const sail = mesh(new THREE.ConeGeometry(0.9, 2.1, 3).rotateY(Math.PI / 2), M('#fff4d6'), 0.02, 1.6, 0.9); sail.scale.set(0.08, 1, 1); boatG.add(sail);
+  boatG.visible = false; scene.add(boatG);
+  const boatSt = { on: false, a: 0, a0: 0, R: 25.5 };
+  function boat(on) {
+    boatSt.on = on; boatG.visible = on;
+    if (on) { keepCam(); boatSt.a = boatSt.a0 = Math.atan2(21.5, 4); pose = 'boat'; cam.pitch = 0.45; cam.dist = isTouch ? 16 : 13; }
+    else { pose = null; cam.focus = null; restoreCam(); player.position.set(4, 0, 19.4); player.rotation.y = Math.PI; }
+  }
+  function tickBoat(dt, time) {
+    if (!boatSt.on) return;
+    boatSt.a -= dt * (Math.PI * 2 / 75);
+    const a = boatSt.a, R = boatSt.R, x = Math.cos(a) * R, z = Math.sin(a) * R, y = seaY(x, z, time) + 0.2;
+    boatG.position.set(x, y, z); boatG.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a)); boatG.rotation.z = Math.sin(time * 1.3) * 0.05; boatG.rotation.x = Math.cos(time * 1.1) * 0.04;
+    player.position.set(x, y - 0.15, z); player.rotation.y = boatG.rotation.y;
+    cam.focus = boatG.position; cam.yaw = Math.atan2(Math.cos(a), Math.sin(a)) + 0.35;
+    if (boatSt.a0 - boatSt.a >= Math.PI * 2) { boatSt.a0 -= Math.PI * 2; boatLap(); }
+  }
+
+  // --- weather extras: morning fog, rainbow, storm with lightning; festival bunting
+  const rainbow = new THREE.Group();
+  ['#e0453f', '#ff9f5a', '#f6c945', '#6aa84f', '#4f8fd6', '#7a5cc4'].forEach((c, i) => rainbow.add(new THREE.Mesh(new THREE.TorusGeometry(46 - i * 1.4, 0.7, 4, 48, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.32, fog: false, depthWrite: false }))));
+  rainbow.position.set(0, -4, -90); rainbow.visible = false; scene.add(rainbow);
+  let storm = false, boltT = 5;
+  const bunting = new THREE.Group(); scene.add(bunting);
+  { const cols = ['#e0453f', '#f6c945', '#4f8fd6', '#6aa84f', '#f28fad'], pts = [[-3, 2.6, -6.8], [3, 2.6, -6.8]], n = 14;
+    for (let i = 0; i <= n; i++) { const k = i / n, x = lerp(pts[0][0], pts[1][0], k), y = 2.55 - Math.sin(k * Math.PI) * 0.5; const f = mesh(new THREE.ConeGeometry(0.16, 0.34, 3).rotateX(Math.PI), M(cols[i % 5]), x, y - 0.17, -6.8, { cast: false }); bunting.add(f); }
+    const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 15 }, (_, i) => new THREE.Vector3(lerp(-3, 3, i / 14), 2.55 - Math.sin((i / 14) * Math.PI) * 0.5, -6.8))), new THREE.LineBasicMaterial({ color: '#5c3a21' })); bunting.add(rope); }
+  const festLabel = addLabel('', [0, 3.3, -6.8]); festLabel.visible = false;
+  function applyExtras() {
+    const F = festNow(); bunting.visible = !!F; festLabel.visible = !!F; if (F) festLabel.el.textContent = `${F.icon} ${tr(F.en, F.th)}`;
+    rainbow.visible = rainbowNow() && env.phase !== 'night' && !inside;
+    storm = stormNow() && !reduced;
+    const foggy = env.phase === 'morning' && !inside;
+    scene.fog.near = foggy ? 16 : 60; scene.fog.far = foggy ? 70 : 150;
+    if (foggy) scene.fog.color.lerp(new THREE.Color('#eef3f5'), 0.5);
+    rain.material.opacity = storm ? 0.85 : 0.6;
+  }
+  function tickWeather(dt, time) {
+    const vt = houseParts.vane?.userData.vane; if (vt) vt.rotation.y = Math.sin(time * 0.3) * 1.2;
+    flames.forEach((f, i) => { f.scale.set(1, 0.8 + Math.abs(Math.sin(time * 9 + i * 2)) * 0.5, 1); });
+    if (inside) fireLight.intensity = 9 + Math.sin(time * 13) * 1.5;
+    if (!storm || inside || document.hidden) return;
+    boltT -= dt;
+    if (boltT <= 0) {
+      boltT = 9 + Math.random() * 14;
+      const h0 = hemi.intensity; hemi.intensity = 3.5; setTimeout(() => { hemi.intensity = h0; }, 90); setTimeout(() => { hemi.intensity = 2.6; setTimeout(() => { hemi.intensity = h0; }, 60); }, 180);
+      setTimeout(() => Sfx.thunder(), 400 + Math.random() * 900);
+    }
   }
 
 
@@ -3303,11 +3511,12 @@ function createWorld() {
     fireflies.visible = night;
     cloudMat.color.set(rainy ? '#8d98a8' : night ? '#6f7aa8' : '#ffffff');
     clouds.forEach((cl, i) => (cl.visible = rainy || i < (weather === 'cloud' ? 6 : 3)));
-    rain.visible = rainy && !reduced;
+    rain.visible = rainy && !reduced && !inside;
     const season = seasonOf(new Date().getMonth())[0];
     seasonPts.userData.season = season;
     seasonPts.material.color.set({ Spring: '#f7a8c4', Fall: '#e8894a', Winter: '#ffffff' }[season] || '#ffffff');
     seasonPts.visible = season !== 'Summer' && !rainy && !reduced;
+    if (typeof applyExtras === 'function') applyExtras();
   }
 
   // ---------------- dynamic content: crops, notes, calendar, sign
@@ -3370,7 +3579,7 @@ function createWorld() {
     // drop stale pickables for removed crops
     for (let i = pickables.length - 1; i >= 0; i--) if (String(pickables[i].userData.pick).startsWith('crop:') && !pickables[i].parent) pickables.splice(i, 1);
   }
-  function sync(animateId) { syncField(animateId); syncNotes(); drawCalendarTexture(); applyEnvironment(); syncDecor(); syncWater(); syncJars(); if (FUN().beachDay !== todayISO() || !beachBuilt) { beachBuilt = true; syncBeach(); } zzz.visible = state.stats.energy <= 0 && state.stats.n > 0; sleeping = zzz.visible; }
+  function sync(animateId) { syncField(animateId); syncNotes(); drawCalendarTexture(); applyEnvironment(); syncDecor(); syncWater(); syncJars(); syncDTree(); syncHouse(); if (inside) syncRoom(); if (FUN().beachDay !== todayISO() || !beachBuilt) { beachBuilt = true; syncBeach(); } zzz.visible = state.stats.energy <= 0 && state.stats.n > 0; sleeping = zzz.visible; }
 
   // ---------------- camera & player control
   const cam = { yaw: 0.35, pitch: 0.78, dist: isTouch ? 21 : 18, target: new THREE.Vector3(0, 0, -3), focus: null, shake: 0 };
@@ -3391,6 +3600,7 @@ function createWorld() {
     else if (id === 'mailbox') openSettings();
     else if (id === 'shop') openShop();
     else if (id === 'dock') startFishing();
+    else if (id === 'rdesk') openDesk(); else if (id === 'rshelf') openTrophies(); else if (id === 'rframe') openGallery(); else if (id === 'rbed') restInBed(); else if (id === 'rfire') startFire(); else if (id === 'rdoor') leaveHouse();
     else if (id === 'bench') startBreathing();
     else if (id === 'telescope') openTelescope();
     else if (id === 'field') { const k = fieldTask(); if (k === 'water') waterNear(); else if (k === 'harvest') harvestField(); }
@@ -3406,6 +3616,7 @@ function createWorld() {
   }
   function travel(id) {
     if (activity) stopActivity();
+    if (inside) { inside = false; roomLight.intensity = 0; fireLight.intensity = 0; cam.focus = null; restoreCam(); }
     if (windows.length && id !== 'field') windows.slice().forEach((w) => w !== activePanel?.w && w.close());
     const fade = $('#fade');
     Sfx.warp();
@@ -3428,7 +3639,7 @@ function createWorld() {
   function pick(clientX, clientY) {
     ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects([...pickables.filter((p) => p.visible), island], true)[0];
+    const hit = ray.intersectObjects([...pickables.filter((p) => p.visible), island, roomFloor], true)[0];
     if (!hit) return null;
     if (hit.object.userData.pick) return { id: hit.object.userData.pick, point: hit.point, obj: hit.object };
     return { ground: true, point: hit.point }; // island, plots, trees… walk towards it
@@ -3478,6 +3689,7 @@ function createWorld() {
     if (!h) return;
     if (activity === 'photo') return;
     if (deco) { if (!decoPick(h) && h.ground) decoPlace(h.point.x, h.point.z); return; }
+    if (h.id === 'dtree') { Sfx.click(); openDTree(); return; }
     if (h.id?.startsWith('npc:')) { const id = h.id.slice(4), n = npcs.find((x) => x.id === id); Sfx.click(); if (Math.hypot(player.position.x - n.x, player.position.z - n.z) < 3) talkTo(id); else walkTo(n.x + 0.9, n.z - 0.9, () => talkTo(id)); return; }
     if (h.id?.startsWith('beach:')) { const b = beachG.find((x) => x.i === +h.id.slice(6)); if (b) { Sfx.select(); if (activity) stopActivity(); walkTo(b.x, b.z); } return; }
     if (h.id?.startsWith('bug:')) { const b = bugs[+h.id.slice(4)]; Sfx.select(); if (activity) stopActivity(); walkTo(b.position.x, b.position.z); return; }
@@ -3698,7 +3910,8 @@ function createWorld() {
       if (d < min && d > 1e-4) { player.position.x = c.x + (dx / d) * min; player.position.z = c.z + (dz / d) * min; }
     }
     const r = Math.hypot(player.position.x, player.position.z);
-    if (r > 20.6 && pose !== 'fish') player.position.multiplyScalar(20.6 / r);
+    if (inside) { player.position.x = clamp(player.position.x, RX - 4.5, RX + 4.3); player.position.z = clamp(player.position.z, RZ - 3.2, RZ + 3.6); }
+    else if (r > 20.6 && pose !== 'fish' && pose !== 'boat') player.position.multiplyScalar(20.6 / r);
     // walk / idle / sleep animation
     const sw = Math.sin(walkPhase) * (moving ? 0.7 : 0);
     legL.rotation.x = sw; legR.rotation.x = -sw; armL.rotation.x = -sw * 0.8; armR.rotation.x = sw * 0.8;
@@ -3735,6 +3948,7 @@ function createWorld() {
       decorTick.forEach((f) => f(dt, time)); tickSeason(dt, time);
       plots.forEach((p, i) => { if (!p.crop) return; p.crop.rotation.z = Math.sin(time * 1.6 + i) * 0.04; p.crop.children.forEach((o) => { if (o.userData.spin) { o.rotation.y = Math.sin(time * 1.2 + i) * 1.1; o.position.y = 1.25 + Math.sin(time * 2 + i) * 0.08; } }); });
     }
+    tickBoat(dt, time); tickDTree(dt, time); tickWeather(dt, time);
     tickPet(dt, time); tickPetTask(dt, time); tickBoss(dt, time); tickFish(dt, time); tickNpcs(dt, time); tickBugs(dt, time);
     for (const b of beachG) { if (b.g.userData.crab) b.g.position.x = b.x + Math.sin(time * 1.5 + b.i) * 0.3; if (Math.hypot(player.position.x - b.x, player.position.z - b.z) < 1.1) { collectFind(b); break; } }
     lid.rotation.x = lerp(lid.rotation.x, -lidTarget * 1.9, Math.min(1, dt * 8));
@@ -3763,7 +3977,7 @@ function createWorld() {
       near = null;
     } else { promptFor = near?.id || null; promptEl.hidden = !near; }
     if (near) {
-      const pt = t({ house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
+      const pt = t({ rdesk: 'Write at the desk', rshelf: 'Look at trophies', rframe: 'Look at photos', rbed: 'Rest', rfire: 'Sit by the fire', rdoor: 'Go outside', house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
       if (promptText.textContent !== pt) promptText.textContent = pt;
       const o = LAYOUT[near.id], p = v3.set(o.approach[0], 2.6, o.approach[2]).project(camera);
       promptEl.style.transform = `translate(${((p.x + 1) / 2) * innerWidth}px, ${((1 - p.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
@@ -3779,6 +3993,7 @@ function createWorld() {
   return {
     sync, applyGraphics, plantSequence, fireworks, showCrop, showField, setSleeping, hasCrop, travel, focusOn,
     build(id) { syncDecor(id); showDecor(id); },
+    enterHouse, leaveHouse, boat, isInside: () => inside,
     seat, fishVisual, fishCatch, petAction, decoMode, decoAction, addItem, photo, capture,
     goField() { travel('field'); setTimeout(() => walkTo(FIELD.cx - 0.9, FIELD.cz - 2.7), reduced ? 50 : 700); },
     goBeach() { const b = [...beachG].sort((a, c) => Math.hypot(a.x - player.position.x, a.z - player.position.z) - Math.hypot(c.x - player.position.x, c.z - player.position.z))[0]; if (b) { walkTo(b.x, b.z); cam.focus = null; } },
@@ -3865,7 +4080,7 @@ function markDaily(id) { const d = dailyToday(); if (!d.checks[id]) { d.checks[i
 function dailyTasks() {
   const d = dailyToday(), tt = state.trades.filter((x) => x.date === d.date), has = tt.length > 0, rest = d.noTrade && !has, dj = state.days[d.date];
   return [
-    { id: 'plan', group: 'before', manual: true, en: 'Write today\'s plan: key levels, setups you will take, max number of trades', th: 'เขียนแผนวันนี้: แนวรับ-แนวต้านสำคัญ, setup ที่จะเล่น, จำนวนไม้สูงสุด' },
+    { id: 'plan', group: 'before', auto: !!state.plans[d.date], en: 'Write today\'s plan (☀️ Farmhouse): bias, key levels, setups, max trades', th: 'เขียนแผนวันนี้ (☀️ ที่บ้านไร่): มุมมอง แนวรับ-แนวต้าน setup จำนวนไม้สูงสุด' },
     { id: 'energy', group: 'before', manual: true, en: 'Check your ⚡ energy (daily loss limit) and decide your risk per trade', th: 'ดูแถบ ⚡ พลังงาน (ลิมิตขาดทุนรายวัน) แล้วกำหนดความเสี่ยงต่อไม้' },
     { id: 'mind', group: 'before', manual: true, en: 'Check your mood — tired, angry or rushed? Trade smaller or rest', th: 'เช็กใจตัวเอง: เหนื่อย โกรธ หรือรีบไหม? ถ้าใช่ ลดขนาดไม้หรือพักก่อน' },
     { id: 'log', group: 'during', auto: has || rest, en: 'Log every trade at the Quest Board right after closing it', th: 'จดทุกเทรดที่กระดานเควสทันทีหลังปิดออร์เดอร์' },
@@ -4011,7 +4226,7 @@ function mt5Status() {
 }
 function mergeMt5(list) {
   let added = 0, updated = 0;
-  const ignored = new Set(state.settings.mt5.ignored), newest = [];
+  const ignored = new Set([...state.settings.mt5.ignored, ...(state.settings.deleted || [])]), newest = [];
   for (const raw of list) {
     if (!raw || !raw.id || !raw.date || !raw.asset || !isFinite(raw.pnl) || ignored.has(raw.id)) continue;
     const m = { ...raw, pnl: +raw.pnl, entry: +raw.entry, exit: +raw.exit, size: +raw.size, fees: +raw.fees || 0 };
@@ -4048,23 +4263,29 @@ function announceMt5({ added, updated, newest }, manual) {
   } else toast(tr(`Updated ${updated} MT5 trade(s)`, `อัปเดต ${updated} เทรดจาก MT5`), '', 'note');
   checkAchievements(true);
 }
-async function syncMt5({ manual = false } = {}) {
+async function syncMt5({ manual = false, quiet = false } = {}) {
   const id = state.settings.mt5.gist;
   if (!id || MT5.busy) return;
-  MT5.busy = true;
+  MT5.busy = true; JS.quiet = true;
   try {
-    const r = await fetch(`https://api.github.com/gists/${encodeURIComponent(id)}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json', ...(MT5.etag ? { 'If-None-Match': MT5.etag } : {}) } });
+    const tok = syncToken();
+    const r = await fetch(`https://api.github.com/gists/${encodeURIComponent(id)}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}), ...(MT5.etag ? { 'If-None-Match': MT5.etag } : {}) } });
     if (r.status === 304) { if (manual) toast(tr('MT5: nothing new', 'MT5: ยังไม่มีเทรดใหม่'), '', 'cloud'); return; }
     if (!r.ok) throw new Error(r.status === 404 ? tr('Gist not found — check the ID', 'ไม่พบ Gist — ตรวจสอบ ID') : `GitHub ${r.status}`);
     MT5.etag = r.headers.get('ETag');
-    const g = await r.json(), f = g.files?.['harvest-ledger.json'] || Object.values(g.files || {})[0];
-    if (!f) throw new Error(tr('The gist has no harvest-ledger.json yet', 'ใน Gist ยังไม่มีไฟล์ harvest-ledger.json'));
+    const g = await r.json(), jf = g.files?.[SYNC_FILE];
+    let jChanged = false;
+    if (jf) { try { const jc = jf.truncated ? await (await fetch(jf.raw_url, { cache: 'no-store' })).text() : jf.content; jChanged = mergeJournal(JSON.parse(jc || '{}')); } catch (err) { /* bad journal file */ } }
+    const f = g.files?.['harvest-ledger.json'] || Object.values(g.files || {}).find((x) => x.filename !== SYNC_FILE);
+    if (!f) { if (jChanged) { render(); if (!quiet) toast(tr('Journal synced from another device ☁️', 'รับบันทึกจากเครื่องอื่นแล้ว ☁️'), '', 'note'); } if (!jf) throw new Error(tr('The gist has no harvest-ledger.json yet', 'ใน Gist ยังไม่มีไฟล์ harvest-ledger.json')); return; }
     const content = f.truncated ? await (await fetch(f.raw_url, { cache: 'no-store' })).text() : f.content;
     const data = JSON.parse(content || '{}');
-    announceMt5(mergeMt5(Array.isArray(data) ? data : data.trades || []), manual);
+    const res = mergeMt5(Array.isArray(data) ? data : data.trades || []);
+    if (quiet) { if (res.added || res.updated || jChanged) render(); }
+    else { announceMt5(res, manual && !jChanged); if (jChanged) toast(tr('Journal synced from another device ☁️', 'รับบันทึกจากเครื่องอื่นแล้ว ☁️'), '', 'note'); }
   } catch (e) {
     if (manual) { Sfx.error(); toast(tr('MT5 sync failed', 'ซิงก์ MT5 ไม่สำเร็จ'), String(e.message || e), 'rain'); }
-  } finally { MT5.busy = false; }
+  } finally { MT5.busy = false; JS.quiet = false; }
 }
 setTimeout(() => syncMt5(), 2000);
 setInterval(() => { if (!document.hidden) syncMt5(); }, 120000);
@@ -4086,8 +4307,8 @@ const Music = {
   sync() {
     if (!this.want()) { this.stop(); return; }
     this.start();
-    const nature = state.settings.fun.musicMode === 'nature', m = musicMood(), key = (nature ? 'n:' : '') + m;
-    if (key !== this.key) { this.key = key; this.nature = nature; this.setMood(m); this.setWaves(nature); }
+    const nature = state.settings.fun.musicMode === 'nature', m = musicMood(), key = (nature ? 'n:' : '') + (this.boat ? 'b:' : '') + m;
+    if (key !== this.key) { this.key = key; this.nature = nature; this.setMood(m); this.setWaves(nature || !!this.boat); }
   },
   setWaves(on) {
     if (on && !this.waves) {
@@ -4233,7 +4454,7 @@ function fishBar(msg = '') {
   const F = fishing; if (!F) return;
   const close = `<button class="btn btn-red !px-2" data-fish="quit" aria-label="close">✕</button>`;
   const pull = `<button class="btn btn-orange text-lg flex-1" data-fish="pull">‼ ${tr('Pull!', 'ดึง!')}</button>`;
-  if (F.phase === 'ready' || F.phase === 'done') showBar(`<div class="font-pixel text-sm mb-2">${msg || tr('🎣 Cast your line, then wait calmly for a bite.', '🎣 เหวี่ยงเบ็ด แล้วรอปลากินอย่างใจเย็น')}</div><div class="flex gap-2"><button class="btn btn-green text-lg flex-1" data-fish="cast">🎣 ${F.phase === 'done' ? tr('Cast again', 'เหวี่ยงอีกครั้ง') : tr('Cast', 'เหวี่ยงเบ็ด')}</button><button class="btn" data-fish="book">📖</button>${close}</div>`);
+  if (F.phase === 'ready' || F.phase === 'done') showBar(`<div class="font-pixel text-sm mb-2">${msg || tr('🎣 Cast your line, then wait calmly for a bite.', '🎣 เหวี่ยงเบ็ด แล้วรอปลากินอย่างใจเย็น')}</div><div class="flex gap-2"><button class="btn btn-green text-lg flex-1" data-fish="cast">🎣 ${F.phase === 'done' ? tr('Cast again', 'เหวี่ยงอีกครั้ง') : tr('Cast', 'เหวี่ยงเบ็ด')}</button><button class="btn" data-fish="book">📖</button><button class="btn" data-fish="boat" aria-label="boat">⛵</button>${close}</div>`);
   else if (F.phase === 'wait') showBar(`<div class="font-pixel text-sm mb-2">🌊 ${tr('Waiting… don\'t pull yet. Patience, like waiting for your setup.', 'รอปลากิน… อย่าเพิ่งดึงนะ ใจเย็นเหมือนรอจุดเข้าเทรด')}</div><div class="flex gap-2">${pull}${close}</div>`);
   else if (F.phase === 'bite') showBar(`<div class="font-pixel text-lg mb-2 text-berry blink">‼ ${tr('A bite! Pull now!', 'ปลากินเบ็ด! ดึงเลย!')}</div><div class="flex gap-2">${pull}${close}</div>`);
   else if (F.phase === 'reel') showBar(`<div class="font-pixel text-sm mb-1">${tr('Stop the needle in the green!', 'หยุดเข็มให้อยู่ในช่องเขียว!')} (${F.hits}/${F.need})</div>
@@ -4266,7 +4487,9 @@ function fishPull() {
 }
 function landFish(fish) {
   const f = state.settings.fun, size = Math.round(fish.size[0] + Math.random() * (fish.size[1] - fish.size[0])), isNew = !f.fish[fish.id];
-  f.fish[fish.id] = (f.fish[fish.id] || 0) + 1; f.fishBest[fish.id] = Math.max(f.fishBest[fish.id] || 0, size); save();
+  f.fish[fish.id] = (f.fish[fish.id] || 0) + 1; f.fishBest[fish.id] = Math.max(f.fishBest[fish.id] || 0, size);
+  if (fish.rar) f.bag[fish.id] = (f.bag[fish.id] || 0) + 1;
+  save(); if (fish.rar) festProgress('fish');
   fishing.phase = 'done'; world?.fishCatch(fish); world?.fishVisual('ready');
   if (fish.rar >= 3) { Sfx.levelUp(); } else Sfx.success();
   fishBar(`${fish.icon} ${tr('Caught', 'ได้')} <b>${tr(fish.en, fish.th)}</b> ${fish.rar ? `${size} ${tr('cm', 'ซม.')}` : ''} · <span class="text-sunset">${RAR[fish.rar]}</span>${isNew ? ` <span class="tag good">✨ ${tr('new!', 'ใหม่!')}</span>` : ''}`);
@@ -4275,7 +4498,7 @@ function landFish(fish) {
 funBar.addEventListener('click', (e) => {
   const b = e.target.closest('[data-fish]'); if (!b) return;
   const a = b.dataset.fish;
-  if (a === 'quit') stopActivity(); else if (a === 'cast') fishCast(); else if (a === 'pull') fishPull(); else if (a === 'book') openFun('book');
+  if (a === 'quit') stopActivity(); else if (a === 'boat') startBoat(); else if (a === 'cast') fishCast(); else if (a === 'pull') fishPull(); else if (a === 'book') openFun('book');
 });
 
 // --- breathing bench (box breathing 4-4-4-4)
@@ -4309,7 +4532,7 @@ function runBreathing(min) {
   step();
 }
 function breathDone(B) {
-  const f = state.settings.fun; f.breath++; f.breathMin += B.min; save(); markDaily('mind');
+  const f = state.settings.fun; f.breath++; f.breathMin += B.min; save(); markDaily('mind'); festProgress('stars');
   breathing = null; Sfx.achievement();
   breathEl.innerHTML = `<div class="parch max-w-[340px] text-center pointer-events-auto"><div class="text-4xl">🍃</div><div class="font-pixel text-lg font-bold mt-1">${tr('Well done', 'เยี่ยมมาก')}</div>
     <p class="text-sm mt-1">${tr('A calm mind trades its plan. Take this feeling to the chart.', 'ใจที่นิ่งจะเทรดตามแผน พาความรู้สึกนี้ไปที่กราฟนะ')}</p>
@@ -4379,7 +4602,7 @@ function openTelescope() {
     if (!best) { Sfx.select(); return; }
     const f = state.settings.fun;
     scopeSt.found = best.k;
-    if (!f.stars.includes(best.k.id)) { f.stars.push(best.k.id); save(); Sfx.achievement(); checkAchievements(true); } else Sfx.select();
+    if (!f.stars.includes(best.k.id)) { f.stars.push(best.k.id); save(); Sfx.achievement(); checkAchievements(true); festProgress('stars'); } else Sfx.select();
     cap(); clearTimeout(scopeSt.capT); scopeSt.capT = setTimeout(() => { if (scopeSt) { scopeSt.found = null; cap(); } }, 6000);
   });
 }
@@ -4413,7 +4636,11 @@ function talkTo(id) {
   const n = NPC_INFO[id], f = state.settings.fun, day = Math.floor(Date.now() / 864e5);
   const line = n.lines[(day + (f.talks || 0)) % n.lines.length];
   f.talks = (f.talks || 0) + 1; save();
-  openWindow({ title: tr(n.en, n.th), width: 440, html: `<div class="flex gap-3 items-start"><div class="text-5xl bob shrink-0">${n.icon}</div><p class="text-[1.05rem] leading-relaxed" data-q></p></div><div class="flex justify-end mt-3"><button class="btn btn-green" data-close>OK</button></div>`, onMount(win) { typewrite($('[data-q]', win), `“${tr(...line)}”`); } });
+  const pending = id === 'rosa' && reviewPending();
+  const extra = id === 'rosa' ? `${pending ? `<button class="btn btn-orange" data-npc="review">🔁 ${tr('Weekly review', 'ทบทวนสัปดาห์')}</button>` : ''}<button class="btn" data-npc="kitchen">🍳 ${tr('Kitchen', 'เข้าครัว')}</button>` : `<button class="btn" data-npc="boat">⛵ ${tr('Borrow the boat', 'ขอยืมเรือ')}</button>`;
+  const say = pending ? ['It\'s the weekend, dear. Shall we look back at your week over a cup of tea?', 'สุดสัปดาห์แล้วนะ มานั่งดื่มชาแล้วทบทวนสัปดาห์ที่ผ่านมากันไหม'] : line;
+  openWindow({ title: tr(n.en, n.th), width: 440, html: `<div class="flex gap-3 items-start"><div class="text-5xl bob shrink-0">${n.icon}</div><p class="text-[1.05rem] leading-relaxed" data-q></p></div><div class="flex flex-wrap justify-end gap-2 mt-3">${extra}<button class="btn btn-green" data-close>OK</button></div>`,
+    onMount(win, w) { typewrite($('[data-q]', win), `“${tr(...say)}”`); win.addEventListener('click', (e) => { const b = e.target.closest('[data-npc]'); if (!b) return; w.close(); setTimeout(() => ({ review: () => openReview(), kitchen: openKitchen, boat: startBoat })[b.dataset.npc](), 250); }); } });
 }
 
 // --- beach finds, fireflies, watering & harvest, pet play (called by the 3D world)
@@ -4449,7 +4676,7 @@ function caughtBug() {
 }
 function fieldWatered() { Sfx.grow(); toast(tr('The whole field is watered 💧', 'รดน้ำครบทั้งแปลงแล้ว 💧'), tr('Stand in the field again to harvest the pumpkins 🧺', 'ยืนในแปลงอีกครั้งเพื่อเก็บเกี่ยวฟักทอง 🧺'), 'sprout'); }
 function harvested(n) {
-  const f = state.settings.fun; f.harvestDate = todayISO(); f.basket += n; save();
+  const f = state.settings.fun; f.harvestDate = todayISO(); f.basket += n; f.bag.pumpkin = (f.bag.pumpkin || 0) + n; save(); festProgress('pumpkin');
   toast(n ? tr(`Harvested ${n} pumpkin(s) 🧺`, `เก็บฟักทองได้ ${n} ลูก 🧺`) : tr('Nothing ripe today, but the soil is happy', 'วันนี้ยังไม่มีผลสุก แต่ดินชุ่มชื่นดี'), tr(`Basket total: ${f.basket}`, `ในตะกร้ารวม ${f.basket} ลูก`), 'pumpkin');
 }
 function petLoved(kind) {
@@ -4499,7 +4726,9 @@ funBar.addEventListener('click', (e) => {
   const c = world.capture(photoFilter), g = c.getContext('2d'), s = Math.max(1, c.width / 900);
   g.font = `700 ${Math.round(16 * s)}px "Pixelify Sans", Mali, sans-serif`; g.textAlign = 'right'; g.fillStyle = 'rgba(59,35,20,.55)'; g.fillText('🌾 Harvest Ledger', c.width - 14 * s + 2, c.height - 14 * s + 2); g.fillStyle = '#fff4d6'; g.fillText('🌾 Harvest Ledger', c.width - 14 * s, c.height - 14 * s);
   const fl = document.createElement('div'); fl.className = 'shutter'; document.body.appendChild(fl); setTimeout(() => fl.remove(), 450);
-  Sfx.shutter(); state.settings.fun.photos++; save();
+  Sfx.shutter(); state.settings.fun.photos++;
+  try { const tc = document.createElement('canvas'), k = 480 / c.width; tc.width = 480; tc.height = Math.round(c.height * k); tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height); state.settings.fun.thumbs = [tc.toDataURL('image/jpeg', 0.7), ...(state.settings.fun.thumbs || [])].slice(0, 4); } catch (err) { /* ignore */ }
+  save();
   c.toBlob((b) => b && shareBlob(b, `harvest-farm-${Date.now()}.png`), 'image/png');
 });
 
@@ -4514,7 +4743,10 @@ function openFun(tab = 'do') {
   const beachLeft = f.beachDay === todayISO() ? 6 - f.beachTaken.length : 6;
   const card = (icon, title, desc, btn, attrs, dis = false) => `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center shrink-0">${icon}</div><div class="flex-1 min-w-0"><div class="font-pixel font-bold">${title}</div><div class="text-xs text-[#8b5a2b]">${desc}</div></div><button class="btn text-sm whitespace-nowrap ${dis ? '' : 'btn-green'}" ${attrs} ${dis ? 'disabled style="opacity:.55"' : ''}>${btn}</button></div>`;
   const tabs = {
-    do: () => `<div class="flex flex-col gap-2">
+    do: () => `${festHTML()}<div class="flex flex-col gap-2">
+      ${card('🏡', tr('Inside the farmhouse', 'เข้าไปในบ้าน'), tr('Desk, trophies, photos, bed, fireplace', 'โต๊ะเขียน ถ้วยรางวัล รูปถ่าย เตียง เตาผิง'), tr('Enter', 'เข้า'), 'data-fgo="house-in"')}
+      ${card('⛵', tr('Boat ride', 'ล่องเรือ'), tr(`A slow lap around the island · laps ${f.laps || 0}`, `ล่องช้าๆ รอบเกาะ · ครบ ${f.laps || 0} รอบ`), tr('Sail', 'ออกเรือ'), 'data-fgo="boat"')}
+      ${card('🍳', tr('Cook with Rosa', 'ทำอาหารกับโรซ่า'), tr(`Fish + pumpkins → dishes · ${Object.values(f.dishes).reduce((a, b) => a + b, 0)} cooked`, `ปลา + ฟักทอง → อาหาร · ทำแล้ว ${Object.values(f.dishes).reduce((a, b) => a + b, 0)} จาน`), tr('Cook', 'ทำ'), 'data-fgo="kitchen"')}
       ${card('🎣', tr('Fishing', 'ตกปลา'), tr(`At the dock · ${Object.keys(f.fish).length}/${FISH.length} kinds found`, `ที่ท่าเรือ · พบแล้ว ${Object.keys(f.fish).length}/${FISH.length} ชนิด`), tr('Go ▶', 'ไป ▶'), 'data-fgo="dock"')}
       ${card('🌳', tr('Breathing bench', 'ม้านั่งหายใจ'), tr('1–3 minutes of calm breathing', 'หายใจให้ใจนิ่ง 1–3 นาที'), tr('Go ▶', 'ไป ▶'), 'data-fgo="bench"')}
       ${card('💧', tr('Water & harvest', 'รดน้ำ & เก็บเกี่ยว'), tr('Walk into the field and tap the prompt', 'เดินเข้าแปลงผักแล้วแตะปุ่มที่ขึ้นมา') + (f.harvestDate === todayISO() ? tr(' · done today ✔', ' · วันนี้ทำแล้ว ✔') : ''), tr('Go ▶', 'ไป ▶'), 'data-fgo="field"')}
@@ -4533,6 +4765,8 @@ function openFun(tab = 'do') {
         ${grid(FISH, (x) => f.fish[x.id], (x) => `×${f.fish[x.id]}${x.rar ? ` · ${f.fishBest[x.id]} ${tr('cm', 'ซม.')}` : ''}`)}
         <div class="font-pixel font-bold mt-3 mb-1">🐚 ${tr('Beach finds', 'ของริมหาด')} (${Object.keys(f.beach).length}/${BEACH.length})</div>
         ${grid(BEACH, (x) => f.beach[x.id], (x) => `×${f.beach[x.id]}`)}
+        <div class="font-pixel font-bold mt-3 mb-1">🍳 ${tr('Cookbook', 'ตำราอาหาร')} (${Object.keys(f.dishes).length}/${RECIPES.length})</div>
+        ${grid(RECIPES, (x) => f.dishes[x.id], (x) => `×${f.dishes[x.id]}`)}
         <div class="font-pixel font-bold mt-3 mb-1">🔭 ${tr('Constellations', 'กลุ่มดาว')} (${f.stars.length}/${CONSTS.length})</div>
         <div class="flex flex-wrap gap-1">${CONSTS.map((k) => `<span class="tag ${f.stars.includes(k.id) ? 'good' : ''}">${f.stars.includes(k.id) ? '✨ ' + tr(k.en, k.th) : '???'}</span>`).join('')}</div>
         <div class="grid grid-cols-2 gap-2 mt-3">
@@ -4540,6 +4774,8 @@ function openFun(tab = 'do') {
           <div class="slot"><div class="text-xs text-[#8b5a2b]">🧺 ${tr('Pumpkins harvested', 'ฟักทองที่เก็บได้')}</div><div class="num text-lg">${f.basket}</div></div>
           <div class="slot"><div class="text-xs text-[#8b5a2b]">🌳 ${tr('Breathing', 'หายใจ')}</div><div class="num text-lg">${f.breath} · ${f.breathMin} ${tr('min', 'นาที')}</div></div>
           <div class="slot"><div class="text-xs text-[#8b5a2b]">🐾 ${tr('Pet love', 'ความรักของสัตว์เลี้ยง')}</div><div class="num text-lg">❤ ${f.petLove}</div></div>
+          <div class="slot"><div class="text-xs text-[#8b5a2b]">⛵ ${tr('Boat laps', 'ล่องเรือครบรอบ')}</div><div class="num text-lg">${f.laps || 0}</div></div>
+          <div class="slot"><div class="text-xs text-[#8b5a2b]">🎪 ${tr('Festival trophies', 'ถ้วยเทศกาล')}</div><div class="num text-lg">${f.prizes || 0}</div></div>
         </div>`;
     },
     radio: () => `<p class="text-sm mb-2">${tr('Pick what plays in the background. Volume is in the Mailbox settings.', 'เลือกเพลงพื้นหลังที่อยากฟัง ปรับความดังได้ที่ตู้จดหมาย (ตั้งค่า)')}</p>
@@ -4559,7 +4795,7 @@ function openFun(tab = 'do') {
         const g = e.target.closest('[data-fgo]'); if (!g) return;
         const id = g.dataset.fgo; w.close();
         setTimeout(() => {
-          if (id === 'pet') openPet(); else if (id === 'shop') openShop(); else if (id === 'deco') startDecorate(); else if (id === 'photo') startPhoto();
+          if (id === 'pet') openPet(); else if (id === 'shop') openShop(); else if (id === 'house-in') world?.enterHouse(); else if (id === 'boat') startBoat(); else if (id === 'kitchen') openKitchen(); else if (id === 'deco') startDecorate(); else if (id === 'photo') startPhoto();
           else if (id === 'beach') world?.goBeach(); else if (id === 'field') world?.goField(); else if (id === 'rosa' || id === 'tom') world?.goNpc(id); else world?.travel(id);
         }, 280);
       });
@@ -4567,6 +4803,474 @@ function openFun(tab = 'do') {
   });
 }
 $('#btn-fun').onclick = () => openFun();
+
+// ------------------------------------------------------------------ view filter: show stats for a date range (Farmhouse + Tavern)
+const VIEW_RANGES = [['all', tr('All', 'ทั้งหมด')], ['7', tr('7 days', '7 วัน')], ['30', tr('30 days', '30 วัน')], ['90', tr('90 days', '90 วัน')], ['month', tr('This month', 'เดือนนี้')], ['lastmonth', tr('Last month', 'เดือนก่อน')], ['since', tr('Since…', 'ตั้งแต่…')]];
+function viewBounds() {
+  const v = state.settings.view, today = todayISO();
+  if (v.range === 'all') return null;
+  if (/^\d+$/.test(v.range)) { const d = new Date(); d.setDate(d.getDate() - +v.range + 1); return [isoOf(d), '9999']; }
+  if (v.range === 'month') return [today.slice(0, 7) + '-01', '9999'];
+  if (v.range === 'lastmonth') { const ym = shiftYm(today.slice(0, 7), -1); return [ym + '-01', ym + '-31']; }
+  return v.since ? [v.since, '9999'] : null;
+}
+function viewTrades() { const b = viewBounds(); return b ? state.trades.filter((t) => t.date >= b[0] && t.date <= b[1]) : state.trades; }
+function renderViewBars() {
+  const v = state.settings.view, b = viewBounds();
+  $$('[data-viewbar]').forEach((el) => {
+    el.innerHTML = `<div class="flex flex-wrap items-center gap-1">${VIEW_RANGES.map(([k, l]) => `<button class="btn text-xs !px-2 ${v.range === k ? 'sel' : ''}" data-vr="${k}">${l}</button>`).join('')}
+      ${v.range === 'since' ? `<input type="date" class="inp !w-auto !py-0 text-sm" data-vsince value="${esc(v.since)}">` : ''}</div>
+      ${b ? `<div class="text-xs mt-1 text-[#8b5a2b] font-pixel">📅 ${tr('Showing', 'แสดงข้อมูล')} ${esc(b[0])} → ${b[1] === '9999' ? tr('today', 'วันนี้') : esc(b[1])} · ${state.view.n} ${tr('trades', 'เทรด')}</div>` : ''}`;
+  });
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vr]'); if (!b) return;
+  const v = state.settings.view; v.range = b.dataset.vr;
+  if (v.range === 'since' && !v.since) v.since = state.settings.rules.setAt || todayISO().slice(0, 7) + '-01';
+  save(); Sfx.select(); render({ worldSync: false });
+});
+document.addEventListener('change', (e) => { if (e.target.matches('[data-vsince]')) { state.settings.view.since = e.target.value; save(); render({ worldSync: false }); } });
+
+// ------------------------------------------------------------------ pre-market plan (per day) and "plan vs reality"
+function openPlan(iso = todayISO()) {
+  const P = state.plans[iso] || {}, R = state.settings.rules;
+  let bias = P.bias || 'both';
+  const setups = new Set(P.setups || []);
+  const allSetups = [...new Set([...SETUPS, ...state.trades.map((t) => t.setup).filter(Boolean), ...(P.setups || [])])];
+  openWindow({
+    title: tr('Trading plan', 'แผนเทรด'), width: 560, autofocus: false,
+    html: `<div class="font-pixel font-bold mb-2">☀️ ${longDate(iso)}</div>
+      <div class="field-label">${tr('Bias for today', 'มุมมองวันนี้')}</div>
+      <div class="grid grid-cols-3 gap-2" data-pbias>${[['long', '▲ ' + tr('Long only', 'เน้น Long')], ['short', '▼ ' + tr('Short only', 'เน้น Short')], ['both', '↔ ' + tr('Both / range', 'ได้ทั้งสองทาง')]].map(([k, l]) => `<button type="button" class="btn text-sm ${bias === k ? 'btn-green' : ''}" data-pb="${k}">${l}</button>`).join('')}</div>
+      <label class="block mt-3"><span class="field-label">${tr('Key levels', 'แนวรับ-แนวต้านสำคัญ')}</span><textarea class="inp" name="plevels" placeholder="${tr('e.g. support 2440, resistance 2465, news at 19:30', 'เช่น แนวรับ 2440 แนวต้าน 2465 ข่าว 19:30')}">${esc(P.levels || '')}</textarea></label>
+      <div class="field-label mt-3">${tr('Setups I will take', 'setup ที่จะเล่น')}</div>
+      <div class="flex flex-wrap gap-2" data-psetups>${allSetups.map((x) => `<button type="button" class="chip good" data-ps="${esc(x)}" aria-pressed="${setups.has(x)}">${esc(x)}</button>`).join('')}</div>
+      <div class="grid grid-cols-2 gap-3 mt-3">
+        <label><span class="field-label">${tr('Max trades', 'จำนวนไม้สูงสุด')}</span><input class="inp" type="number" min="1" name="pmax" value="${P.maxTrades || R.maxTrades || Math.max(3, state.stats.medianN || 10)}"></label>
+        <label><span class="field-label">${tr('Max loss ($)', 'ขาดทุนสูงสุด ($)')}</span><input class="inp" type="number" min="1" name="ploss" value="${P.maxLoss || state.settings.dailyLoss}"></label>
+      </div>
+      <label class="block mt-3"><span class="field-label">${tr('Today I will NOT…', 'วันนี้ฉันจะไม่…')}</span><textarea class="inp" name="pnot" placeholder="${tr('chase after a loss, trade the news, move my stop…', 'ไล่ราคาหลังแพ้ เทรดข่าว เลื่อน SL…')}">${esc(P.not || '')}</textarea></label>
+      <div class="flex justify-end gap-2 mt-4"><button class="btn" data-close>${tr('Cancel', 'ยกเลิก')}</button><button class="btn btn-green" data-psave>✦ ${tr('Save plan', 'บันทึกแผน')} <span class="text-xs">+10 XP</span></button></div>`,
+    onMount(win, w) {
+      win.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-pb]'); if (b) { bias = b.dataset.pb; $$('[data-pb]', win).forEach((x) => x.classList.toggle('btn-green', x === b)); Sfx.select(); return; }
+        const s = e.target.closest('[data-ps]'); if (s) { const k = s.dataset.ps; setups.has(k) ? setups.delete(k) : setups.add(k); s.setAttribute('aria-pressed', setups.has(k)); Sfx.select(); }
+      });
+      $('[data-psave]', win).onclick = () => {
+        state.plans[iso] = { bias, levels: $('[name=plevels]', win).value.trim(), setups: [...setups], maxTrades: Math.max(1, +$('[name=pmax]', win).value || 1), maxLoss: Math.max(1, +$('[name=ploss]', win).value || 1), not: $('[name=pnot]', win).value.trim(), time: new Date().toISOString() };
+        save(); w.close(); render({ worldSync: false }); Sfx.success(); toast(tr('Plan saved', 'บันทึกแผนแล้ว'), tr('Trade the plan, not the feeling.', 'เทรดตามแผน ไม่ใช่ตามอารมณ์'), 'note');
+      };
+    },
+  });
+}
+function planCheck(iso) {
+  const P = state.plans[iso]; if (!P) return null;
+  const list = state.trades.filter((t) => t.date === iso), out = [];
+  if (!list.length) return { out, score: null, P };
+  out.push({ ok: list.length <= P.maxTrades, en: `Trades ${list.length} / ${P.maxTrades}`, th: `จำนวนไม้ ${list.length} / ${P.maxTrades}` });
+  if (P.bias !== 'both') { const k = list.filter((t) => t.side === P.bias).length / list.length; out.push({ ok: k >= 0.7, en: `${pct(k)} of trades were ${P.bias}`, th: `${pct(k)} ของไม้เป็นฝั่ง ${P.bias === 'long' ? 'Long' : 'Short'} ตามแผน` }); }
+  let cum = 0, low = 0; for (const t of [...list].sort(byTime)) { cum += t.pnl; low = Math.min(low, cum); }
+  out.push({ ok: -low <= P.maxLoss, en: `Worst drawdown ${money(-low, 0)} / ${money(P.maxLoss, 0)}`, th: `ขาดทุนลึกสุดระหว่างวัน ${money(-low, 0)} / ${money(P.maxLoss, 0)}` });
+  const tagged = list.filter((t) => t.setup);
+  if (tagged.length && P.setups.length) { const k = tagged.filter((t) => P.setups.includes(t.setup)).length / tagged.length; out.push({ ok: k >= 0.7, en: `${pct(k)} of setups were planned`, th: `${pct(k)} ของ setup อยู่ในแผน` }); }
+  return { out, score: out.filter((x) => x.ok).length / out.length, P };
+}
+function planHTML(iso) {
+  const C = planCheck(iso);
+  if (!C) return `<div class="text-sm text-[#8b5a2b]">${tr('No plan written for this day.', 'ยังไม่ได้เขียนแผนของวันนี้')}</div>`;
+  const P = C.P, biasTxt = { long: '▲ Long', short: '▼ Short', both: '↔ ' + tr('Both', 'ทั้งสองทาง') }[P.bias];
+  return `<div class="text-sm"><b>${biasTxt}</b>${P.setups.length ? ` · ${esc(P.setups.join(', '))}` : ''}${P.levels ? `<div class="text-xs mt-1">📍 ${esc(P.levels)}</div>` : ''}${P.not ? `<div class="text-xs mt-1">🚫 ${esc(P.not)}</div>` : ''}</div>
+    ${C.score == null ? `<div class="text-xs text-[#8b5a2b] mt-1">${tr('No trades yet — the check runs after your trades come in.', 'ยังไม่มีเทรด ระบบจะเทียบกับแผนเมื่อมีเทรดเข้ามา')}</div>`
+      : `<div class="mt-2">${C.out.map((c) => `<div class="flex items-center gap-2 text-sm"><span class="font-pixel w-5 text-center ${c.ok ? 'up' : 'down'}">${c.ok ? '✔' : '✖'}</span>${esc(tr(c.en, c.th))}</div>`).join('')}
+        <div class="track bar sm mt-1"><div class="fill" style="width:${pct(C.score, 1)};background-color:${C.score >= 0.75 ? '#4a7c59' : C.score >= 0.5 ? '#e9b92c' : '#c0443c'}"></div><div class="val">${tr('followed', 'ตามแผน')} ${pct(C.score)}</div></div></div>`}`;
+}
+function renderPlanBox() {
+  const el = $('#plan-box'); if (!el) return;
+  const iso = todayISO();
+  el.innerHTML = `<div class="flex items-center gap-2 mb-1"><div class="font-pixel font-bold flex-1">☀️ ${tr('Today\'s plan', 'แผนวันนี้')}</div><button class="btn text-sm ${state.plans[iso] ? '' : 'btn-green'}" data-open-plan>${state.plans[iso] ? '✎ ' + tr('Edit', 'แก้ไข') : '✦ ' + tr('Write', 'เขียน')}</button></div>${planHTML(iso)}`;
+}
+
+// ------------------------------------------------------------------ weekly review with Rosa
+const reviewWeek = () => { const d = new Date(), wd = d.getDay(); if (wd !== 0 && wd !== 6) d.setDate(d.getDate() - 7); return weekStart(isoOf(d)); };
+const reviewPending = () => { const wk = reviewWeek(); return !state.settings.reviews[wk] && state.trades.some((t) => weekStart(t.date) === wk); };
+function openReview(wk = reviewWeek()) {
+  const end = isoOf(new Date(new Date(wk + 'T12:00:00').getTime() + 6 * 864e5));
+  const list = state.trades.filter((t) => t.date >= wk && t.date <= end), R = state.settings.reviews[wk] || {};
+  const wins = list.filter((t) => t.pnl > 0), gw = wins.reduce((a, t) => a + t.pnl, 0), gl = -list.filter((t) => t.pnl < 0).reduce((a, t) => a + t.pnl, 0), net = gw - gl;
+  const sorted = [...list].sort((a, b) => b.pnl - a.pnl), days = [...new Set(list.map((t) => t.date))];
+  const kept = days.filter((d) => state.stats.ruleDays.get(d)?.ok).length, weeds = list.filter((t) => state.stats.beh.flags.has(t.id)).length;
+  const hours = {}; for (const t of list) { const c = tradeClock(t); if (c.open == null) continue; const h = new Date(c.open).getHours(); hours[h] = (hours[h] || 0) + t.pnl; }
+  const hs = Object.entries(hours).sort((a, b) => b[1] - a[1]);
+  const cell = (k, v, c = '') => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${k}</div><div class="num text-lg ${c}">${v}</div></div>`;
+  openWindow({
+    title: tr('Weekly review', 'ทบทวนรายสัปดาห์'), width: 640, autofocus: false,
+    html: `<div class="flex items-center gap-3 mb-2"><div class="text-4xl">👩‍🍳</div><div class="text-sm">${tr('Rosa pours you a tea: "Let\'s look at your week together, dear."', 'โรซ่ารินชาให้: "มาดูสัปดาห์ของเธอด้วยกันนะ"')}<div class="font-pixel font-bold">${longDate(wk, { day: 'numeric', month: 'short' })} – ${longDate(end, { day: 'numeric', month: 'short', year: 'numeric' })}</div></div></div>
+      ${list.length ? `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        ${cell(tr('Net', 'กำไรสุทธิ'), signed(net, 0), cls(net))}${cell(tr('Trades', 'จำนวนไม้'), list.length)}
+        ${cell(tr('Win rate', 'อัตราชนะ'), pct(wins.length / list.length))}${cell('PF', gl ? (gw / gl).toFixed(2) : '∞', gw >= gl ? 'up' : 'down')}
+        ${cell(tr('Rules kept', 'วันทำตามกฎ'), `${kept}/${days.length}`)}${cell(tr('Weeds', 'วัชพืช'), weeds, weeds ? 'down' : 'up')}
+        ${cell(tr('Best hour', 'ชั่วโมงดีสุด'), hs.length ? `${pad2(+hs[0][0])}:00` : '—', 'up')}${cell(tr('Worst hour', 'ชั่วโมงแย่สุด'), hs.length ? `${pad2(+hs.at(-1)[0])}:00` : '—', 'down')}
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+        <div><div class="font-pixel font-bold up mb-1">🌟 ${tr('3 best trades', '3 ไม้ที่ดีที่สุด')}</div><div class="flex flex-col gap-1">${sorted.slice(0, 3).map(questRow).join('')}</div></div>
+        <div><div class="font-pixel font-bold down mb-1">⛈ ${tr('3 worst trades', '3 ไม้ที่แย่ที่สุด')}</div><div class="flex flex-col gap-1">${sorted.slice(-3).reverse().map(questRow).join('')}</div></div>
+      </div>` : `<div class="parch text-sm">${tr('No trades this week — a quiet week is fine too.', 'สัปดาห์นี้ไม่มีเทรด สัปดาห์เงียบๆ ก็ดีเหมือนกัน')}</div>`}
+      <label class="block mt-3"><span class="field-label">✅ ${tr('What worked?', 'อะไรที่ได้ผล?')}</span><textarea class="inp" name="rw">${esc(R.worked || '')}</textarea></label>
+      <label class="block mt-2"><span class="field-label">🔧 ${tr('What will I fix?', 'อะไรที่ต้องแก้?')}</span><textarea class="inp" name="rf">${esc(R.fix || '')}</textarea></label>
+      <label class="block mt-2"><span class="field-label">🎯 ${tr('One goal for next week', 'เป้าหมายเดียวของสัปดาห์หน้า')}</span><input class="inp" name="rg" value="${esc(R.goal || '')}"></label>
+      <div class="flex justify-end gap-2 mt-4"><button class="btn" data-close>${tr('Later', 'ไว้ก่อน')}</button><button class="btn btn-green" data-rvsave>✦ ${tr('Finish review', 'ทบทวนเสร็จ')} <span class="text-xs">+30 XP · +5 🌰</span></button></div>`,
+    onMount(win, w) {
+      $('[data-rvsave]', win).onclick = async () => {
+        const before = state.stats;
+        state.settings.reviews[wk] = { worked: $('[name=rw]', win).value.trim(), fix: $('[name=rf]', win).value.trim(), goal: $('[name=rg]', win).value.trim(), time: new Date().toISOString() };
+        save(); w.close(); render(); Sfx.levelUp(); world?.fireworks();
+        toast(tr('Week reviewed!', 'ทบทวนสัปดาห์เสร็จแล้ว!'), '+30 XP · +5 🌰', 'star');
+        if (state.stats.level.lvl > before.level.lvl) await levelUp(state.stats.level);
+        checkAchievements(true);
+      };
+    },
+  });
+}
+function renderReviewBox() {
+  const el = $('#review-box'); if (!el) return;
+  const wk = reviewWeek(), R = state.settings.reviews[wk], lastGoal = Object.entries(state.settings.reviews).sort((a, b) => b[0].localeCompare(a[0]))[0];
+  el.innerHTML = `<div class="flex items-center gap-2"><div class="font-pixel font-bold flex-1">🔁 ${tr('Weekly review', 'ทบทวนสัปดาห์')}</div><button class="btn text-sm ${reviewPending() ? 'btn-orange' : ''}" data-open-review>${R ? '✎ ' + tr('Open', 'เปิดดู') : '✦ ' + tr('Start', 'เริ่ม')}</button></div>
+    <div class="text-xs text-[#8b5a2b] mt-1">${R ? tr('Done for this week ✔', 'สัปดาห์นี้ทบทวนแล้ว ✔') : reviewPending() ? tr('Rosa is waiting at the tavern with tea ☕', 'โรซ่ารอที่โรงเตี๊ยมพร้อมชา ☕') : tr('Opens on the weekend', 'เปิดให้ทำช่วงสุดสัปดาห์')}</div>
+    ${lastGoal?.[1].goal ? `<div class="text-sm mt-1">🎯 ${esc(lastGoal[1].goal)}</div>` : ''}`;
+}
+
+// ------------------------------------------------------------------ before / after comparison
+function metricsOf(list) {
+  const days = new Set(list.map((t) => t.date)).size || 1, wins = list.filter((t) => t.pnl > 0), losses = list.filter((t) => t.pnl < 0);
+  const gw = wins.reduce((a, t) => a + t.pnl, 0), gl = -losses.reduce((a, t) => a + t.pnl, 0), flags = state.stats.beh.flags;
+  const rd = [...new Set(list.map((t) => t.date))].map((d) => state.stats.ruleDays.get(d)).filter(Boolean);
+  return { n: list.length, days, tpd: list.length / days, wr: list.length ? wins.length / list.length : 0, pf: gl ? gw / gl : gw ? 9.99 : 0, aw: wins.length ? gw / wins.length : 0, al: losses.length ? gl / losses.length : 0, npd: (gw - gl) / days, weeds: list.length ? list.filter((t) => flags.has(t.id)).length / list.length : 0, kept: rd.length ? rd.filter((x) => x.ok).length / rd.length : 0 };
+}
+function renderCompare() {
+  const el = $('#compare-block'); if (!el) return;
+  const c = state.settings.compare, date = c.date || state.settings.rules.setAt || '';
+  const head = `<div class="flex flex-wrap items-center gap-2 mb-2"><div class="font-pixel text-lg font-bold flex-1">🧪 ${tr('Before / After', 'ก่อน / หลัง')}</div>
+    <input type="date" class="inp !w-auto !py-0 text-sm" data-cmpdate value="${esc(date)}"></div>
+    <div class="text-xs text-[#8b5a2b] mb-2">${tr('Pick the day you changed something (new rules, new strategy) and see if it helped.', 'เลือกวันที่เริ่มเปลี่ยนอะไรบางอย่าง (กฎใหม่ กลยุทธ์ใหม่) แล้วดูว่าดีขึ้นจริงไหม')}</div>`;
+  if (!date) { el.innerHTML = head + `<div class="text-sm">${tr('Choose a date above.', 'เลือกวันที่ด้านบน')}</div>`; return; }
+  const A = metricsOf(state.trades.filter((t) => t.date < date)), B = metricsOf(state.trades.filter((t) => t.date >= date));
+  const row = (label, a, b, fmt, better = 1) => { const d = (b - a) * better, col = Math.abs(b - a) < 1e-9 ? '' : d > 0 ? 'up' : 'down'; return `<tr><td class="py-1 pr-2 text-sm">${label}</td><td class="num text-right">${A.n ? fmt(a) : '—'}</td><td class="num text-right ${col}">${B.n ? fmt(b) : '—'} ${A.n && B.n && col ? (d > 0 ? '▲' : '▼') : ''}</td></tr>`; };
+  el.innerHTML = head + `<table class="w-full"><thead><tr class="font-pixel text-xs text-[#8b5a2b]"><th class="text-left"></th><th class="text-right">${tr('Before', 'ก่อน')} (${A.n})</th><th class="text-right">${tr('After', 'หลัง')} (${B.n})</th></tr></thead><tbody>
+    ${row(tr('Trades / day', 'ไม้ต่อวัน'), A.tpd, B.tpd, (v) => v.toFixed(1), -1)}
+    ${row(tr('Win rate', 'อัตราชนะ'), A.wr, B.wr, (v) => pct(v, 1))}
+    ${row('Profit Factor', A.pf, B.pf, (v) => v.toFixed(2))}
+    ${row(tr('Avg win', 'ชนะเฉลี่ย'), A.aw, B.aw, (v) => money(v, 2))}
+    ${row(tr('Avg loss', 'แพ้เฉลี่ย'), A.al, B.al, (v) => money(v, 2), -1)}
+    ${row(tr('Net / day', 'กำไรต่อวัน'), A.npd, B.npd, (v) => signed(v, 0))}
+    ${row(tr('Weed trades', 'ไม้วัชพืช'), A.weeds, B.weeds, (v) => pct(v), -1)}
+    ${row(tr('Days keeping rules', 'วันที่ทำตามกฎ'), A.kept, B.kept, (v) => pct(v))}
+  </tbody></table>`;
+}
+document.addEventListener('change', (e) => { if (e.target.matches('[data-cmpdate]')) { state.settings.compare.date = e.target.value; save(); renderCompare(); } });
+
+// ------------------------------------------------------------------ monthly goals
+const GOAL_KINDS = [
+  { k: 'pf', en: 'Profit factor at least', th: 'Profit Factor อย่างน้อย', def: 1.1, step: 0.05, val: (M) => (isFinite(M.pf) ? M.pf : 9), ok: (v, t) => v >= t, fmt: (v) => v.toFixed(2) },
+  { k: 'wr', en: 'Win rate at least (%)', th: 'อัตราชนะอย่างน้อย (%)', def: 55, step: 1, val: (M) => M.wr * 100, ok: (v, t) => v >= t, fmt: (v) => v.toFixed(1) + '%' },
+  { k: 'tpd', en: 'Average trades per day at most', th: 'เทรดเฉลี่ยต่อวันไม่เกิน', def: 20, step: 1, val: (M) => (M.days ? M.n / M.days : 0), ok: (v, t) => v <= t, fmt: (v) => v.toFixed(1), low: true },
+  { k: 'kept', en: 'Days keeping every rule', th: 'วันที่ทำตามกฎครบ', def: 10, step: 1, val: (M) => M.kept, ok: (v, t) => v >= t, fmt: (v) => String(v) },
+  { k: 'journal', en: 'Daily journals written', th: 'จำนวนวันที่เขียนบันทึก', def: 15, step: 1, val: (M) => M.journals, ok: (v, t) => v >= t, fmt: (v) => String(v) },
+  { k: 'weeds', en: 'Weed trades at most (%)', th: 'ไม้วัชพืชไม่เกิน (%)', def: 10, step: 1, val: (M) => (M.n ? (M.weeds / M.n) * 100 : 0), ok: (v, t) => v <= t, fmt: (v) => v.toFixed(1) + '%', low: true },
+  { k: 'net', en: 'Net profit at least ($)', th: 'กำไรสุทธิอย่างน้อย ($)', def: 50, step: 10, val: (M) => M.net, ok: (v, t) => v >= t, fmt: (v) => signed(v, 0) },
+];
+function goalsOf(ym) {
+  const G = state.settings.goals[ym] || [], M = monthStats(ym);
+  return G.map((g) => { const K = GOAL_KINDS.find((x) => x.k === g.k); if (!K) return null; const v = K.val(M); return { K, t: g.t, v, ok: K.ok(v, g.t), prog: K.low ? (v <= g.t ? 1 : clamp(g.t / (v || 1))) : clamp(v / (g.t || 1)) }; }).filter(Boolean);
+}
+function goalsHTML(ym) {
+  const L = goalsOf(ym);
+  if (!L.length) return `<div class="text-sm text-[#8b5a2b]">${tr('No goals for this month yet.', 'ยังไม่ได้ตั้งเป้าหมายเดือนนี้')}</div>`;
+  return L.map((x) => `<div class="mb-1"><div class="flex text-sm"><span class="flex-1">${x.ok ? '✔' : '☐'} ${esc(tr(x.K.en, x.K.th))} ${x.K.fmt(x.t)}</span><span class="num ${x.ok ? 'up' : ''}">${x.K.fmt(x.v)}</span></div><div class="track bar sm"><div class="fill" style="width:${pct(x.prog, 1)};background-color:${x.ok ? '#4a7c59' : '#e9b92c'}"></div></div></div>`).join('');
+}
+function renderGoalsBox() {
+  const el = $('#goals-box'); if (!el) return;
+  const ym = todayISO().slice(0, 7), L = goalsOf(ym);
+  el.innerHTML = `<div class="flex items-center gap-2 mb-1"><div class="font-pixel font-bold flex-1">🎯 ${tr('Goals this month', 'เป้าหมายเดือนนี้')} ${L.length ? `<span class="text-xs text-[#8b5a2b]">${L.filter((x) => x.ok).length}/${L.length}</span>` : ''}</div><button class="btn text-sm" data-open-goals>✎ ${tr('Set', 'ตั้ง')}</button></div>${goalsHTML(ym)}`;
+}
+function openGoals(ym = todayISO().slice(0, 7)) {
+  const cur = Object.fromEntries((state.settings.goals[ym] || []).map((g) => [g.k, g.t]));
+  openWindow({
+    title: tr('Monthly goals', 'เป้าหมายรายเดือน'), width: 520, autofocus: false,
+    html: `<p class="text-sm mb-2">${tr('Pick a few goals for', 'เลือกเป้าหมายสัก 2–3 ข้อสำหรับ')} <b>${ymName(ym)}</b>. ${tr('Good goals are about behaviour, not only money.', 'เป้าหมายที่ดีเน้นพฤติกรรม ไม่ใช่แค่ตัวเงิน')}</p>
+      <div class="flex flex-col gap-2">${GOAL_KINDS.map((K) => `<label class="slot flex items-center gap-2"><input type="checkbox" data-gk="${K.k}" ${cur[K.k] != null ? 'checked' : ''}><span class="flex-1 text-sm">${tr(K.en, K.th)}</span><input class="inp !w-24 !py-0" type="number" step="${K.step}" data-gv="${K.k}" value="${cur[K.k] ?? K.def}"></label>`).join('')}</div>
+      <div class="flex justify-end gap-2 mt-4"><button class="btn" data-close>${tr('Cancel', 'ยกเลิก')}</button><button class="btn btn-green" data-gsave>✦ ${tr('Save goals', 'บันทึกเป้าหมาย')}</button></div>`,
+    onMount(win, w) {
+      $('[data-gsave]', win).onclick = () => {
+        state.settings.goals[ym] = GOAL_KINDS.filter((K) => $(`[data-gk=${K.k}]`, win).checked).map((K) => ({ k: K.k, t: +$(`[data-gv=${K.k}]`, win).value || K.def }));
+        save(); w.close(); render({ worldSync: false }); Sfx.success(); toast(tr('Goals saved', 'บันทึกเป้าหมายแล้ว'), '', 'star');
+      };
+    },
+  });
+}
+
+// ------------------------------------------------------------------ monthly festival week (20th–27th): a small community event
+const FESTS = [
+  { id: 'fish', icon: '🎣', en: 'Fishing Derby', th: 'แข่งตกปลา', goal: 5, uEn: 'fish caught', uTh: 'ปลาที่ตกได้' },
+  { id: 'pumpkin', icon: '🎃', en: 'Pumpkin Fair', th: 'งานประกวดฟักทอง', goal: 3, uEn: 'harvest days', uTh: 'วันที่เก็บเกี่ยว' },
+  { id: 'stars', icon: '🌠', en: 'Star Night', th: 'คืนแห่งดวงดาว', goal: 3, uEn: 'breathing sessions or new constellations', uTh: 'ครั้งที่นั่งหายใจ หรือกลุ่มดาวที่พบใหม่' },
+];
+function festNow() { const d = new Date(), day = d.getDate(); if (day < 20 || day > 27) return null; const F = FESTS[d.getMonth() % FESTS.length]; return { ...F, key: todayISO().slice(0, 7) }; }
+function festProgress(kind) {
+  const F = festNow(); if (!F || F.id !== kind) return;
+  const f = state.settings.fun; if (f.fest?.key !== F.key) f.fest = { key: F.key, n: 0, done: false };
+  if (f.fest.done) return;
+  f.fest.n++;
+  if (f.fest.n >= F.goal) { f.fest.done = true; f.prizes = (f.prizes || 0) + 1; save(); setTimeout(() => { Sfx.levelUp(); world?.fireworks(); toast(tr(`${F.en} won! 🏆`, `ชนะ${F.th}! 🏆`), tr('+5 🌰 and a trophy for your shelf', '+5 🌰 และถ้วยรางวัลบนชั้นในบ้าน'), 'star'); }, 1200); }
+  else { save(); toast(`${F.icon} ${tr(F.en, F.th)}`, `${f.fest.n} / ${F.goal} ${tr(F.uEn, F.uTh)}`, 'star'); }
+}
+function festHTML() {
+  const F = festNow(); if (!F) return '';
+  const f = state.settings.fun, n = f.fest?.key === F.key ? f.fest.n : 0, done = f.fest?.key === F.key && f.fest.done;
+  return `<div class="parch mb-3"><div class="font-pixel font-bold">${F.icon} ${tr('Festival week', 'สัปดาห์เทศกาล')}: ${tr(F.en, F.th)}</div><div class="text-xs mb-1">${tr(`Until the 27th · ${F.goal} ${F.uEn} wins a trophy and +5 🌰`, `ถึงวันที่ 27 · ${F.uTh} ${F.goal} ครั้ง รับถ้วยรางวัลและ +5 🌰`)}</div>
+    <div class="track bar sm"><div class="fill" style="width:${pct(Math.min(1, n / F.goal), 1)};background-color:#d97706"></div><div class="val">${done ? '🏆' : `${n}/${F.goal}`}</div></div></div>`;
+}
+
+// ------------------------------------------------------------------ cooking at the tavern (fish + pumpkins → dishes)
+const RECIPES = [
+  { id: 'grilled', icon: '🍢', en: 'Grilled fish', th: 'ปลาย่าง', need: [{ fish: 1, n: 1 }] },
+  { id: 'soup', icon: '🍲', en: 'Pumpkin soup', th: 'ซุปฟักทอง', need: [{ pumpkin: true, n: 2 }] },
+  { id: 'stew', icon: '🥘', en: 'Fish & pumpkin stew', th: 'สตูว์ปลาฟักทอง', need: [{ fish: 2, n: 1 }, { pumpkin: true, n: 1 }] },
+  { id: 'sushi', icon: '🍣', en: 'Sushi platter', th: 'ซูชิรวม', need: [{ fish: 1, n: 3 }] },
+  { id: 'pie', icon: '🥧', en: 'Golden pie', th: 'พายทองคำ', need: [{ id: 'goldfish', n: 1 }, { pumpkin: true, n: 3 }] },
+  { id: 'feast', icon: '🦞', en: 'Seafood feast', th: 'ซีฟู้ดรวมมิตร', need: [{ id: 'squid', n: 1 }, { id: 'octopus', n: 1 }, { id: 'tuna', n: 1 }] },
+];
+const needLabel = (q) => (q.pumpkin ? `🎃 ${tr('pumpkin', 'ฟักทอง')}` : q.id ? `${FISH.find((f) => f.id === q.id).icon} ${tr(FISH.find((f) => f.id === q.id).en, FISH.find((f) => f.id === q.id).th)}` : `🐟 ${tr(q.fish >= 2 ? 'uncommon+ fish' : 'any fish', q.fish >= 2 ? 'ปลาหายากขึ้นไป' : 'ปลาอะไรก็ได้')}`) + ` ×${q.n}`;
+function pickIngredients(r) {
+  const bag = { ...state.settings.fun.bag }, used = {};
+  for (const q of r.need) {
+    for (let i = 0; i < q.n; i++) {
+      let k = null;
+      if (q.pumpkin) k = (bag.pumpkin || 0) > 0 ? 'pumpkin' : null;
+      else if (q.id) k = (bag[q.id] || 0) > 0 ? q.id : null;
+      else k = FISH.filter((f) => f.rar >= q.fish && f.rar < 4 && (bag[f.id] || 0) > 0).sort((a, b) => a.rar - b.rar)[0]?.id || null;
+      if (!k) return null;
+      bag[k]--; used[k] = (used[k] || 0) + 1;
+    }
+  }
+  return { bag, used };
+}
+function openKitchen() {
+  const f = state.settings.fun;
+  const bagTxt = Object.entries(f.bag).filter(([, n]) => n > 0).map(([k, n]) => `${k === 'pumpkin' ? '🎃' : FISH.find((x) => x.id === k)?.icon || '?'}×${n}`).join(' ') || tr('empty — go fishing and harvest!', 'ว่างเปล่า ไปตกปลาและเก็บเกี่ยวก่อนนะ');
+  openWindow({
+    title: tr('Rosa\'s kitchen', 'ครัวของโรซ่า'), width: 520, autofocus: false,
+    html: `<div class="parch text-sm mb-2">🧺 ${tr('Your basket', 'ตะกร้าของคุณ')}: ${bagTxt}</div>
+      <div class="flex flex-col gap-2">${RECIPES.map((r) => { const ok = !!pickIngredients(r); return `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center">${r.icon}</div><div class="flex-1 min-w-0"><div class="font-pixel font-bold">${tr(r.en, r.th)} ${f.dishes[r.id] ? `<span class="tag good">×${f.dishes[r.id]}</span>` : ''}</div><div class="text-xs text-[#8b5a2b]">${r.need.map(needLabel).join(' + ')}</div></div><button class="btn text-sm ${ok ? 'btn-green' : ''}" data-cook="${r.id}" ${ok ? '' : 'disabled style="opacity:.55"'}>🍳 ${tr('Cook', 'ทำ')}</button></div>`; }).join('')}</div>
+      <div data-stir class="mt-3" hidden></div>`,
+    onMount(win, w) {
+      win.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-cook]'); if (b && !b.disabled) { cookStart(RECIPES.find((r) => r.id === b.dataset.cook), win, w); return; }
+        if (e.target.closest('[data-stirbtn]')) cookStir(win, w);
+      });
+    },
+  });
+}
+let cooking = null;
+function cookStart(r, win) {
+  cooking = { r, n: 0 };
+  const box = $('[data-stir]', win); box.hidden = false;
+  box.innerHTML = `<div class="parch text-center"><div class="text-5xl bob">${r.icon}</div><div class="font-pixel">${tr('Stir the pot!', 'คนหม้อเร็ว!')} <span data-stirn>0</span>/5</div><button class="btn btn-orange text-lg mt-2 w-full" data-stirbtn>🥄 ${tr('Stir', 'คน')}</button></div>`;
+  box.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
+}
+function cookStir(win, w) {
+  if (!cooking) return;
+  cooking.n++; Sfx.tone(300 + cooking.n * 80, 0.08, { vol: 0.12, type: 'triangle' }); Sfx.noise(0.08, { vol: 0.06, freq: 900 });
+  $('[data-stirn]', win).textContent = cooking.n;
+  if (cooking.n < 5) return;
+  const f = state.settings.fun, r = cooking.r, pick = pickIngredients(r); cooking = null;
+  if (!pick) return;
+  f.bag = pick.bag; f.dishes[r.id] = (f.dishes[r.id] || 0) + 1; save();
+  w.close(); Sfx.success();
+  const lines = [['Smells wonderful! Cooking, like trading, rewards patience.', 'หอมมาก! การทำอาหารก็เหมือนเทรด ต้องใจเย็น'], ['Perfect. You followed the recipe — follow your plan the same way.', 'เยี่ยม ทำตามสูตรเป๊ะ ทำตามแผนเทรดแบบนี้ด้วยนะ'], ['A warm meal after a long session. You earned it.', 'อาหารอุ่นๆ หลังจบวัน เธอสมควรได้รับมัน']];
+  toast(`${r.icon} ${tr(r.en, r.th)}!`, `👩‍🍳 “${tr(...lines[Math.floor(Math.random() * lines.length)])}”`, 'mug');
+  checkAchievements(true);
+}
+
+// ------------------------------------------------------------------ discipline tree info
+function dtreeInfo() {
+  const days = [...state.stats.ruleDays.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const kept = days.filter(([, v]) => v.ok).length;
+  let streak = 0; for (let i = days.length - 1; i >= 0 && days[i][1].ok; i--) streak++;
+  const last7 = days.slice(-7), health = last7.length ? last7.filter(([, v]) => v.ok).length / last7.length : 1;
+  const stage = clamp(kept / 40), names = [tr('Seedling', 'ต้นกล้า'), tr('Sapling', 'ต้นอ่อน'), tr('Young tree', 'ต้นไม้หนุ่ม'), tr('Great tree', 'ต้นไม้ใหญ่'), tr('Sacred tree', 'ต้นไม้ศักดิ์สิทธิ์')];
+  return { days, kept, streak, health, stage, name: names[Math.min(4, Math.floor(stage * 4.999))], lastBroken: days.length ? !days.at(-1)[1].ok : false };
+}
+function openDTree() {
+  const I = dtreeInfo(), last = I.days.slice(-30);
+  openWindow({
+    title: tr('Tree of Discipline', 'ต้นไม้แห่งวินัย'), width: 480,
+    html: `<div class="text-center"><div class="text-6xl bob">${I.stage < 0.25 ? '🌱' : I.stage < 0.5 ? '🌿' : I.stage < 0.75 ? '🌳' : '🌲'}</div><div class="font-pixel text-xl font-bold">${I.name}</div></div>
+      <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+        <div class="slot"><div class="text-xs text-[#8b5a2b]">${tr('Days kept', 'วันทำตามกฎ')}</div><div class="num text-xl">${I.kept}</div></div>
+        <div class="slot"><div class="text-xs text-[#8b5a2b]">${tr('Streak', 'ติดต่อกัน')}</div><div class="num text-xl up">${I.streak} 🍎</div></div>
+        <div class="slot"><div class="text-xs text-[#8b5a2b]">${tr('Health (7d)', 'สุขภาพ (7 วัน)')}</div><div class="num text-xl">${pct(I.health)}</div></div>
+      </div>
+      <div class="flex gap-0.5 mt-3">${last.map(([d, v]) => `<span class="flex-1 h-4" style="background:${v.ok ? '#4a7c59' : '#c0443c'}" data-tip="${d}"></span>`).join('')}</div>
+      <p class="text-sm mt-3">${!I.days.length ? tr('Set your Farm Rules — the tree grows one ring for every trading day you keep them all.', 'ตั้งกฎของฟาร์มก่อน ต้นไม้จะโตขึ้นทุกวันเทรดที่คุณทำตามกฎครบ') : I.lastBroken ? tr('Some leaves fell yesterday. Keep your rules today and they grow back.', 'เมื่อวานใบร่วงไปบ้าง ทำตามกฎวันนี้ ใบก็จะงอกกลับมา') : tr(`Every kept day adds a ring. Golden apples = your current streak. At 40 kept days it becomes a Sacred tree.`, 'ทุกวันที่ทำตามกฎ ต้นไม้จะโตขึ้น แอปเปิลทองคือจำนวนวันติดต่อกัน ครบ 40 วันจะเป็นต้นไม้ศักดิ์สิทธิ์')}</p>
+      <div class="flex justify-end mt-3"><button class="btn" data-open-rules>📏 ${tr('Farm Rules', 'กฎของฟาร์ม')}</button></div>`,
+  });
+}
+
+// ------------------------------------------------------------------ inside the farmhouse: desk, trophies, photos, bed, fireplace
+function openDesk() {
+  openWindow({
+    title: tr('Writing desk', 'โต๊ะเขียนบันทึก'), width: 440,
+    html: `<div class="grid grid-cols-2 gap-2">
+      <button class="btn btn-green" data-dk="journal">📓 ${tr('Journal', 'บันทึกประจำวัน')}</button><button class="btn" data-dk="plan">☀️ ${tr('Plan', 'แผนเทรด')}</button>
+      <button class="btn" data-dk="review">🔁 ${tr('Weekly review', 'ทบทวนสัปดาห์')}</button><button class="btn" data-dk="goals">🎯 ${tr('Goals', 'เป้าหมาย')}</button>
+      <button class="btn col-span-2" data-dk="stats">📊 ${tr('Stats & calendar', 'สถิติและปฏิทิน')}</button></div>`,
+    onMount(win, w) { win.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; w.close(); const k = b.dataset.dk; setTimeout(() => ({ journal: () => openJournal(), plan: () => openPlan(), review: () => openReview(), goals: () => openGoals(), stats: () => openPanel('house') })[k](), 250); }); },
+  });
+}
+function openTrophies() {
+  const got = new Set(state.achievements), f = state.settings.fun;
+  openWindow({
+    title: tr('Trophy shelf', 'ชั้นวางถ้วยรางวัล'), width: 560,
+    html: `<div class="text-sm mb-2">🏆 ${state.achievements.length}/${ACHIEVEMENTS.length} · ⚔️ ${tr('bosses', 'ปราบบอส')} ${state.stats.bossWins} · 🎪 ${tr('festivals', 'เทศกาล')} ${f.prizes || 0}</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${ACHIEVEMENTS.map((a) => `<div class="slot flex items-center gap-2 ${got.has(a.id) ? '' : 'opacity-50'}">${img(a.icon, 'w-8', got.has(a.id) ? '' : 'style="filter:grayscale(1)"')}<div><div class="font-pixel font-bold text-sm">${esc(t(a.name))}</div><div class="text-xs">${esc(t(a.desc))}</div></div></div>`).join('')}</div>`,
+  });
+}
+function openGallery() {
+  const th = state.settings.fun.thumbs || [];
+  openWindow({
+    title: tr('Photo frames', 'กรอบรูป'), width: 620,
+    html: th.length ? `<div class="grid grid-cols-2 gap-2">${th.map((u) => `<img src="${u}" class="w-full border-4 border-[#7a4b2a]" alt="">`).join('')}</div>` : `<p class="text-sm">${tr('No photos yet. Use 📷 Photo mode from the 🎒 menu — your latest photos hang here.', 'ยังไม่มีรูป ใช้โหมดถ่ายรูป 📷 จากเมนู 🎒 รูปล่าสุดจะถูกแขวนไว้ที่นี่')}</p>`,
+  });
+}
+function restInBed() {
+  const fd = $('#fade'); fd.classList.add('on'); Sfx.seq([523, 440, 392, 330], 0.25, { vol: 0.08, type: 'sine' });
+  setTimeout(() => { fd.classList.remove('on'); toast(tr('You feel rested 😴', 'พักผ่อนเต็มที่แล้ว 😴'), tr('Sleep is part of the edge. Tomorrow is a new session.', 'การนอนก็เป็นส่วนหนึ่งของความได้เปรียบ พรุ่งนี้คือวันใหม่'), 'house'); }, 1600);
+}
+let fireSt = null;
+function startFire() {
+  stopActivity(); activity = 'fire'; world?.seat('fire');
+  fireSt = { t: setInterval(() => { if (!Sfx.on) return; for (let i = 0; i < 3; i++) Sfx.noise(0.03, { vol: 0.05 + Math.random() * 0.05, freq: 1500 + Math.random() * 2500, at: Math.random() * 0.5 }); }, 600) };
+  showBar(`<div class="font-pixel text-sm mb-2">🔥 ${tr('Warm by the fire. Listen to it crackle. No charts here.', 'นั่งผิงไฟ ฟังเสียงไฟปะทุ ไม่มีกราฟที่นี่')}</div><div class="flex gap-2"><div class="flex-1"></div><button class="btn" data-fireoff>${tr('Stand up', 'ลุกขึ้น')}</button></div>`);
+}
+activityClose.fire = () => { if (fireSt) clearInterval(fireSt.t); fireSt = null; activity = null; hideBar(); world?.seat(null); };
+funBar.addEventListener('click', (e) => { if (e.target.closest('[data-fireoff]')) stopActivity(); });
+
+// ------------------------------------------------------------------ boat ride around the island
+function startBoat() {
+  stopActivity(); activity = 'boat'; world?.boat(true);
+  showBar(`<div class="font-pixel text-sm mb-2">⛵ ${tr('Drifting around the island… breathe with the waves.', 'ล่องเรือรอบเกาะ… หายใจไปกับคลื่น')} <span data-lap></span></div><div class="flex gap-2"><div class="flex-1"></div><button class="btn btn-red" data-boatoff>${tr('Back to the dock', 'กลับท่าเรือ')}</button></div>`);
+  Music.boat = true; Music.sync();
+}
+activityClose.boat = () => { activity = null; hideBar(); world?.boat(false); Music.boat = false; Music.key = null; Music.sync(); };
+funBar.addEventListener('click', (e) => { if (e.target.closest('[data-boatoff]')) stopActivity(); });
+function boatLap() { const f = state.settings.fun; f.laps = (f.laps || 0) + 1; save(); Sfx.achievement(); toast(tr('A full lap around the island ⛵', 'ล่องครบรอบเกาะแล้ว ⛵'), tr(`Laps: ${f.laps}`, `รวม ${f.laps} รอบ`), 'star'); checkAchievements(true); }
+
+// ------------------------------------------------------------------ weather extras: rainbow when a red day turns green, storm on a heavy loss day
+function rainbowNow() {
+  const list = state.trades.filter((t) => t.date === todayISO()).sort(byTime);
+  let cum = 0, low = 0; for (const t of list) { cum += t.pnl; low = Math.min(low, cum); }
+  return list.length > 1 && low < 0 && cum > 0;
+}
+const stormNow = () => state.stats && state.stats.todayN > 0 && state.stats.todayNet <= -0.8 * state.settings.dailyLoss;
+
+// ------------------------------------------------------------------ notifications (iPhone: add to Home Screen first)
+let swReg = null;
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').then((r) => { swReg = r; }).catch(() => {});
+function notifyStatus() {
+  if (!('Notification' in window)) return tr('Not supported here. On iPhone: Share → Add to Home Screen, then open the app from the icon.', 'เบราว์เซอร์นี้ยังไม่รองรับ บน iPhone: กดแชร์ → เพิ่มไปยังหน้าจอโฮม แล้วเปิดแอปจากไอคอน');
+  return { granted: tr('On ✔', 'เปิดแล้ว ✔'), denied: tr('Blocked — allow it in iPhone Settings → Notifications', 'ถูกบล็อก ไปเปิดที่ การตั้งค่า iPhone → การแจ้งเตือน'), default: tr('Off', 'ปิดอยู่') }[Notification.permission];
+}
+async function enableNotify() {
+  if (!('Notification' in window)) { toast(tr('Notifications not available', 'ใช้การแจ้งเตือนไม่ได้'), notifyStatus(), 'rain'); return; }
+  const p = await Notification.requestPermission();
+  state.settings.notify = p === 'granted'; save();
+  if (p === 'granted') notify(tr('Notifications on 🔔', 'เปิดการแจ้งเตือนแล้ว 🔔'), tr('I will tell you when a rule breaks or your loss limit is near.', 'จะเตือนเมื่อผิดกฎ หรือใกล้ถึงลิมิตขาดทุน'), 'hello');
+}
+function notify(title, body, tag) {
+  if (!state.settings.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
+  const opt = { body, tag, icon: 'icon-192.png', badge: 'icon-192.png' };
+  try { if (swReg?.showNotification) swReg.showNotification(title, opt); else new Notification(title, opt); } catch (e) { /* ignore */ }
+}
+function watchAlerts() {
+  const s = state.stats, d = dailyToday(); d.warned ||= [];
+  const once = (id, fn) => { if (!d.warned.includes(id)) { d.warned.push(id); saveDaily(); fn(); } };
+  if (s.todayN && -s.todayNet >= 0.8 * state.settings.dailyLoss) once('energy80', () => { notify(tr('⚡ 80% of your daily loss limit', '⚡ ขาดทุนถึง 80% ของลิมิตแล้ว'), tr(`Today ${signed(s.todayNet, 0)} of ${money(state.settings.dailyLoss, 0)}. Time to stop?`, `วันนี้ ${signed(s.todayNet, 0)} จากลิมิต ${money(state.settings.dailyLoss, 0)} พักก่อนดีไหม`), 'energy'); toast(tr('⚡ 80% of your loss limit', '⚡ ขาดทุนถึง 80% ของลิมิต'), tr('Time to rest the field.', 'ได้เวลาพักแปลงแล้ว'), 'bolt'); });
+  if (new Date().getHours() >= 20 && s.todayN && !state.days[todayISO()]) once('journal', () => notify(tr('📓 Journal time', '📓 ได้เวลาเขียนบันทึก'), tr(`You traded ${s.todayN} times today. Two minutes to write the lesson?`, `วันนี้เทรด ${s.todayN} ไม้ ใช้เวลา 2 นาทีเขียนบทเรียนกันไหม`), 'journal'));
+}
+setInterval(() => state.stats && watchAlerts(), 60000);
+
+// ------------------------------------------------------------------ journal sync across devices (same GitHub Gist as MT5, second file)
+const SYNC_FILE = 'harvest-ledger-journal.json';
+const SYNC_TOKEN_KEY = KEY + '-sync-token';
+const JS = { timer: 0, pushing: false, lastHash: 0, err: '' };
+function syncToken() { try { return localStorage.getItem(SYNC_TOKEN_KEY) || ''; } catch (e) { return ''; } }
+const strHash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; };
+const ANN = ['setup', 'emotions', 'rating', 'notes', 'mistakes', 'lessons'];
+function syncPayload() {
+  const st = state.settings, ann = {};
+  for (const t of state.trades) if (t.source === 'mt5' && t.edited) { ann[t.id] = { edited: t.edited }; for (const k of ANN) ann[t.id][k] = t[k]; }
+  const manual = state.trades.filter((t) => t.source !== 'mt5' && !String(t.id).startsWith('demo-')).map((t) => ({ ...t, shot: null }));
+  const { thumbs, ...fun } = st.fun;
+  return { app: 'harvest-ledger', kind: 'journal', v: 1, stamp: st.stamp || 0, cfgStamp: st.cfgStamp || 0, days: state.days, plans: state.plans, ann, manual, deleted: st.deleted || [], achievements: state.achievements,
+    settings: { name: st.name, startBalance: st.startBalance, dailyLoss: st.dailyLoss, rules: st.rules, farm: st.farm, fun, goals: st.goals, reviews: st.reviews, compare: st.compare } };
+}
+function mergeDeep(a, b, bNewer) { // numbers → max, primitive arrays → union, objects → recurse, rest → newer side
+  if (Array.isArray(a) && Array.isArray(b)) return a.every((x) => typeof x !== 'object') && b.every((x) => typeof x !== 'object') ? [...new Set([...a, ...b])] : bNewer ? b : a;
+  if (a && b && typeof a === 'object' && typeof b === 'object') { const o = { ...a }; for (const k of Object.keys(b)) o[k] = k in a ? mergeDeep(a[k], b[k], bNewer) : b[k]; return o; }
+  if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
+  return a === undefined ? b : b === undefined ? a : bNewer ? b : a;
+}
+function mergeJournal(R) {
+  if (!R || R.kind !== 'journal') return false;
+  const before = strHash(JSON.stringify(syncPayload())), st = state.settings, newer = (R.stamp || 0) > (st.stamp || 0);
+  for (const [k, v] of Object.entries(R.days || {})) if (!state.days[k] || (v.updated || '') > (state.days[k].updated || '')) state.days[k] = v;
+  for (const [k, v] of Object.entries(R.plans || {})) if (!state.plans[k] || (v.time || '') > (state.plans[k].time || '')) state.plans[k] = v;
+  const del = new Set([...(st.deleted || []), ...(R.deleted || [])]); st.deleted = [...del];
+  state.trades = state.trades.filter((t) => !del.has(t.id));
+  for (const [id, a] of Object.entries(R.ann || {})) { const t = state.trades.find((x) => x.id === id); if (t && (a.edited || '') > (t.edited || '')) { for (const k of ANN) t[k] = a[k]; t.edited = a.edited; t.xp = xpOf(t); } }
+  for (const m of R.manual || []) { if (del.has(m.id)) continue; const i = state.trades.findIndex((x) => x.id === m.id); if (i < 0) state.trades.push(m); else if ((m.edited || '') > (state.trades[i].edited || '')) state.trades[i] = { ...m, shot: state.trades[i].shot }; }
+  state.achievements = [...new Set([...state.achievements, ...(R.achievements || [])])];
+  const S = R.settings || {};
+  if ((R.cfgStamp || 0) > (st.cfgStamp || 0)) { for (const k of ['name', 'startBalance', 'dailyLoss', 'rules', 'compare']) if (S[k] !== undefined) st[k] = S[k]; st.cfgStamp = R.cfgStamp; }
+  st.fun = mergeDeep(st.fun, S.fun || {}, newer);
+  st.farm = mergeDeep(st.farm, S.farm || {}, newer);
+  st.goals = { ...(S.goals || {}), ...st.goals, ...(newer ? S.goals || {} : {}) };
+  st.reviews = { ...(S.reviews || {}), ...st.reviews };
+  const changed = strHash(JSON.stringify(syncPayload())) !== before;
+  if (changed) { JS.quiet = true; save(); JS.quiet = false; }
+  return changed;
+}
+function scheduleJournalPush() {
+  if (JS.quiet || !syncToken() || !state.settings.mt5.gist) return;
+  clearTimeout(JS.timer); JS.timer = setTimeout(pushJournal, 15000);
+}
+async function pushJournal({ manual = false } = {}) {
+  const token = syncToken(), id = state.settings.mt5.gist;
+  if (!token || !id || JS.pushing) return;
+  JS.pushing = true;
+  try {
+    MT5.etag = null; await syncMt5({ quiet: true });
+    const body = JSON.stringify(syncPayload()), h = strHash(body);
+    if (h === JS.lastHash && !manual) return;
+    const r = await fetch(`https://api.github.com/gists/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ files: { [SYNC_FILE]: { content: body } } }) });
+    if (!r.ok) throw new Error(r.status === 401 ? tr('Token rejected — check it has the gist scope', 'token ใช้ไม่ได้ ตรวจว่าติ๊ก scope gist') : `GitHub ${r.status}`);
+    JS.lastHash = h; JS.err = ''; state.settings.syncLast = new Date().toISOString(); JS.quiet = true; save(); JS.quiet = false;
+    if (manual) toast(tr('Journal synced ☁️', 'ซิงก์บันทึกแล้ว ☁️'), tr('Other devices get it within 2 minutes.', 'เครื่องอื่นจะได้รับภายใน 2 นาที'), 'note');
+  } catch (e) { JS.err = String(e.message || e); if (manual) { Sfx.error(); toast(tr('Sync failed', 'ซิงก์ไม่สำเร็จ'), JS.err, 'rain'); } }
+  finally { JS.pushing = false; }
+}
+function syncStatus() {
+  if (!state.settings.mt5.gist) return tr('Set the Gist ID above first.', 'ใส่ Gist ID ด้านบนก่อน');
+  if (!syncToken()) return tr('Read-only: this device receives journals from others. Add a token to send yours too.', 'รับอย่างเดียว: เครื่องนี้รับบันทึกจากเครื่องอื่น ใส่ token เพื่อส่งของเครื่องนี้ด้วย');
+  return JS.err ? '⚠ ' + JS.err : state.settings.syncLast ? tr(`Last sent: ${new Date(state.settings.syncLast).toLocaleString()}`, `ส่งล่าสุด: ${new Date(state.settings.syncLast).toLocaleString('th-TH')}`) : tr('Ready', 'พร้อมซิงก์');
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-open-plan]')) { openPlan(); return; }
+  if (e.target.closest('[data-open-review]')) { openReview(); return; }
+  if (e.target.closest('[data-open-goals]')) { openGoals(); return; }
+  if (e.target.closest('[data-enter-house]')) { windows.slice().forEach((w) => w.close()); setTimeout(() => world?.enterHouse(), 250); }
+});
 
 // ------------------------------------------------------------------ live update
 // When a new version is deployed, reload by itself (data lives in localStorage, so nothing is lost).
@@ -4607,6 +5311,7 @@ $('#btn-fun').onclick = () => openFun();
 hydrateSprites();
 resetForm();
 state.stats = computeStats(state.trades, state.settings);
+state.view = state.stats;
 const world = createWorld();
 render();
 checkAchievements(false);
