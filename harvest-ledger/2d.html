@@ -1519,10 +1519,12 @@ function openSettings() {
         </div>
         <div class="text-xs mt-2 text-[#8b5a2b]">Everything is stored in this browser only (localStorage). Export a backup now and then.</div>
       </div>
+      <div class="parch mt-4 flex items-center gap-3"><div class="font-pixel font-bold">🌐 ${tr('Language', 'ภาษา')}</div><button type="button" class="btn text-sm ${LANG === 'th' ? 'sel' : ''}" data-setlang="th">ไทย</button><button type="button" class="btn text-sm ${LANG === 'en' ? 'sel' : ''}" data-setlang="en">English</button></div>
       <div class="flex justify-end mt-4"><button class="btn btn-green" data-save>Save & close</button></div>`,
     onMount(win, w) {
       const v = (n) => $(`[name=${n}]`, win);
       v('volume').oninput = () => { Sfx.setVolume(+v('volume').value); Sfx.coin(); };
+      $$('[data-setlang]', win).forEach((b) => (b.onclick = () => { st.lang = b.dataset.setlang; save(); location.reload(); }));
       $('[data-save]', win).onclick = () => {
         st.name = v('name').value.trim() || 'Farmer';
         st.startBalance = Math.max(0, +v('startBalance').value || 0);
@@ -1911,7 +1913,7 @@ $('#btn-sound').onclick = () => {
   renderHUD(); toast(Sfx.on ? 'Sound on' : 'Sound off', '', Sfx.on ? 'speaker' : 'mute');
 };
 $('#btn-settings').onclick = openSettings;
-$('#btn-lang').textContent = LANG === 'th' ? 'EN' : 'ไทย';
+$('#btn-lang').textContent = LANG === 'th' ? '🌐 EN' : '🌐 ไทย';
 $('#btn-lang').onclick = () => { state.settings.lang = LANG === 'th' ? 'en' : 'th'; save(); location.reload(); };
 $('#cal-prev').onclick = () => shiftMonth(-1);
 $('#cal-next').onclick = () => shiftMonth(1);
