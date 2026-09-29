@@ -936,12 +936,13 @@ const state = {
   trades: saved?.trades || [],
   settings: { ...DEFAULT_SETTINGS, ...(saved?.settings || {}) },
   achievements: saved?.achievements || [],
+  days: saved?.days || {}, // daily journal entries (written in the 3D version)
   tab: 'farm', calMonth: null, filter: 'all', search: '', setupFilter: '', boardLimit: 12,
   lastAdded: null, stats: null,
 };
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ trades: state.trades, settings: state.settings, achievements: state.achievements }));
+    localStorage.setItem(KEY, JSON.stringify({ trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days }));
     return true;
   } catch (e) {
     toast('Your storage chest is full!', 'Remove some snapshots or export a backup.', 'rain');

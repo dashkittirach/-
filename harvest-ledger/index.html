@@ -320,6 +320,14 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <div class="lg:col-span-4 flex flex-col gap-3">
         <div class="parch">
+          <div class="flex items-center gap-2">
+            <img class="px w-8" data-sprite="note" alt="">
+            <div class="flex-1 min-w-0"><div class="font-pixel font-bold">📓 Daily Journal</div><div class="text-xs text-[#8b5a2b] font-semibold" id="journal-status"></div></div>
+            <button class="btn btn-green text-sm" data-open-journal>✎ Write</button>
+          </div>
+          <div id="journal-recent" class="flex flex-col gap-1 mt-2"></div>
+        </div>
+        <div class="parch">
           <div class="flex items-center gap-3 mb-2">
             <div class="slot shrink-0"><img class="px w-14 bob" data-sprite="farmer" alt=""></div>
             <div class="min-w-0">
@@ -587,7 +595,7 @@ const TH = {
   'Sound on': 'เปิดเสียง', 'Sound off': 'ปิดเสียง', 'Snapshot pasted': 'วางภาพแล้ว', 'Your storage chest is full!': 'พื้นที่เก็บข้อมูลเต็มแล้ว!',
   'Remove some snapshots or export a backup.': 'ลบภาพบางส่วน หรือส่งออกไฟล์สำรอง', 'Updating to the new version…': 'กำลังอัปเดตเวอร์ชันใหม่…',
   'Your data is safe.': 'ข้อมูลของคุณปลอดภัย', '✨ New version — tap to update': '✨ มีเวอร์ชันใหม่ — แตะเพื่ออัปเดต',
-  'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
+  '📓 Daily Journal': '📓 บันทึกประจำวัน', '✎ Write': '✎ เขียน', 'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
   'Enter Farmhouse': 'เข้าบ้านไร่', 'Open Quest Board': 'เปิดกระดานเควส', 'Enter Tavern': 'เข้าโรงเตี๊ยม', 'Open chest': 'เปิดหีบ',
   'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด',
 };
@@ -778,10 +786,12 @@ function computeStats(trades, settings) {
     eq += p; s.equity.push({ v: eq, t });
     const dd = s.daily.get(t.date) || { net: 0, n: 0 }; dd.net += p; dd.n++; s.daily.set(t.date, dd);
     const su = (s.bySetup[t.setup || 'Unsorted'] ||= { n: 0, net: 0, wins: 0 }); su.n++; su.net += p; if (p > 0) su.wins++;
-    for (const e of (t.emotions || [])) { const m = (s.byMood[e] ||= { n: 0, net: 0, wins: 0 }); m.n++; m.net += p; if (p > 0) m.wins++; }
+    const dj = state.days?.[t.date]; // a trade without its own tags inherits the day journal's mood and hearts
+    for (const e of ((t.emotions || []).length ? t.emotions : dj?.moods || [])) { const m = (s.byMood[e] ||= { n: 0, net: 0, wins: 0 }); m.n++; m.net += p; if (p > 0) m.wins++; }
     const wd = new Date(t.date + 'T12:00:00').getDay(); s.byWd[wd].n++; s.byWd[wd].net += p; if (p > 0) s.byWd[wd].wins++;
-    s.ratings.push(t.rating || 0);
+    s.ratings.push(t.rating || dj?.rating || 0);
   }
+  for (const j of Object.values(state.days || {})) s.xp += j.xp || 0;
   s.streak = run;
   s.winRate = s.n ? s.wins / s.n : 0;
   s.avgWin = s.wins ? s.grossWin / s.wins : 0;
@@ -809,6 +819,7 @@ const ACHIEVEMENTS = [
   { id: 'snapshot', name: 'Shutterbug', desc: 'Attach a chart snapshot', icon: 'sun', test: (s, tr) => tr.some((t) => t.shot) },
   { id: 'golden', name: 'Golden Ratio', desc: 'Profit factor ≥ 2 over 20+ quests', icon: 'star', test: (s) => s.n >= 20 && s.pf >= 2 },
   { id: 'lvl5', name: 'Rising Star', desc: 'Reach level 5', icon: 'star', test: (s) => s.level.lvl >= 5 },
+  { id: 'diary', name: 'Diarist', desc: 'Write 7 daily journals', icon: 'note', test: () => Object.keys(state.days || {}).length >= 7 },
   { id: 'rich', name: 'Gold Rush', desc: 'Net profit over $1,000', icon: 'coin', test: (s) => s.net >= 1000 },
 ];
 
@@ -824,10 +835,11 @@ const state = {
   trades: saved?.trades || [],
   settings: { ...DEFAULT_SETTINGS, ...(saved?.settings || {}), gfx: { ...DEFAULT_SETTINGS.gfx, ...(saved?.settings?.gfx || {}) } },
   achievements: saved?.achievements || [],
+  days: saved?.days || {}, // daily journal entries by date
   calMonth: null, filter: 'all', search: '', setupFilter: '', boardLimit: 12, stats: null,
 };
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify({ trades: state.trades, settings: state.settings, achievements: state.achievements })); return true; }
+  try { localStorage.setItem(KEY, JSON.stringify({ trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days })); return true; }
   catch (e) { toast('Your storage chest is full!', 'Remove some snapshots or export a backup.', 'rain'); return false; }
 }
 Sfx.on = state.settings.sound; Sfx.vol = state.settings.volume;
@@ -1006,6 +1018,7 @@ function renderHouse() {
   ].join('');
   renderCalendar();
   const latest = [...state.trades].sort(byTime).reverse().slice(0, 5);
+  renderJournalBox();
   $('#latest').innerHTML = latest.map(questRow).join('') || '<div class="font-pixel text-sm text-[#8b5a2b]">No quests yet. Visit the Quest Board!</div>';
 }
 function questRow(t) {
@@ -1035,7 +1048,7 @@ function renderCalendar() {
     const iso = `${state.calMonth}-${pad2(d)}`, v = s.daily.get(iso);
     let icon = '', tip = iso;
     if (v) { icon = v.net > 0 ? (v.net >= big * 0.75 && monthDays.length > 2 ? 'star' : 'pumpkin') : v.net < 0 ? 'rain' : 'sprout'; tip = `${iso} · ${signed(v.net)} · ${v.n} quest${v.n > 1 ? 's' : ''}`; }
-    html += `<div class="slot cal-cell ${v ? 'has slot-click' : ''} ${iso === today ? 'today' : ''}" ${v ? `data-day="${iso}"` : ''} data-tip="${esc(tip)}"><span class="d">${d}</span>${icon ? img(icon, '') : ''}${v ? `<span class="pnl ${cls(v.net)}">${Math.abs(v.net) >= 1000 ? (v.net / 1000).toFixed(1) + 'k' : Math.round(v.net)}</span>` : ''}</div>`;
+    html += `<div class="slot cal-cell ${v ? 'has slot-click' : ''} ${iso === today ? 'today' : ''}" ${v ? `data-day="${iso}"` : ''} data-tip="${esc(tip)}"><span class="d">${d}</span>${state.days[iso] ? '<span class="absolute top-0 right-1 text-[10px] leading-none">📓</span>' : ''}${icon ? img(icon, '') : ''}${v ? `<span class="pnl ${cls(v.net)}">${Math.abs(v.net) >= 1000 ? (v.net / 1000).toFixed(1) + 'k' : Math.round(v.net)}</span>` : ''}</div>`;
   }
   $('#cal').innerHTML = html;
 }
@@ -1058,7 +1071,7 @@ function renderBoard() {
       <div class="flex items-center gap-2">${img(cropOf(t, state.stats.avgWin), 'w-8 shrink-0')}
         <div class="min-w-0 flex-1"><div class="font-pixel font-bold truncate">${esc(t.asset)}</div><div class="font-pixel text-xs side-${t.side}">${t.side === 'long' ? '▲ LONG' : '▼ SHORT'} · <span class="text-[#8b5a2b]">${esc(t.date)}</span></div></div>
         <div class="num text-lg font-bold ${cls(t.pnl)}">${signed(t.pnl, 0)}</div></div>
-      <div class="flex flex-wrap gap-1 mt-2">${t.source === 'mt5' ? `<span class="tag ${(t.emotions || []).length ? 'setup' : 'bad'}">MT5${(t.emotions || []).length ? '' : ' · ' + tr('add notes', 'รอจดบันทึก')}</span>` : ''}${t.setup ? `<span class="tag setup">${esc(t.setup)}</span>` : ''} ${emos}</div>
+      <div class="flex flex-wrap gap-1 mt-2">${t.source === 'mt5' ? `<span class="tag ${(t.emotions || []).length || state.days[t.date] ? 'setup' : 'bad'}">MT5${(t.emotions || []).length || state.days[t.date] ? '' : ' · ' + tr('add notes', 'รอจดบันทึก')}</span>` : ''}${t.setup ? `<span class="tag setup">${esc(t.setup)}</span>` : ''} ${emos}</div>
       ${t.lessons ? `<div class="text-sm mt-2 line-clamp-2 italic">“${esc(t.lessons)}”</div>` : ''}
       <div class="flex items-center mt-1">${Array.from({ length: t.rating || 0 }, () => img('heart', 'w-3.5')).join('')}<span class="ml-auto font-pixel text-xs text-sunset">+${t.xp || xpOf(t)} XP</span></div></div>`;
   }).join('');
@@ -1278,11 +1291,134 @@ function openQuest(id) {
 function openDay(iso) {
   const list = state.trades.filter((t) => t.date === iso).sort(byTime), net = list.reduce((a, t) => a + t.pnl, 0), d = new Date(iso + 'T12:00:00');
   openWindow({
-    title: `${DOW[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`, width: 480,
+    title: longDate(iso, { weekday: 'short', day: 'numeric', month: 'short' }), width: 480,
     html: `<div class="flex items-center gap-3 mb-3">${img(net >= 0 ? 'sun' : 'rain', 'w-10 bob')}<div class="font-pixel"><div class="text-sm text-[#8b5a2b]">Day result</div><div class="num text-2xl font-bold ${cls(net)}">${signed(net)}</div></div><div class="ml-auto font-pixel text-sm">${list.length} quest${list.length > 1 ? 's' : ''}</div></div>
-      <div class="flex flex-col gap-1">${list.map(questRow).join('')}</div>`,
+      <button class="btn btn-green w-full mb-2" data-jopen>📓 ${state.days[iso] ? tr('Open day journal', 'เปิดบันทึกประจำวัน') : tr('Write day journal', 'เขียนบันทึกประจำวัน')}</button>
+      <div class="flex flex-col gap-1">${list.slice(0, 40).map(questRow).join('')}</div>${list.length > 40 ? `<div class="text-xs text-center mt-1 text-[#8b5a2b]">+${list.length - 40} ${tr('more on the Quest Board', 'เพิ่มเติมที่กระดานเควส')}</div>` : ''}`,
+    onMount(win, w) { $('[data-jopen]', win).onclick = () => { w.close(); setTimeout(() => openJournal(iso), 250); }; },
   });
 }
+
+// ------------------------------------------------------------------ daily journal
+// One entry per day (mood, plan hearts, notes, mistakes, lesson) instead of one per trade:
+// for high-frequency MT5 accounts. The day's mood and hearts also count for that day's trades in the stats.
+function dayXp(j) {
+  if (!j) return 0;
+  let xp = 15 + (j.rating || 0) * 4;
+  if ((j.lesson || '').trim().length > 3) xp += 10;
+  if ((j.mistakes || '').trim().length > 3) xp += 5;
+  if ((j.notes || '').trim().length > 3) xp += 5;
+  if ((j.moods || []).some((e) => e === 'calm' || e === 'patient')) xp += 5;
+  return xp;
+}
+function daySummary(iso) {
+  const list = state.trades.filter((t) => t.date === iso).sort(byTime);
+  const wins = list.filter((t) => t.pnl > 0), losses = list.filter((t) => t.pnl < 0);
+  let run = 0, maxL = 0; for (const t of list) { run = t.pnl < 0 ? run + 1 : 0; maxL = Math.max(maxL, run); }
+  return {
+    list, wins: wins.length, losses: losses.length, net: list.reduce((a, t) => a + t.pnl, 0), maxL,
+    best: list.reduce((b, t) => (!b || t.pnl > b.pnl ? t : b), null), worst: list.reduce((b, t) => (!b || t.pnl < b.pnl ? t : b), null),
+    symbols: [...new Set(list.map((t) => t.asset))], first: list[0]?.time || '', last: list.at(-1)?.time || '',
+    avgWin: wins.length ? wins.reduce((a, t) => a + t.pnl, 0) / wins.length : 0,
+    avgLoss: losses.length ? -losses.reduce((a, t) => a + t.pnl, 0) / losses.length : 0,
+  };
+}
+const longDate = (iso, opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) => new Date(iso + 'T12:00:00').toLocaleDateString(LANG === 'th' ? 'th-TH' : 'en-US', opts);
+function drawSpark(c, list) {
+  const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(3, devicePixelRatio || 1);
+  if (!w || !list.length) return;
+  c.width = w * dpr; c.height = h * dpr;
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  let eq = 0; const pts = [0, ...list.map((t) => (eq += t.pnl))];
+  const lo = Math.min(...pts), hi = Math.max(...pts), rng = hi - lo || 1;
+  const x = (i) => 6 + (i / (pts.length - 1 || 1)) * (w - 12), y = (v) => h - 6 - ((v - lo) / rng) * (h - 20);
+  g.strokeStyle = 'rgba(92,58,33,.4)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(6, y(0)); g.lineTo(w - 6, y(0)); g.stroke(); g.setLineDash([]);
+  g.beginPath(); pts.forEach((v, i) => (i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))));
+  g.strokeStyle = eq >= 0 ? '#2f7a3a' : '#b83d34'; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
+  g.font = '700 10px Nunito, Mali, sans-serif'; g.fillStyle = '#8b5a2b'; g.fillText(tr('intraday PnL, trade by trade', 'กำไร/ขาดทุนสะสมระหว่างวัน ทีละไม้'), 8, 11);
+}
+function openJournal(iso = todayISO()) {
+  const j = state.days[iso] || {}, S = daySummary(iso);
+  const moods = new Set(j.moods || []);
+  let rating = j.rating || 0;
+  const cell = (k, v, c = '') => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${k}</div><div class="num text-lg ${c}">${v}</div></div>`;
+  openWindow({
+    title: tr('Daily Journal', 'บันทึกประจำวัน'), width: 640, autofocus: false,
+    html: `
+      <div class="flex items-center gap-3 mb-2">${img(S.net >= 0 ? 'sun' : 'rain', 'w-10 bob shrink-0')}
+        <div class="min-w-0"><div class="font-pixel text-lg font-bold">${longDate(iso)}</div>
+        <div class="text-sm text-[#8b5a2b] truncate">${S.list.length ? `${S.list.length} ${tr('trades', 'เทรด')} · ${esc(S.symbols.slice(0, 4).join(', '))}${S.first ? ` · ${esc(S.first)}–${esc(S.last)}` : ''}` : tr('No trades this day', 'วันนี้ไม่มีเทรด')}</div></div></div>
+      ${S.list.length ? `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          ${cell(tr('Day result', 'ผลวันนี้'), signed(S.net), cls(S.net))}
+          ${cell(tr('Win / Loss', 'ชนะ / แพ้'), `${S.wins} / ${S.losses}`)}
+          ${cell(tr('Avg win / loss', 'ชนะ / แพ้ เฉลี่ย'), `<span class="up">${money(S.avgWin, 0)}</span> / <span class="down">${money(S.avgLoss, 0)}</span>`)}
+          ${cell(tr('Longest losing run', 'แพ้ติดกันสูงสุด'), S.maxL, S.maxL >= 3 ? 'down' : '')}
+        </div>
+        <div class="slot mt-2"><canvas data-spark class="w-full h-[80px] block"></canvas></div>
+        <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+          <div class="slot">${tr('Best trade', 'ไม้ดีสุด')}: <b class="num up">${signed(S.best.pnl)}</b> <span class="text-[#8b5a2b]">${esc(S.best.time || '')}</span></div>
+          <div class="slot">${tr('Worst trade', 'ไม้แย่สุด')}: <b class="num ${cls(S.worst.pnl)}">${signed(S.worst.pnl)}</b> <span class="text-[#8b5a2b]">${esc(S.worst.time || '')}</span></div>
+        </div>` : ''}
+      <div class="field-label mt-3">${tr('How did you feel today?', 'วันนี้รู้สึกยังไง?')}</div>
+      <div class="flex flex-wrap gap-2" data-jmoods>${EMOTIONS.map((e) => `<button type="button" class="chip ${e.good ? 'good' : 'bad'}" data-jmood="${e.id}" aria-pressed="${moods.has(e.id)}">${e.label}</button>`).join('')}</div>
+      <div class="field-label mt-3">${tr('Did you follow your plan today?', 'วันนี้ทำตามแผนแค่ไหน?')}</div>
+      <div class="hearts flex" data-jhearts>${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-jheart="${i}" aria-checked="${i <= rating}" aria-label="${i} / 5">${img('heart')}</button>`).join('')}</div>
+      <label class="block mt-3"><span class="field-label">${tr('What happened today?', 'วันนี้เกิดอะไรขึ้นบ้าง?')}</span><textarea class="inp" name="jnotes" placeholder="${tr('Market conditions, key trades, how you managed them…', 'สภาพตลาด ไม้สำคัญ บริหารออร์เดอร์ยังไง…')}">${esc(j.notes || '')}</textarea></label>
+      <label class="block mt-2"><span class="field-label">${tr('Mistakes', 'ข้อผิดพลาด')}</span><textarea class="inp" name="jmistakes" placeholder="${tr('Overtrading, moved stop, revenge trades…', 'เทรดเกิน เลื่อน SL เทรดแก้แค้น…')}">${esc(j.mistakes || '')}</textarea></label>
+      <label class="block mt-2"><span class="field-label">${tr('Lesson / plan for tomorrow', 'บทเรียน / พรุ่งนี้จะทำอะไร')} <span class="tag good">+10 XP</span></span><textarea class="inp" name="jlesson" placeholder="${tr('One thing to do better tomorrow', 'สิ่งเดียวที่จะทำให้ดีขึ้นพรุ่งนี้')}">${esc(j.lesson || '')}</textarea></label>
+      <div class="flex flex-wrap items-center gap-2 mt-4"><span class="num text-sunset" data-jxp></span><div class="flex-1"></div>
+        ${S.list.length ? `<button class="btn" data-jtrades>${tr('See trades', 'ดูเทรด')} (${S.list.length})</button>` : ''}
+        <button class="btn btn-green" data-jsave>✦ ${tr('Save journal', 'บันทึก')}</button></div>`,
+    onMount(win, w) {
+      const q = (s) => win.querySelector(s);
+      const draft = () => ({ moods: [...moods], rating, notes: q('[name=jnotes]').value.trim(), mistakes: q('[name=jmistakes]').value.trim(), lesson: q('[name=jlesson]').value.trim() });
+      const upd = () => { q('[data-jxp]').textContent = `+${dayXp(draft())} XP`; };
+      upd();
+      win.addEventListener('input', upd);
+      q('[data-jmoods]').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-jmood]'); if (!b) return;
+        const id = b.dataset.jmood; moods.has(id) ? moods.delete(id) : moods.add(id);
+        b.setAttribute('aria-pressed', moods.has(id)); EMO[id].good ? Sfx.select() : Sfx.tone(330, 0.06, { vol: 0.12, type: 'triangle' }); upd();
+      });
+      q('[data-jhearts]').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-jheart]'); if (!b) return;
+        const n = +b.dataset.jheart; rating = n === rating ? 0 : n;
+        win.querySelectorAll('[data-jheart]').forEach((x) => x.setAttribute('aria-checked', +x.dataset.jheart <= rating));
+        Sfx.tone(523 + n * 90, 0.07, { vol: 0.14 }); upd();
+      });
+      q('[data-jtrades]')?.addEventListener('click', () => { w.close(); setTimeout(() => openDay(iso), 250); });
+      const c = q('[data-spark]'); if (c) setTimeout(() => drawSpark(c, S.list), reduced ? 0 : 520);
+      q('[data-jsave]').onclick = async () => {
+        const before = state.stats, isNew = !state.days[iso];
+        const entry = { ...draft(), updated: new Date().toISOString() }; entry.xp = dayXp(entry);
+        state.days[iso] = entry;
+        if (!save()) return;
+        w.close(); render();
+        const after = state.stats;
+        Sfx.success(); toast(isNew ? tr('Journal saved', 'บันทึกประจำวันแล้ว') : tr('Journal updated', 'อัปเดตบันทึกแล้ว'), `+${entry.xp} XP`, 'note');
+        if (after.level.lvl > before.level.lvl) await levelUp(after.level);
+        checkAchievements(true);
+      };
+    },
+  });
+}
+function renderJournalBox() {
+  const el = $('#journal-recent'); if (!el) return;
+  const days = [...state.stats.daily.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
+  $('#journal-status').textContent = state.days[todayISO()] ? tr('Today: written ✔', 'วันนี้: เขียนแล้ว ✔') : tr('Today: not written yet', 'วันนี้: ยังไม่ได้เขียน');
+  el.innerHTML = days.map(([iso, v]) => {
+    const j = state.days[iso];
+    return `<button class="slot slot-click flex items-center gap-2 text-left w-full" data-journal-day="${iso}">
+      <span class="font-pixel text-lg w-5 text-center ${j ? 'up' : 'text-[#b89968]'}">${j ? '✔' : '✎'}</span>
+      <span class="flex-1 text-sm">${longDate(iso, { weekday: 'short', day: 'numeric', month: 'short' })} · ${v.n} ${tr('trades', 'เทรด')}</span>
+      <span class="num ${cls(v.net)}">${signed(v.net, 0)}</span></button>`;
+  }).join('') || `<div class="text-sm text-[#8b5a2b]">${tr('No trading days yet.', 'ยังไม่มีวันที่เทรด')}</div>`;
+}
+document.addEventListener('click', (e) => {
+  const d = e.target.closest('[data-journal-day]'); if (d) { openJournal(d.dataset.journalDay); return; }
+  if (e.target.closest('[data-open-journal]')) openJournal(todayISO());
+});
 function openChest() {
   const s = state.stats;
   openWindow({
@@ -1361,7 +1497,7 @@ function openSettings() {
       };
       $('[data-export]', win).onclick = () => {
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'harvest-ledger', version: 1, trades: state.trades, settings: state.settings, achievements: state.achievements }, null, 2)], { type: 'application/json' }));
+        a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'harvest-ledger', version: 1, trades: state.trades, settings: state.settings, achievements: state.achievements, days: state.days }, null, 2)], { type: 'application/json' }));
         a.download = `harvest-ledger-${todayISO()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); Sfx.coin();
       };
       const importFile = async (e) => {
@@ -1377,6 +1513,7 @@ function openSettings() {
           state.trades.push(...fresh);
           if (d.settings) Object.assign(state.settings, d.settings, { gfx: { ...state.settings.gfx, ...(d.settings.gfx || {}) } });
           if (Array.isArray(d.achievements)) state.achievements = [...new Set([...state.achievements, ...d.achievements])];
+          if (d.days && typeof d.days === 'object') state.days = { ...d.days, ...state.days };
           save(); render(); w.close(); toast('Save file loaded', `${fresh.length} quests imported`, 'note'); Sfx.success();
         } catch (err) { Sfx.error(); toast('Could not read that file', 'Use a JSON exported from Harvest Ledger.', 'rain'); }
       };
@@ -2487,15 +2624,16 @@ function dailyToday() {
 }
 function markDaily(id) { const d = dailyToday(); if (!d.checks[id]) { d.checks[id] = true; saveDaily(); updateDaily(); } }
 function dailyTasks() {
-  const d = dailyToday(), tt = state.trades.filter((x) => x.date === d.date), has = tt.length > 0, rest = d.noTrade && !has;
+  const d = dailyToday(), tt = state.trades.filter((x) => x.date === d.date), has = tt.length > 0, rest = d.noTrade && !has, dj = state.days[d.date];
   return [
     { id: 'plan', group: 'before', manual: true, en: 'Write today\'s plan: key levels, setups you will take, max number of trades', th: 'เขียนแผนวันนี้: แนวรับ-แนวต้านสำคัญ, setup ที่จะเล่น, จำนวนไม้สูงสุด' },
     { id: 'energy', group: 'before', manual: true, en: 'Check your ⚡ energy (daily loss limit) and decide your risk per trade', th: 'ดูแถบ ⚡ พลังงาน (ลิมิตขาดทุนรายวัน) แล้วกำหนดความเสี่ยงต่อไม้' },
     { id: 'mind', group: 'before', manual: true, en: 'Check your mood — tired, angry or rushed? Trade smaller or rest', th: 'เช็กใจตัวเอง: เหนื่อย โกรธ หรือรีบไหม? ถ้าใช่ ลดขนาดไม้หรือพักก่อน' },
     { id: 'log', group: 'during', auto: has || rest, en: 'Log every trade at the Quest Board right after closing it', th: 'จดทุกเทรดที่กระดานเควสทันทีหลังปิดออร์เดอร์' },
-    { id: 'tags', group: 'during', auto: (has && tt.every((x) => (x.emotions || []).length)) || rest, en: 'Tag your emotion on every trade', th: 'ติดแท็กอารมณ์ทุกเทรด' },
-    { id: 'hearts', group: 'during', auto: (has && tt.every((x) => x.rating > 0)) || rest, en: 'Rate how well you followed the plan (hearts)', th: 'ให้คะแนนหัวใจว่าทำตามแผนแค่ไหน' },
-    { id: 'lesson', group: 'after', auto: tt.some((x) => (x.lessons || '').trim().length > 3) || rest, en: 'Write at least one lesson learned', th: 'เขียนบทเรียนอย่างน้อย 1 ข้อ' },
+    { id: 'tags', group: 'during', auto: (has && (tt.every((x) => (x.emotions || []).length) || (dj?.moods || []).length > 0)) || rest, en: 'Tag your emotion on every trade', th: 'ติดแท็กอารมณ์ทุกเทรด' },
+    { id: 'hearts', group: 'during', auto: (has && (tt.every((x) => x.rating > 0) || dj?.rating > 0)) || rest, en: 'Rate how well you followed the plan (hearts)', th: 'ให้คะแนนหัวใจว่าทำตามแผนแค่ไหน' },
+    { id: 'lesson', group: 'after', auto: tt.some((x) => (x.lessons || '').trim().length > 3) || (dj?.lesson || '').trim().length > 3 || rest, en: 'Write at least one lesson learned', th: 'เขียนบทเรียนอย่างน้อย 1 ข้อ' },
+    { id: 'journal', group: 'after', auto: !!dj, en: 'Write your daily journal (Farmhouse or tap a calendar day)', th: 'เขียนบันทึกประจำวัน (ที่บ้านไร่ หรือแตะวันในปฏิทิน)' },
     { id: 'review', group: 'after', auto: !!d.checks.review, en: 'Visit the Tavern and read the Innkeeper\'s tip', th: 'แวะโรงเตี๊ยม อ่านคำแนะนำของเจ้าของร้าน' },
     { id: 'stop', group: 'after', manual: true, en: 'Stop for the day when energy runs out or the plan is done', th: 'หยุดเทรดเมื่อพลังงานหมด หรือทำตามแผนครบแล้ว' },
   ].map((x) => ({ ...x, ok: x.manual ? !!d.checks[x.id] : !!x.auto }));
@@ -2575,7 +2713,7 @@ const GUIDE = {
         <span class="font-pixel text-xs text-sunset">${tr('go ▶', 'ไป ▶')}</span></button>`).join('') + `<div class="parch mt-2 text-sm">${crops}</div>
       <div class="parch mt-2 text-sm">${tr('Weather follows today\'s PnL (sun = green day, rain = red day). The sky follows your real clock.', 'สภาพอากาศตามผลวันนี้ (แดดออก = วันกำไร, ฝนตก = วันขาดทุน) ท้องฟ้าเปลี่ยนตามเวลาจริง')}</div>`;
   },
-  daily: () => `<div id="guide-daily">${dailyHTML()}</div>`,
+  daily: () => `<button class="btn btn-green w-full mb-2" data-open-journal>📓 ${tr('Write today\'s journal', 'เขียนบันทึกประจำวันของวันนี้')}</button><div id="guide-daily">${dailyHTML()}</div>`,
   tips: () => tr(`
     <ul class="list-disc pl-5 leading-relaxed">
       <li><b>Log right away.</b> Memory of why you entered fades within hours.</li>
@@ -2660,7 +2798,7 @@ function announceMt5({ added, updated, newest }, manual) {
   render({ animateId: null });
   if (added) {
     Sfx.coin(); setTimeout(() => Sfx.coin(2), 150);
-    toast(tr(`Imported ${added} trade(s) from MT5`, `นำเข้า ${added} เทรดจาก MT5`), tr('Open them on the Quest Board to add mood, hearts and a lesson.', 'เปิดที่กระดานเควสเพื่อใส่อารมณ์ หัวใจ และบทเรียน'), 'note');
+    toast(tr(`Imported ${added} trade(s) from MT5`, `นำเข้า ${added} เทรดจาก MT5`), tr('Write one daily journal for them in the Farmhouse.', 'เขียนบันทึกประจำวันครั้งเดียวได้ที่บ้านไร่'), 'note');
     if (last && !windows.length) setTimeout(() => world?.showCrop(last.id), 600);
   } else toast(tr(`Updated ${updated} MT5 trade(s)`, `อัปเดต ${updated} เทรดจาก MT5`), '', 'note');
   checkAchievements(true);
