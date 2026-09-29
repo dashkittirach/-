@@ -1,18 +1,16 @@
-# Harvest Ledger 🌾 — cozy pixel-art trading journal
+# Harvest Ledger 🌾 — a trading journal you play as a 3D farming game
 
-`harvest-ledger/index.html` is a **single self-contained file**: pixel-farm-RPG style, Tailwind (CDN), vanilla JS,
-8-bit Web Audio sound effects, and data saved in localStorage. **Double-click the file to open it** (you need internet for the CDN fonts and Tailwind).
+**Link (once GitHub Pages is on):** https://dashkittirach.github.io/-/harvest-ledger/
 
-- **Farm:** Level/XP, ❤ win rate, ⚡ Energy (drains as you approach your daily loss limit), ⭐ Discipline.
-  Inventory of stats (PnL, Win rate, Profit factor, Streak…), a seasonal calendar with a pixel icon per day,
-  a field where every trade grows a crop (win = pumpkin/golden star, loss = withered plant), and an animated farm scene
-  whose weather follows today's PnL.
-- **Quest Board:** log a trade (auto-calculated PnL, setup, emotions, "followed the plan" hearts, notes / mistakes / lessons, screenshot
-  via drag, click or paste). Winning trades fly coins into your gold counter; losing trades shake the screen. Level-up and achievement popups.
-- **Quest Details:** RPG-style windows that grow dot → bar → full, with dialogue text that types out with blip sounds.
-- **Tavern:** pixel equity chart (hover), win rate by setup / mood / weekday, Innkeeper tips generated from your data, 12 achievements.
-- Shortcuts: `N` new trade · `Ctrl/⌘+Enter` save · `Esc` close · `1–3` tabs · `M` sound · `/` search.
-- Settings ⚙: name, starting gold, daily loss limit, volume, export/import JSON, demo data, reset.
+- `harvest-ledger/index.html` — **3D version** (Three.js, low-poly toon shading + pixel filter). Walk around a farm island:
+  🏠 Farmhouse = stats + calendar · 📜 Quest Board = log / browse trades · 🍺 Tavern = analytics ·
+  🌾 Field = one 3D crop per trade (win = pumpkin, big win = golden pumpkin + star, loss = withered) · 💰 Chest = balance · 📮 Mailbox = settings.
+  Logging a trade plays a scene: the camera flies to the plot, the crop grows, then coins fly into the chest (win) or a rain cloud appears (loss).
+  Sky follows your local time, weather follows today's PnL, fireworks on level-up, the farmer passes out when the daily loss limit is hit.
+- `harvest-ledger/2d.html` — **2D pixel version** (lighter, for older phones). **Same data** — both read the same save.
+- Both are single self-contained files: Tailwind + Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage.
+- Controls: `WASD`/click the ground to walk · `E` interact · drag to rotate · scroll/pinch to zoom · `N` new trade · `1–4` fast travel · `M` sound.
+  On phones: tap to walk / tap a building, or use the bottom travel bar.
 
 ---
 
