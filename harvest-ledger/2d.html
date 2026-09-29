@@ -306,6 +306,7 @@
         <img id="weather" class="px w-7" data-sprite="sun" alt="">
         <div class="font-pixel"><div id="clock-day" class="text-sm"></div><div id="clock-time" class="text-xs text-[#f6d29a]"></div></div>
       </div>
+      <button class="btn !px-2 font-pixel" id="btn-lang" data-tip="Switch language">EN</button>
       <a class="btn !px-2 font-pixel" href="index.html" data-tip="Switch to the 3D world">3D</a>
       <button class="btn !px-1" id="btn-sound" aria-label="Toggle sound" data-tip="Sound on/off (M)"><img class="px w-6" data-sprite="speaker" alt=""></button>
       <button class="btn !px-1" id="btn-settings" aria-label="Settings" data-tip="Settings & save file"><img class="px w-6" data-sprite="gear" alt=""></button>
@@ -571,6 +572,151 @@ const cls = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// ------------------------------------------------------------------ language (ไทย / English)
+// Thai is the default. Static and rendered UI text is translated by exact match (plus a few
+// patterns with numbers); sentences built from data use tr(en, th) directly.
+const LANG = (() => { try { return JSON.parse(localStorage.getItem('harvest-ledger-v1'))?.settings?.lang || 'th'; } catch (e) { return 'th'; } })();
+const tr = (en, th) => (LANG === 'th' ? th : en);
+const TH = {
+  // HUD & travel
+  'Controls': 'วิธีเล่น', 'or click ground: walk': 'หรือคลิกพื้น: เดิน', 'interact ·': 'เข้าอาคาร ·', 'new quest': 'จดเทรดใหม่',
+  'Drag: rotate · Scroll: zoom': 'ลาก: หมุนกล้อง · Scroll: ซูม', 'hide': 'ซ่อน', 'Farmer': 'ชาวนา', 'Lv': 'Lv',
+  'Farmhouse': 'บ้านไร่', 'Field': 'แปลงผัก', '✦ New Quest': '✦ จดเทรดใหม่', 'Board': 'กระดาน', 'Tavern': 'โรงเตี๊ยม',
+  'Growing your farm…': 'กำลังปลูกฟาร์ม…',
+  'Account balance (starting gold + net PnL)': 'ยอดเงิน (ทุนเริ่มต้น + กำไรสุทธิ)', 'Experience': 'ค่าประสบการณ์',
+  'Energy: drains as today\'s losses approach your daily loss limit': 'พลังงาน: ลดลงเมื่อขาดทุนวันนี้เข้าใกล้ลิมิตรายวัน',
+  'Discipline: plan-adherence hearts, last 20 quests': 'วินัย: คะแนนทำตามแผน 20 เทรดล่าสุด',
+  'Weather follows today\'s PnL · sky follows your clock': 'สภาพอากาศตาม PnL วันนี้ · ท้องฟ้าตามเวลาจริง',
+  'Sound on/off (M)': 'เปิด/ปิดเสียง (M)', 'Switch to the lighter 2D version (same data)': 'สลับไปเวอร์ชัน 2D ที่เบากว่า (ข้อมูลเดียวกัน)',
+  'Settings, graphics & save file': 'ตั้งค่า กราฟิก และไฟล์เซฟ', 'Switch language': 'เปลี่ยนภาษา',
+  '🏠 Farmhouse': '🏠 บ้านไร่', '📜 Quest Board': '📜 กระดานเควส', '🍺 Tavern': '🍺 โรงเตี๊ยม', '💰 Chest': '💰 หีบสมบัติ',
+  '📅 Calendar': '📅 ปฏิทิน', '📮 Settings': '📮 ตั้งค่า', '🌾 Field': '🌾 แปลงผัก',
+  // titles & emotions
+  'Seedling Trader': 'เทรดเดอร์ต้นกล้า', 'Sprout Scalper': 'สแคลปเปอร์หน่ออ่อน', 'Field Hand': 'มือไร่ฝึกหัด', 'Harvest Swinger': 'นักสวิงเก็บเกี่ยว',
+  'Market Rancher': 'เจ้าของไร่ตลาด', 'Golden Farmer': 'ชาวนาทองคำ', 'Legend of the Valley': 'ตำนานแห่งหุบเขา',
+  'Calm': 'ใจนิ่ง', 'Patient': 'อดทนรอ', 'Confident': 'มั่นใจ', 'Focused': 'มีสมาธิ', 'FOMO': 'FOMO', 'Greedy': 'โลภ',
+  'Fearful': 'กลัว', 'Revenge': 'เอาคืน', 'Bored': 'เบื่อ', 'Tired': 'เหนื่อย', 'Unsorted': 'ไม่ระบุ',
+  'Mon': 'จ.', 'Tue': 'อ.', 'Wed': 'พ.', 'Thu': 'พฤ.', 'Fri': 'ศ.', 'Sat': 'ส.', 'Sun': 'อา.',
+  // farmhouse
+  'Level': 'เลเวล', 'Win rate': 'อัตราชนะ', 'Energy': 'พลังงาน', 'daily loss limit': 'ลิมิตขาดทุนรายวัน', 'Discipline': 'วินัย',
+  'Daily loss limit reached. Rest until tomorrow.': 'ขาดทุนถึงลิมิตรายวันแล้ว พักก่อน พรุ่งนี้ค่อยมาใหม่',
+  'Latest quests': 'เทรดล่าสุด', 'Inventory': 'คลังสถิติ', 'your trading stats': 'สถิติการเทรดของคุณ',
+  'Total PnL': 'กำไรสุทธิ', 'Win Rate': 'อัตราชนะ', 'Profit Factor': 'Profit Factor', 'Streak': 'ชนะ/แพ้ติดกัน', 'Quests': 'จำนวนเทรด',
+  'Best Harvest': 'เทรดดีที่สุด', 'Avg Win / Loss': 'ชนะเฉลี่ย / แพ้เฉลี่ย', 'Expectancy': 'กำไรคาดหวัง',
+  'gross win ÷ gross loss': 'กำไรรวม ÷ ขาดทุนรวม', 'per quest': 'ต่อเทรด',
+  'Net profit and loss after fees': 'กำไรขาดทุนสุทธิหลังหักค่าธรรมเนียม', 'Winning quests ÷ all quests': 'เทรดที่ชนะ ÷ เทรดทั้งหมด',
+  'Above 1.5 is a healthy farm': 'เกิน 1.5 ถือว่าฟาร์มแข็งแรง', 'Current consecutive wins or losses': 'จำนวนชนะหรือแพ้ติดกันตอนนี้',
+  'Trades logged': 'จำนวนเทรดที่จดไว้', 'Biggest winning trade': 'เทรดที่กำไรมากที่สุด', 'Average winning vs losing trade': 'เทรดชนะเฉลี่ยเทียบกับเทรดแพ้เฉลี่ย',
+  'Average PnL per trade': 'PnL เฉลี่ยต่อเทรด', 'No quests yet. Visit the Quest Board!': 'ยังไม่มีเทรด ไปที่กระดานเควสเลย!',
+  // quest board & form
+  'Quest Board': 'กระดานเควส', 'New Quest': 'จดเทรดใหม่', 'Cancel edit': 'ยกเลิกการแก้ไข', 'Date': 'วันที่', 'Time': 'เวลา',
+  'Asset / Pair': 'สินทรัพย์ / คู่เทรด', 'Direction': 'ทิศทาง', 'Entry price': 'ราคาเข้า', 'Exit price': 'ราคาออก', 'Size / Qty': 'ขนาด / จำนวน',
+  'Fees': 'ค่าธรรมเนียม', 'PnL ($)': 'กำไร/ขาดทุน ($)', 'AUTO': 'อัตโนมัติ', 'MANUAL': 'กรอกเอง', '↺ back to auto': '↺ กลับไปคำนวณอัตโนมัติ',
+  'Setup category': 'ประเภท Setup', 'Emotional state': 'อารมณ์ตอนเข้าเทรด', 'Followed the plan?': 'ทำตามแผนแค่ไหน?',
+  'Execution notes': 'บันทึกการเทรด', 'Mistakes made': 'ข้อผิดพลาด', 'Lessons learned': 'บทเรียนที่ได้', 'Chart snapshot': 'ภาพกราฟ',
+  '📷 Drop a screenshot here or click to attach': '📷 ลากภาพหน้าจอมาวาง หรือแตะเพื่อแนบ', '📷 Snapshot attached (click to replace)': '📷 แนบภาพแล้ว (แตะเพื่อเปลี่ยน)',
+  'remove snapshot': 'ลบภาพ', 'Reward:': 'รางวัล:', '✦ Plant Quest': '✦ ปลูกเควส', '✎ Save Changes': '✎ บันทึกการแก้ไข', 'Clear': 'ล้าง',
+  'Ctrl/⌘+Enter saves · paste a screenshot with Ctrl/⌘+V': 'Ctrl/⌘+Enter บันทึก · วางภาพด้วย Ctrl/⌘+V',
+  'Why did you take it? How did you manage it?': 'ทำไมถึงเข้า? บริหารออร์เดอร์ยังไง?', 'Moved stop, entered early, sized too big…': 'เลื่อน SL, เข้าเร็วไป, ไม้ใหญ่เกิน…',
+  'What will you do next time?': 'ครั้งหน้าจะทำอะไรต่างไป?', 'calculated from entry / exit / size': 'คำนวณจากราคาเข้า / ออก / ขนาด',
+  'Search asset, setup, notes…': 'ค้นหาสินทรัพย์ setup โน้ต…', 'Breakout, Pullback, Reversal…': 'Breakout, Pullback, Reversal…',
+  'Pinned Quests': 'เควสบนกระดาน', 'All': 'ทั้งหมด', 'Harvests': 'ชนะ', 'Withered': 'แพ้', 'All setups': 'ทุก setup',
+  'No quests pinned here yet.': 'ยังไม่มีเควสบนกระดาน', 'Show more quests ▼': 'ดูเพิ่ม ▼',
+  // tavern
+  'The Tavern': 'โรงเตี๊ยม', 'Gold Chronicle': 'บันทึกทองคำ', 'equity after every quest': 'เงินในพอร์ตหลังแต่ละเทรด', 'The Innkeeper says…': 'เจ้าของร้านบอกว่า…',
+  'Next tip ▶': 'คำแนะนำถัดไป ▶', '📜 Scroll of Setups': '📜 คัมภีร์ Setup', 'Win rate & gold by setup · click a row to see those quests': 'อัตราชนะและกำไรแยกตาม setup · แตะแถวเพื่อดูเทรด',
+  '📖 Book of Moods': '📖 ตำราอารมณ์', 'How your emotional state changes the outcome': 'อารมณ์ส่งผลต่อผลเทรดอย่างไร',
+  '🗓 Almanac of Weekdays': '🗓 ปฏิทินวันในสัปดาห์', '🏆 Achievements': '🏆 ความสำเร็จ', 'The pages are still blank. Log a few quests!': 'หน้ากระดาษยังว่างอยู่ ลองจดเทรดสักหน่อย!',
+  // windows
+  'Quest Details': 'รายละเอียดเควส', 'QUEST COMPLETE': 'เควสสำเร็จ', 'QUEST FAILED': 'เควสล้มเหลว', 'BREAK EVEN': 'เสมอตัว',
+  'Entry': 'ราคาเข้า', 'Exit': 'ราคาออก', 'Size': 'ขนาด', 'Mood:': 'อารมณ์:', 'no tags': 'ไม่มีแท็ก', 'Plan adherence': 'การทำตามแผน',
+  '📜 Execution Log': '📜 บันทึกการเทรด', '⚠ Mistakes Made': '⚠ ข้อผิดพลาด', '✦ Lessons Learned': '✦ บทเรียนที่ได้',
+  'No notes written.': 'ไม่มีโน้ต', 'None recorded.': 'ไม่ได้บันทึกไว้', 'No lesson written yet. Every quest teaches something!': 'ยังไม่ได้เขียนบทเรียน ทุกเควสสอนอะไรเราเสมอ!',
+  'Delete': 'ลบ', '🌾 Show in field': '🌾 ดูในแปลงผัก', 'Edit': 'แก้ไข', 'Close': 'ปิด', 'Day result': 'ผลของวัน',
+  'Treasure Chest': 'หีบสมบัติ', 'Gold in the chest': 'ทองในหีบ', 'Net PnL': 'กำไรสุทธิ', 'Today': 'วันนี้', 'Best harvest': 'ดีที่สุด', 'Worst storm': 'แย่ที่สุด',
+  'See the Gold Chronicle ▶': 'ดูบันทึกทองคำ ▶', 'Mailbox · Settings': 'ตู้จดหมาย · ตั้งค่า', 'Farmer name': 'ชื่อชาวนา',
+  'Starting gold ($)': 'ทุนเริ่มต้น ($)', 'Daily loss limit ($)': 'ลิมิตขาดทุนรายวัน ($)', 'Sound volume': 'ระดับเสียง', '🎮 Graphics': '🎮 กราฟิก',
+  'Pixel filter (retro look, faster on phones)': 'ฟิลเตอร์ pixel (ลุคเรโทร และเร็วขึ้นบนมือถือ)', 'Shadows': 'เงา', 'Switch to 2D version': 'สลับไปเวอร์ชัน 2D',
+  '💾 Save file': '💾 ไฟล์เซฟ', 'Export JSON': 'ส่งออก JSON', 'Import JSON': 'นำเข้า JSON', 'Load demo farm': 'โหลดฟาร์มตัวอย่าง', 'Reset farm': 'รีเซ็ตฟาร์ม',
+  'Saved in this browser only (localStorage) and shared with the 2D version. Export a backup now and then.': 'ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น และใช้ร่วมกับเวอร์ชัน 2D ส่งออกสำรองไว้บ้างเป็นระยะ',
+  'Save & close': 'บันทึกและปิด', 'Quest Complete!': 'เควสสำเร็จ!', 'Quest Failed…': 'เควสล้มเหลว…', 'QUEST COMPLETE!': 'เควสสำเร็จ!',
+  'Lesson learned': 'ได้บทเรียน', 'Collect ✦': 'เก็บเกี่ยว ✦', 'Keep farming': 'ปลูกต่อไป', 'Level Up!': 'เลเวลอัป!', 'You are now a': 'ตอนนี้คุณคือ',
+  'Keep journaling every quest to grow your farm.': 'จดทุกเทรดต่อไป แล้วฟาร์มจะโตขึ้นเรื่อยๆ', 'Hooray!': 'เย้!',
+  'You passed out…': 'คุณหมดแรงสลบไป…', 'Go to bed 🛏': 'ไปนอน 🛏', 'Hmm…': 'อืม…', 'Yes': 'ใช่', 'No': 'ไม่', 'Keep': 'เก็บไว้',
+  'Cancel': 'ยกเลิก', 'Replace': 'แทนที่', 'Plow it': 'ไถเลย', '3D not available': 'เปิด 3D ไม่ได้', 'Open 2D version': 'เปิดเวอร์ชัน 2D',
+  'Welcome to Harvest Valley': 'ยินดีต้อนรับสู่หุบเขาเก็บเกี่ยว', 'Explore first': 'สำรวจก่อน', '✦ Plant first quest': '✦ ปลูกเควสแรก',
+  'Tap the ground to walk · tap a building to enter · drag to look around · pinch to zoom': 'แตะพื้นเพื่อเดิน · แตะอาคารเพื่อเข้า · ลากเพื่อหมุนกล้อง · ใช้สองนิ้วซูม',
+  'WASD or click to walk · E to enter · drag to look around · scroll to zoom': 'WASD หรือคลิกเพื่อเดิน · E เข้าอาคาร · ลากเพื่อหมุนกล้อง · scroll เพื่อซูม',
+  'Every trade is a seed. Log it at the Quest Board, write down the lesson, and a crop grows in your field. Wins fill the chest with gold; losses bring rain — and XP.':
+    'ทุกเทรดคือเมล็ดพันธุ์ จดไว้ที่กระดานเควส เขียนบทเรียนไว้ แล้วผักจะงอกในแปลงของคุณ เทรดชนะเติมทองลงหีบ เทรดแพ้นำฝนมา แต่ก็ได้ XP',
+  'A fine harvest!': 'เก็บเกี่ยวได้งามมาก!', 'The crops are thriving!': 'ผักงอกงามสุดๆ!', 'Gold in the barn!': 'ทองเต็มยุ้งฉาง!', 'Plan followed, reward earned.': 'ทำตามแผน ได้รางวัลสมใจ',
+  'Even the best crops need rain.': 'ผักที่ดีที่สุดก็ต้องเจอฝน', 'Compost today, harvest tomorrow.': 'วันนี้เป็นปุ๋ย พรุ่งนี้ได้เก็บเกี่ยว',
+  'A lesson learned is XP earned.': 'ได้บทเรียน = ได้ XP', 'Every farmer loses a season or two.': 'ชาวนาทุกคนเคยเสียผลผลิตกันทั้งนั้น',
+  'Pull up a stool, traveler. Log a few quests and I will read your fortune in the numbers.': 'นั่งก่อนสิ นักเดินทาง จดเทรดสักหน่อย แล้วข้าจะอ่านดวงจากตัวเลขให้',
+  // toasts
+  'Demo farm planted!': 'ปลูกฟาร์มตัวอย่างแล้ว!', 'Quest removed': 'ลบเควสแล้ว', 'Settings saved': 'บันทึกการตั้งค่าแล้ว', 'Save file loaded': 'โหลดไฟล์เซฟแล้ว',
+  'Could not read that file': 'อ่านไฟล์นี้ไม่ได้', 'Use a JSON exported from Harvest Ledger.': 'ใช้ไฟล์ JSON ที่ส่งออกจาก Harvest Ledger',
+  'A fresh field': 'ฟาร์มใหม่เอี่ยม', 'Your farm has been reset.': 'รีเซ็ตฟาร์มแล้ว', 'Quest updated': 'อัปเดตเควสแล้ว', 'Quest incomplete': 'เควสยังไม่ครบ',
+  'Which asset was this quest on?': 'เทรดสินทรัพย์อะไร?', 'Fill entry, exit and size — or type the PnL directly.': 'กรอกราคาเข้า ราคาออก และขนาด หรือพิมพ์ PnL เอง',
+  'Sound on': 'เปิดเสียง', 'Sound off': 'ปิดเสียง', 'Snapshot pasted': 'วางภาพแล้ว', 'Your storage chest is full!': 'พื้นที่เก็บข้อมูลเต็มแล้ว!',
+  'Remove some snapshots or export a backup.': 'ลบภาพบางส่วน หรือส่งออกไฟล์สำรอง', 'Updating to the new version…': 'กำลังอัปเดตเวอร์ชันใหม่…',
+  'Your data is safe.': 'ข้อมูลของคุณปลอดภัย', '✨ New version — tap to update': '✨ มีเวอร์ชันใหม่ — แตะเพื่ออัปเดต',
+  'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
+  'Enter Farmhouse': 'เข้าบ้านไร่', 'Open Quest Board': 'เปิดกระดานเควส', 'Enter Tavern': 'เข้าโรงเตี๊ยม', 'Open chest': 'เปิดหีบ',
+  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด',
+};
+const TH_RE = [
+  [/^(\d+) quests? \(showing (\d+)\)$/, '$1 เควส (แสดง $2)'], [/^(\d+) quests over the last (\d+) days$/, '$1 เควสใน $2 วันที่ผ่านมา'],
+  [/^(\d+) quests?$/, '$1 เควส'], [/^best (\d+) wins$/, 'ชนะติดสูงสุด $1'], [/^(\d+) today$/, 'วันนี้ $1'],
+  [/^(\d+) \/ (\d+) unlocked$/, 'ปลดล็อกแล้ว $1 / $2'], [/^ratio (.+)$/, 'อัตราส่วน $1'], [/^(-?[\d.]+%) on (.+)$/, '$1 จากทุน $2'],
+  [/^Edit Quest · (.+)$/, 'แก้ไขเควส · $1'], [/^Achievement: (.+)$/, 'ความสำเร็จ: $1'], [/^(\d+) quests imported$/, 'นำเข้า $1 เควส'],
+];
+function t(s) {
+  if (LANG !== 'th' || !s) return s;
+  const k = s.trim(); if (!k) return s;
+  if (TH[k] != null) return s.replace(k, TH[k]);
+  for (const [re, rep] of TH_RE) if (re.test(k)) return s.replace(k, k.replace(re, rep));
+  return s;
+}
+const I18N_ATTRS = ['placeholder', 'data-tip', 'aria-label', 'title'];
+function translateTree(root) {
+  if (LANG !== 'th') return;
+  if (root.nodeType === 3) { const v = t(root.data); if (v !== root.data) root.data = v; return; }
+  if (root.nodeType !== 1 || /^(SCRIPT|STYLE|TEXTAREA)$/.test(root.tagName)) return;
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = root; n; n = walk.nextNode()) {
+    if (n.nodeType === 3) { if (!/^(SCRIPT|STYLE|TEXTAREA)$/.test(n.parentNode?.tagName)) { const v = t(n.data); if (v !== n.data) n.data = v; } continue; }
+    for (const a of I18N_ATTRS) { const v = n.getAttribute(a); if (v) { const tv = t(v); if (tv !== v) n.setAttribute(a, tv); } }
+  }
+}
+Object.assign(TH, { // text that only exists in the 2D version
+  'Harvest Ledger': 'Harvest Ledger', 'cozy trading journal': 'เทรดดิ้งเจอนอลสุดอบอุ่น', 'Farm': 'ฟาร์ม', 'Quest Board': 'กระดานเควส', 'Tavern': 'โรงเตี๊ยม',
+  'Welcome to your farm, trader!': 'ยินดีต้อนรับสู่ฟาร์มของคุณ นักเทรด!', '✦ Plant your first quest': '✦ ปลูกเควสแรก', 'Load a demo farm': 'โหลดฟาร์มตัวอย่าง',
+  'Every trade is a seed. Log it on the Quest Board, write down what you learned, and watch your field grow. Wins become harvests, losses become compost for wisdom.':
+    'ทุกเทรดคือเมล็ดพันธุ์ จดไว้ที่กระดานเควส เขียนสิ่งที่ได้เรียนรู้ แล้วดูแปลงผักของคุณเติบโต เทรดชนะคือผลผลิต เทรดแพ้คือปุ๋ยแห่งปัญญา',
+  'XP': 'XP', 'Your Field': 'แปลงผักของคุณ', 'last 24 quests': '24 เทรดล่าสุด', 'small win': 'ชนะนิดหน่อย', 'harvest': 'เก็บเกี่ยว', 'golden': 'ทองคำ', 'withered': 'เหี่ยว',
+  'No quests yet.': 'ยังไม่มีเทรด', '✦ Complete Quest': '✦ บันทึกเควส', 'Quest Board ': 'กระดานเควส',
+  'Shortcuts: N new quest · Ctrl/⌘+Enter save · Esc close · 1–3 tabs · M sound': 'ปุ่มลัด: N จดเทรดใหม่ · Ctrl/⌘+Enter บันทึก · Esc ปิด · 1–3 เปลี่ยนแท็บ · M เสียง',
+  'Search asset, setup, notes…  ( / )': 'ค้นหาสินทรัพย์ setup โน้ต…  ( / )', 'No quests pinned here yet.': 'ยังไม่มีเควสบนกระดาน',
+  'Exhausted! Daily loss limit reached — rest and come back tomorrow.': 'หมดแรงแล้ว! ขาดทุนถึงลิมิตรายวัน พักก่อน พรุ่งนี้ค่อยมาใหม่',
+  'Win rate & gold by setup · click a row to see those quests': 'อัตราชนะและกำไรแยกตาม setup · แตะแถวเพื่อดูเทรด',
+  'Account balance (starting gold + net PnL)': 'ยอดเงิน (ทุนเริ่มต้น + กำไรสุทธิ)', "Today's weather follows today's PnL": 'สภาพอากาศตามผลเทรดวันนี้',
+  'Settings & save file': 'ตั้งค่าและไฟล์เซฟ', 'Switch to the 3D world': 'สลับไปโลก 3D', 'Sections': 'ส่วนต่างๆ',
+  'Share of quests that ended in a harvest (win)': 'สัดส่วนเทรดที่ชนะ', 'Drains as today\'s losses approach your daily loss limit': 'ลดลงเมื่อขาดทุนวันนี้เข้าใกล้ลิมิตรายวัน',
+  'Average plan-adherence hearts over your last 20 quests': 'คะแนนหัวใจการทำตามแผนเฉลี่ย 20 เทรดล่าสุด', 'Farm Settings': 'ตั้งค่าฟาร์ม',
+  'Everything is stored in this browser only (localStorage). Export a backup now and then.': 'ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น ส่งออกสำรองไว้บ้างเป็นระยะ',
+  'Starting gold ($)': 'ทุนเริ่มต้น ($)', 'Edit quest': 'แก้ไขเควส', 'Plant your first quest': 'ปลูกเควสแรก',
+});
+if (LANG === 'th') {
+  document.documentElement.lang = 'th';
+  translateTree(document.body);
+  new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === 'characterData') translateTree(m.target);
+      else m.addedNodes.forEach(translateTree);
+    }
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+}
 
 // ------------------------------------------------------------------ pixel sprites
 const PAL = {
@@ -832,6 +978,7 @@ document.addEventListener('pointerout', (e) => { if (!e.relatedTarget || !e.rela
 // Stardew-style dialogue text: types out with blips, click to finish instantly.
 const typers = new WeakMap();
 function typewrite(el, text, { speed = 22, sound = true } = {}) {
+  text = t(text);
   typers.get(el)?.stop();
   let i = 0, stopped = false;
   el.textContent = ''; el.classList.add('typing');
@@ -1037,11 +1184,11 @@ function renderFarm() {
   }
   $('#farmer-name').textContent = st.name;
   const hr = new Date().getHours();
-  const greet = hr < 5 ? 'Up late' : hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : hr < 21 ? 'Good evening' : 'Up late';
+  const greet = hr < 5 ? tr('Up late', 'ดึกแล้วนะ') : hr < 12 ? tr('Good morning', 'อรุณสวัสดิ์') : hr < 17 ? tr('Good afternoon', 'สวัสดีตอนบ่าย') : hr < 21 ? tr('Good evening', 'สวัสดีตอนเย็น') : tr('Up late', 'ดึกแล้วนะ');
   const todayN = state.trades.filter((t) => t.date === todayISO()).length;
   $('#banner-msg').innerHTML = `${esc(greet)}, ${esc(st.name)}! ` + (todayN
-    ? `Today: <span class="num ${cls(s.todayNet)}">${signed(s.todayNet, 0)}</span> from ${todayN} quest${todayN > 1 ? 's' : ''}.`
-    : s.energy > 0 ? 'No quests yet today.' : '');
+    ? tr(`Today: <span class="num ${cls(s.todayNet)}">${signed(s.todayNet, 0)}</span> from ${todayN} quest${todayN > 1 ? 's' : ''}.`, `วันนี้: <span class="num ${cls(s.todayNet)}">${signed(s.todayNet, 0)}</span> จาก ${todayN} เควส`)
+    : s.energy > 0 ? tr('No quests yet today.', 'วันนี้ยังไม่มีเควส') : '');
   const L = s.level;
   $('#lvl').textContent = L.lvl; $('#lvl-title').textContent = L.title;
   $('#xp-text').textContent = `${L.into} / ${L.need}`;
@@ -1099,7 +1246,9 @@ function renderCalendar() {
   const [Y, M] = state.calMonth.split('-').map(Number);
   const first = new Date(Y, M - 1, 1), days = new Date(Y, M, 0).getDate();
   const [season, color] = seasonOf(M - 1);
-  $('#cal-season').innerHTML = `<span class="px-1" style="background:#3b2314;color:${color}">${season}</span> ${MONTHS[M - 1]} ${Y}`;
+  const MONTHS_TH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const SEASON_TH = { Spring: 'ใบไม้ผลิ', Summer: 'ฤดูร้อน', Fall: 'ใบไม้ร่วง', Winter: 'ฤดูหนาว' };
+  $('#cal-season').innerHTML = `<span class="px-1" style="background:#3b2314;color:${color}">${tr(season, SEASON_TH[season])}</span> ${tr(MONTHS[M - 1], MONTHS_TH[M - 1])} ${Y}`;
   const monthDays = [...s.daily.entries()].filter(([d]) => d.startsWith(state.calMonth));
   const total = monthDays.reduce((a, [, v]) => a + v.net, 0);
   const big = Math.max(1, ...monthDays.map(([, v]) => Math.abs(v.net)));
@@ -1158,7 +1307,7 @@ function renderBoard() {
   const setups = [...new Set([...SETUPS, ...state.trades.map((t) => t.setup).filter(Boolean)])];
   $('#setups').innerHTML = setups.map((x) => `<option value="${esc(x)}">`).join('');
   $('#assets').innerHTML = [...new Set(['BTCUSDT', 'ETHUSDT', 'XAUUSD', 'EURUSD', 'NAS100', ...state.trades.map((t) => t.asset)])].map((x) => `<option value="${esc(x)}">`).join('');
-  $('#setup-filter').innerHTML = '<option value="">All setups</option>' + [...new Set(state.trades.map((t) => t.setup || 'Unsorted'))].map((x) => `<option ${x === state.setupFilter ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  $('#setup-filter').innerHTML = '<option value="">All setups</option>' + [...new Set(state.trades.map((t) => t.setup || 'Unsorted'))].map((x) => `<option value="${esc(x)}" ${x === state.setupFilter ? 'selected' : ''}>${esc(x)}</option>`).join('');
 }
 
 function barRow(label, g, onclick = '') {
@@ -1257,17 +1406,19 @@ function wisdoms() {
   const s = state.stats, out = [];
   if (!s.n) return ['Pull up a stool, traveler. Log a few quests and I will read your fortune in the numbers.'];
   const setups = Object.entries(s.bySetup).filter(([, g]) => g.n >= 3).sort((a, b) => b[1].net - a[1].net);
-  if (setups.length) out.push(`Your best crop is "${setups[0][0]}": ${signed(setups[0][1].net, 0)} over ${setups[0][1].n} quests. Plant more of that.`);
-  if (setups.length > 1 && setups.at(-1)[1].net < 0) out.push(`"${setups.at(-1)[0]}" keeps withering (${signed(setups.at(-1)[1].net, 0)}). Maybe let that field rest for a season.`);
+  if (setups.length) out.push(tr(`Your best crop is "${setups[0][0]}": ${signed(setups[0][1].net, 0)} over ${setups[0][1].n} quests. Plant more of that.`, `ผักที่ดีที่สุดของเจ้าคือ "${setups[0][0]}": ${signed(setups[0][1].net, 0)} จาก ${setups[0][1].n} เควส ปลูกแบบนี้ให้มากขึ้น`));
+  if (setups.length > 1 && setups.at(-1)[1].net < 0) out.push(tr(`"${setups.at(-1)[0]}" keeps withering (${signed(setups.at(-1)[1].net, 0)}). Maybe let that field rest for a season.`, `"${setups.at(-1)[0]}" เหี่ยวอยู่เรื่อย (${signed(setups.at(-1)[1].net, 0)}) พักแปลงนั้นสักฤดูดีไหม`));
   const bad = Object.entries(s.byMood).filter(([k]) => !EMO[k]?.good);
   const badNet = bad.reduce((a, [, g]) => a + g.net, 0), badN = bad.reduce((a, [, g]) => a + g.n, 0);
-  if (badN) out.push(`When you trade ${bad.map(([k]) => EMO[k]?.label).slice(0, 3).join(', ')}, you made ${signed(badNet, 0)} over ${badN} quests.${badNet < 0 ? ' Those storms cost you gold — notice them before you click.' : ''}`);
+  const badNames = bad.map(([k]) => t(EMO[k]?.label)).slice(0, 3).join(', ');
+  if (badN) out.push(tr(`When you trade ${badNames}, you made ${signed(badNet, 0)} over ${badN} quests.${badNet < 0 ? ' Those storms cost you gold — notice them before you click.' : ''}`, `ตอนเทรดแบบ ${badNames} เจ้าได้ ${signed(badNet, 0)} จาก ${badN} เควส${badNet < 0 ? ' พายุพวกนี้ทำเจ้าเสียทอง สังเกตให้ทันก่อนกดเข้าเทรด' : ''}`));
   const calm = ['calm', 'patient'].map((k) => s.byMood[k]).filter(Boolean);
-  if (calm.length) { const n = calm.reduce((a, g) => a + g.n, 0), w = calm.reduce((a, g) => a + g.wins, 0); out.push(`Calm and patient, you win ${pct(w / n)} of the time. The valley rewards those who wait.`); }
+  if (calm.length) { const n = calm.reduce((a, g) => a + g.n, 0), w = calm.reduce((a, g) => a + g.wins, 0); out.push(tr(`Calm and patient, you win ${pct(w / n)} of the time. The valley rewards those who wait.`, `ตอนใจนิ่งและอดทนรอ เจ้าชนะ ${pct(w / n)} หุบเขานี้ให้รางวัลคนที่รอเป็น`)); }
   const wd = s.byWd.map((d, i) => [i, d]).filter(([, d]) => d.n >= 2).sort((a, b) => a[1].net - b[1].net);
-  if (wd.length > 1) out.push(`${DOW[wd.at(-1)[0]]}days are your golden days (${signed(wd.at(-1)[1].net, 0)}). ${DOW[wd[0][0]]}days… not so much (${signed(wd[0][1].net, 0)}).`);
-  if (s.avgLoss && s.avgWin / s.avgLoss < 1) out.push(`Your average loss (${money(s.avgLoss, 0)}) is bigger than your average win (${money(s.avgWin, 0)}). Cut the weeds early, let the pumpkins grow.`);
-  out.push(s.discipline >= 0.7 ? 'Your discipline hearts are strong. Keep following the plan, farmer.' : 'You have been drifting from your plan lately. Write the plan before the market opens.');
+  const DAY_TH = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัส', 'วันศุกร์', 'วันเสาร์'];
+  if (wd.length > 1) out.push(tr(`${DOW[wd.at(-1)[0]]}days are your golden days (${signed(wd.at(-1)[1].net, 0)}). ${DOW[wd[0][0]]}days… not so much (${signed(wd[0][1].net, 0)}).`, `${DAY_TH[wd.at(-1)[0]]}คือวันทองของเจ้า (${signed(wd.at(-1)[1].net, 0)}) ส่วน${DAY_TH[wd[0][0]]}… ไม่ค่อยดีเท่าไหร่ (${signed(wd[0][1].net, 0)})`));
+  if (s.avgLoss && s.avgWin / s.avgLoss < 1) out.push(tr(`Your average loss (${money(s.avgLoss, 0)}) is bigger than your average win (${money(s.avgWin, 0)}). Cut the weeds early, let the pumpkins grow.`, `ขาดทุนเฉลี่ย (${money(s.avgLoss, 0)}) ใหญ่กว่ากำไรเฉลี่ย (${money(s.avgWin, 0)}) ถอนวัชพืชให้เร็ว แล้วปล่อยฟักทองให้โต`));
+  out.push(s.discipline >= 0.7 ? tr('Your discipline hearts are strong. Keep following the plan, farmer.', 'หัวใจวินัยของเจ้าแข็งแรงดี ทำตามแผนต่อไปนะ ชาวนา') : tr('You have been drifting from your plan lately. Write the plan before the market opens.', 'ช่วงนี้เจ้าออกนอกแผนบ่อย เขียนแผนไว้ก่อนตลาดเปิดนะ'));
   return out;
 }
 function nextWisdom() { const w = wisdoms(); typewrite($('#wisdom'), w[wisdomIdx++ % w.length]); }
@@ -1323,7 +1474,7 @@ function openQuest(id) {
       })();
       $('[data-edit]', win).onclick = () => { w.close(); editQuest(t.id); };
       $('[data-del]', win).onclick = async () => {
-        if (await ask(`Tear the "${t.asset}" quest off the board? This can't be undone.`, { yes: 'Delete', no: 'Keep', danger: true })) {
+        if (await ask(tr(`Tear the "${t.asset}" quest off the board? This can't be undone.`, `ฉีกเควส "${t.asset}" ออกจากกระดานเลยไหม? ย้อนกลับไม่ได้นะ`), { yes: 'Delete', no: 'Keep', danger: true })) {
           state.trades = state.trades.filter((x) => x.id !== t.id);
           save(); Sfx.trash(); w.close(); render(); toast('Quest removed', `${t.asset} ${signed(t.pnl)}`, 'withered');
         }
@@ -1402,7 +1553,7 @@ function openSettings() {
       $('[data-demo]', win).onclick = async () => { w.close(); await loadDemo(); };
       $('[data-reset]', win).onclick = async () => {
         w.close();
-        if (await ask('Plow the whole farm? Every quest and achievement will be gone. (Export first if unsure.)', { yes: 'Plow it', no: 'Cancel', danger: true })) {
+        if (await ask(tr('Plow the whole farm? Every quest and achievement will be gone. (Export first if unsure.)', 'ไถทั้งฟาร์มเลยไหม? เควสและความสำเร็จทั้งหมดจะหายไป (ถ้าไม่แน่ใจ ส่งออกไฟล์สำรองก่อน)'), { yes: 'Plow it', no: 'Cancel', danger: true })) {
           state.trades = []; state.achievements = []; save(); render(); Sfx.trash(); toast('A fresh field', 'Your farm has been reset.', 'sprout');
         }
       };
@@ -1682,7 +1833,7 @@ function passedOut() {
     html: `<div class="flex gap-3 items-start">${img('farmer', 'w-14 shrink-0', 'style="transform:rotate(90deg)"')}
       <p data-t class="leading-relaxed"></p></div>
       <div class="flex justify-end mt-4"><button class="btn btn-green" data-close>Go to bed 🛏</button></div>`,
-    onMount(win) { setTimeout(() => typewrite($('[data-t]', win), `Your energy is gone — today's losses hit your ${money(state.settings.dailyLoss, 0)} daily limit. The best trade now is no trade. Rest, review your quests, and come back tomorrow.`), 480); },
+    onMount(win) { setTimeout(() => typewrite($('[data-t]', win), tr(`Your energy is gone — today's losses hit your ${money(state.settings.dailyLoss, 0)} daily limit. The best trade now is no trade. Rest, review your quests, and come back tomorrow.`, `พลังงานหมดแล้ว ขาดทุนวันนี้ถึงลิมิต ${money(state.settings.dailyLoss, 0)} แล้ว เทรดที่ดีที่สุดตอนนี้คือไม่เทรด พักผ่อน ทบทวนเควส แล้วพรุ่งนี้ค่อยมาใหม่`)), 480); },
   });
 }
 function checkAchievements(announce) {
@@ -1697,7 +1848,7 @@ function checkAchievements(announce) {
 // ------------------------------------------------------------------ demo farm
 function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 async function loadDemo() {
-  if (state.trades.length && !(await ask('Replace your current farm with the demo farm?', { yes: 'Replace', no: 'Cancel', danger: true }))) return;
+  if (state.trades.length && !(await ask(tr('Replace your current farm with the demo farm?', 'แทนที่ฟาร์มปัจจุบันด้วยฟาร์มตัวอย่างไหม?'), { yes: 'Replace', no: 'Cancel', danger: true }))) return;
   const rnd = mulberry32(2026), pick = (a) => a[Math.floor(rnd() * a.length)];
   const assets = [['BTCUSDT', 64000, 0.012, 1], ['ETHUSDT', 3100, 0.015, 2], ['XAUUSD', 2450, 0.006, 2], ['EURUSD', 1.09, 0.003, 5], ['NAS100', 19800, 0.007, 1], ['SOLUSDT', 150, 0.02, 2]];
   const edge = { Breakout: 0.56, Pullback: 0.64, Reversal: 0.42, Range: 0.6, 'Trend Follow': 0.52, News: 0.36, Scalp: 0.55 };
@@ -1760,6 +1911,8 @@ $('#btn-sound').onclick = () => {
   renderHUD(); toast(Sfx.on ? 'Sound on' : 'Sound off', '', Sfx.on ? 'speaker' : 'mute');
 };
 $('#btn-settings').onclick = openSettings;
+$('#btn-lang').textContent = LANG === 'th' ? 'EN' : 'ไทย';
+$('#btn-lang').onclick = () => { state.settings.lang = LANG === 'th' ? 'en' : 'th'; save(); location.reload(); };
 $('#cal-prev').onclick = () => shiftMonth(-1);
 $('#cal-next').onclick = () => shiftMonth(1);
 function shiftMonth(d) {
