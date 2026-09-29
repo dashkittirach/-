@@ -681,15 +681,41 @@ const img = (name, cl = 'w-6', extra = '') => `<img class="px ${cl}" src="${spr(
 function hydrateSprites(root = document) { $$('img[data-sprite]', root).forEach((el) => { el.src = spr(el.dataset.sprite); }); }
 
 // ------------------------------------------------------------------ 8-bit sound (Web Audio)
+// half a second of silence as a WAV data URI (8 kHz, 8-bit mono)
+function silentWav() {
+  const n = 4000, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, str) => [...str].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+  b.fill(128, 44);
+  let bin = ''; for (let i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]);
+  return 'data:audio/wav;base64,' + btoa(bin);
+}
 const Sfx = {
   ctx: null, master: null, on: true, vol: 0.6,
+  // iPhone: Web Audio is muted by the silent (ring) switch unless the page asks for "playback" audio,
+  // only starts inside a tap (touchend/click), and goes to an "interrupted" state after calls or
+  // switching apps. So: ask for playback, resume on every tap whatever the state, and play a
+  // silent sound inside the tap so iOS really unlocks the output.
   unlock() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    this.ctx = new AC();
-    this.master = this.ctx.createGain(); this.master.gain.value = this.vol * 0.5;
-    const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
-    this.master.connect(lp).connect(this.ctx.destination);
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { /* older iOS */ }
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain(); this.master.gain.value = this.vol * 0.5;
+      const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
+      this.master.connect(lp).connect(this.ctx.destination);
+    }
+    if (this.ctx.state !== 'running') {
+      this.ctx.resume?.().catch(() => {});
+      try { const src = this.ctx.createBufferSource(); src.buffer = this.ctx.createBuffer(1, 1, 22050); src.connect(this.ctx.destination); src.start(0); } catch (e) { /* ignore */ }
+    }
+    // older iOS without navigator.audioSession: a looping silent <audio> element switches the
+    // page to the playback audio category, so sound works with the silent switch on
+    if (!navigator.audioSession && isTouch && !this.keepAlive) {
+      const a = (this.keepAlive = new Audio(silentWav()));
+      a.loop = true; a.setAttribute('playsinline', ''); a.volume = 0.01;
+      a.play().catch(() => { this.keepAlive = null; });
+    } else if (this.keepAlive?.paused && !document.hidden) this.keepAlive.play().catch(() => {});
   },
   setVolume(v) { this.vol = v; if (this.master) this.master.gain.value = v * 0.5; },
   tone(freq, dur, { type = 'square', vol = 0.25, at = 0, slide = null } = {}) {
@@ -3716,7 +3742,7 @@ function musicMood() {
   const h = new Date().getHours() + new Date().getMinutes() / 60;
   return h >= 5 && h < 9 ? 'morning' : h >= 9 && h < 17 ? 'day' : h >= 17 && h < 19.5 ? 'evening' : 'night';
 }
-document.addEventListener('visibilitychange', () => Music.sync());
+document.addEventListener('visibilitychange', () => { if (document.hidden) Sfx.keepAlive?.pause(); Music.sync(); });
 setInterval(() => Music.sync(), 30000);
 
 // ------------------------------------------------------------------ live update
