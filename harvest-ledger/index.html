@@ -84,7 +84,7 @@
   input, textarea, select, [contenteditable] { -webkit-user-select: text; user-select: text; }
   img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
   .font-pixel { font-family: "Pixelify Sans", "Mali", ui-monospace, monospace; }
-  .num { font-family: "Pixelify Sans", "Mali", monospace; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .num { font-family: "Nunito", "Mali", system-ui, sans-serif; font-weight: 800; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0; }
   .tshadow-light { text-shadow: 2px 2px 0 rgba(0, 0, 0, .35); }
 
   /* ---------------------------------------------------------- 3D world */
@@ -132,7 +132,7 @@
   .inp:focus { border-image-source: var(--f-slot-hi); }
   .inp::placeholder { color: #a58556; font-weight: 500; }
   textarea.inp { resize: vertical; min-height: 4.2rem; line-height: 1.4; }
-  input[type=number].inp { font-family: "Pixelify Sans", "Mali", monospace; font-size: 1.05rem; }
+  input[type=number].inp { font-family: "Nunito", "Mali", sans-serif; font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
   input[type=range] { accent-color: #d97706; }
   .chip { font: 600 .85rem "Pixelify Sans", "Mali", monospace; padding: .1rem .5rem; cursor: pointer; user-select: none; border: 3px solid #8b5a2b; background: #f7e9c6; color: #5c3a21; box-shadow: 2px 2px 0 rgba(59, 35, 20, .25); transition: transform .08s steps(2); }
   .chip:hover { transform: translateY(-2px); }
@@ -149,16 +149,17 @@
   .bar.sm { height: 20px; }
   .bar > .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; transition: width .7s steps(14, end); background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0) 0 10px, rgba(0,0,0,.18) 10px 12px); }
   .bar > .fill::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: rgba(255, 255, 255, .35); }
-  .bar > .val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font: 600 .8rem "Pixelify Sans", monospace; color: #fff4d6; text-shadow: 1px 1px 0 #000; }
+  .bar > .val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font: 800 .8rem "Nunito", sans-serif; font-variant-numeric: tabular-nums; color: #fff4d6; text-shadow: 1px 1px 0 #000; }
   .bar.sm > .val { font-size: .7rem; }
 
   .cal-cell { aspect-ratio: 1; position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 2px 3px; }
-  .cal-cell .d { font: 600 .8rem "Pixelify Sans", monospace; color: #5c3a21; }
+  .cal-cell .d { font: 800 .8rem "Nunito", sans-serif; color: #5c3a21; }
   .cal-cell img { width: 58%; align-self: center; margin-top: -6px; }
+  @media (max-width: 639px) { .cal-cell img { width: 44%; margin-top: 0; } .cal-cell .d { font-size: .72rem; line-height: 1; } }
   .cal-cell.has { cursor: pointer; }
   .cal-cell.today { border-image-source: var(--f-slot-hi); }
   .cal-cell.other { opacity: .35; }
-  .cal-cell .pnl { font: 600 .66rem "Pixelify Sans", monospace; text-align: center; line-height: 1; }
+  .cal-cell .pnl { font: 800 .68rem "Nunito", sans-serif; font-variant-numeric: tabular-nums; text-align: center; line-height: 1; }
 
   .note { position: relative; cursor: pointer; transition: transform .12s steps(2); }
   .note:hover { transform: translateY(-4px) rotate(0deg) !important; z-index: 2; }
@@ -982,7 +983,7 @@ function renderHUD() {
 function weatherNow() { const s = state.stats; return !s || !s.todayN ? 'cloud' : s.todayNet >= 0 ? 'sun' : 'rain'; }
 function statSlot(icon, label, value, sub = '', tip = '', valueCls = '') {
   return `<div class="slot" data-tip="${esc(tip)}"><div class="flex items-center gap-1 font-pixel text-sm text-[#6b4423]">${img(icon, 'w-5')}${esc(label)}</div>
-    <div class="num text-xl sm:text-2xl font-bold ${valueCls}">${value}</div><div class="text-xs text-[#8b5a2b] font-pixel truncate">${sub}</div></div>`;
+    <div class="num text-xl sm:text-2xl font-bold ${valueCls}">${value}</div><div class="text-xs text-[#8b5a2b] font-semibold truncate" style="font-variant-numeric:tabular-nums">${sub}</div></div>`;
 }
 function renderHouse() {
   const s = state.stats, st = state.settings, L = s.level;
