@@ -440,8 +440,10 @@
   <section id="panel-tavern">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="parch lg:col-span-2">
-        <div class="flex items-center gap-2 mb-2"><img class="px w-7" data-sprite="coin" alt=""><div class="font-pixel text-xl font-bold">Gold Chronicle</div><div class="ml-auto font-pixel text-sm text-[#8b5a2b]">equity after every quest</div></div>
-        <div class="slot relative"><canvas id="chart" class="px w-full h-[200px] sm:h-[240px] block"></canvas></div>
+        <div class="flex items-center gap-2 mb-2"><img class="px w-7" data-sprite="coin" alt=""><div class="font-pixel text-xl font-bold">Gold Chronicle</div><div class="ml-auto font-pixel text-sm text-[#8b5a2b]">balance at the end of each day</div></div>
+        <div class="flex gap-1 mb-2"><button class="btn text-sm" data-crange="7">1W</button><button class="btn text-sm sel" data-crange="30">1M</button><button class="btn text-sm" data-crange="90">3M</button><button class="btn text-sm" data-crange="0">All</button></div>
+        <div id="chart-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2"></div>
+        <div class="slot relative"><canvas id="chart" class="w-full h-[250px] sm:h-[300px] block" style="touch-action: pan-y"></canvas></div>
       </div>
       <div class="parch lg:col-span-2">
         <div class="flex gap-4 items-start">
@@ -547,7 +549,7 @@ const TH = {
   'Pinned Quests': 'เควสบนกระดาน', 'All': 'ทั้งหมด', 'Harvests': 'ชนะ', 'Withered': 'แพ้', 'All setups': 'ทุก setup',
   'No quests pinned here yet.': 'ยังไม่มีเควสบนกระดาน', 'Show more quests ▼': 'ดูเพิ่ม ▼',
   // tavern
-  'The Tavern': 'โรงเตี๊ยม', 'Gold Chronicle': 'บันทึกทองคำ', 'equity after every quest': 'เงินในพอร์ตหลังแต่ละเทรด', 'The Innkeeper says…': 'เจ้าของร้านบอกว่า…',
+  'The Tavern': 'โรงเตี๊ยม', 'Gold Chronicle': 'บันทึกทองคำ', 'equity after every quest': 'เงินในพอร์ตหลังแต่ละเทรด', 'balance at the end of each day': 'ยอดเงินตอนสิ้นวัน', 'The Innkeeper says…': 'เจ้าของร้านบอกว่า…',
   'Next tip ▶': 'คำแนะนำถัดไป ▶', '📜 Scroll of Setups': '📜 คัมภีร์ Setup', 'Win rate & gold by setup · click a row to see those quests': 'อัตราชนะและกำไรแยกตาม setup · แตะแถวเพื่อดูเทรด',
   '📖 Book of Moods': '📖 ตำราอารมณ์', 'How your emotional state changes the outcome': 'อารมณ์ส่งผลต่อผลเทรดอย่างไร',
   '🗓 Almanac of Weekdays': '🗓 ปฏิทินวันในสัปดาห์', '🏆 Achievements': '🏆 ความสำเร็จ', 'The pages are still blank. Log a few quests!': 'หน้ากระดาษยังว่างอยู่ ลองจดเทรดสักหน่อย!',
@@ -1099,49 +1101,106 @@ function renderTavern() {
 
 // pixel equity chart (low-res canvas scaled up)
 const chart = $('#chart');
-let chartHover = -1;
+// Gold Chronicle: end-of-day balance line + daily profit/loss bars, readable axes, range buttons.
+let chartHover = -1, chartRange = 30, chartDays = [];
+const CHART_L = 52, CHART_R = 10;
+function chartData() {
+  const days = [...state.stats.daily.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  let eq = state.settings.startBalance;
+  const all = days.map(([date, d]) => { eq += d.net; return { date, net: d.net, n: d.n, eq }; });
+  if (!chartRange || !all.length) return all;
+  const from = new Date(all.at(-1).date + 'T12:00:00'); from.setDate(from.getDate() - chartRange + 1);
+  const cut = isoOf(from);
+  return all.filter((d) => d.date >= cut);
+}
+function niceStep(range, ticks) { const raw = range / ticks, mag = 10 ** Math.floor(Math.log10(raw || 1)), k = raw / mag; return (k <= 1 ? 1 : k <= 2 ? 2 : k <= 5 ? 5 : 10) * mag; }
+const shortMoney = (v) => { const a = Math.abs(v), k = (x) => String(+x.toFixed(x >= 100 ? 0 : x >= 10 ? 1 : 2)); return (v < 0 ? '-$' : '$') + (a >= 1e6 ? k(a / 1e6) + 'M' : a >= 1e3 ? k(a / 1e3) + 'k' : Math.round(a)); };
 function drawChart() {
-  const s = state.stats, P = 3;
-  if (!chart.clientWidth) return;
-  const W = Math.max(40, Math.floor(chart.clientWidth / P)), H = Math.max(30, Math.floor(chart.clientHeight / P));
-  chart.width = W; chart.height = H;
+  const cw = chart.clientWidth, ch = chart.clientHeight;
+  if (!cw) return;
+  const dpr = Math.min(3, devicePixelRatio || 1);
+  chart.width = Math.round(cw * dpr); chart.height = Math.round(ch * dpr);
   const g = chart.getContext('2d');
-  g.fillStyle = '#f7e9c6'; g.fillRect(0, 0, W, H);
-  const vals = s.equity.map((p) => p.v), n = vals.length;
-  if (n < 2) { g.fillStyle = '#b89968'; g.font = '8px monospace'; g.fillText('no quests yet', 4, H / 2); return; }
-  const start = state.settings.startBalance, lo = Math.min(start, ...vals), hi = Math.max(start, ...vals), padV = (hi - lo || 1) * 0.12;
-  const L = 2, R = W - 3, T = 3, B = H - 3;
-  const y = (v) => Math.round(B - ((v - (lo - padV)) / (hi - lo + padV * 2)) * (B - T));
-  const baseY = y(start);
-  for (let gy = 0; gy < 4; gy++) { const yy = Math.round(T + (gy / 3) * (B - T)); g.fillStyle = '#e3cf9f'; for (let x = L; x < R; x += 3) g.fillRect(x, yy, 1, 1); }
-  let prev = null;
-  for (let x = L; x <= R; x++) {
-    const fi = ((x - L) / (R - L)) * (n - 1), i0 = Math.floor(fi), f = fi - i0;
-    const v = vals[i0] + (vals[Math.min(n - 1, i0 + 1)] - vals[i0]) * f, yy = y(v), above = v >= start;
-    g.fillStyle = above ? '#9bd35a' : '#f39a8f';
-    const [a, b] = yy < baseY ? [yy + 1, baseY] : [baseY + 1, yy];
-    for (let py = a; py < b; py++) if ((x + py) % 2 === 0) g.fillRect(x, py, 1, 1);
-    g.fillStyle = above ? '#2f6b36' : '#8e2a2a';
-    if (prev == null) g.fillRect(x, yy, 1, 2); else { const [m, M] = prev < yy ? [prev, yy] : [yy, prev]; g.fillRect(x, m, 1, M - m + 2); }
-    prev = yy;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cw, ch);
+  const days = (chartDays = chartData());
+  renderChartSummary(days);
+  g.font = '700 11px Nunito, Mali, system-ui, sans-serif';
+  if (!days.length) { g.fillStyle = '#8b5a2b'; g.textAlign = 'center'; g.fillText(tr('No quests yet', 'ยังไม่มีเทรด'), cw / 2, ch / 2); return; }
+  const L = CHART_L, R = cw - CHART_R, T = 10, B = ch - 22, split = T + (B - T) * 0.66, barTop = split + 14;
+  const base = days[0].eq - days[0].net, n = days.length;
+  let lo = Math.min(base, ...days.map((d) => d.eq)), hi = Math.max(base, ...days.map((d) => d.eq));
+  if (hi - lo < 1) { hi += 1; lo -= 1; }
+  const step = niceStep(hi - lo, 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = (i) => L + (n === 1 ? (R - L) / 2 : (i / (n - 1)) * (R - L));
+  const y = (v) => split - ((v - lo) / (hi - lo)) * (split - T);
+  // grid + $ labels
+  g.textAlign = 'right'; g.textBaseline = 'middle'; g.lineWidth = 1;
+  for (let v = lo; v <= hi + step * 1e-6; v += step) {
+    const yy = Math.round(y(v)) + 0.5;
+    g.strokeStyle = 'rgba(139,90,43,.16)'; g.beginPath(); g.moveTo(L, yy); g.lineTo(R, yy); g.stroke();
+    g.fillStyle = '#8b5a2b'; g.fillText(shortMoney(v), L - 6, yy);
   }
-  g.fillStyle = '#8b5a2b'; for (let x = L; x < R; x += 4) g.fillRect(x, baseY, 2, 1);
-  g.drawImage(spriteCanvas('coin'), R - 8, y(vals[n - 1]) - 5);
-  if (chartHover >= 0) {
-    const hx = Math.round(L + (chartHover / (n - 1)) * (R - L));
-    g.fillStyle = '#d97706'; for (let yy = T; yy < B; yy += 2) g.fillRect(hx, yy, 1, 1);
-    g.fillStyle = '#3b2314'; g.fillRect(hx - 1, y(vals[chartHover]) - 1, 3, 3);
+  // dashed line = balance at the start of the range
+  const by = y(base);
+  g.setLineDash([4, 4]); g.strokeStyle = 'rgba(92,58,33,.55)'; g.beginPath(); g.moveTo(L, by); g.lineTo(R, by); g.stroke(); g.setLineDash([]);
+  // area + line (green if the range ends up, red if down)
+  const up = days.at(-1).eq >= base, col = up ? '#2f7a3a' : '#b83d34';
+  const grad = g.createLinearGradient(0, T, 0, split);
+  grad.addColorStop(0, up ? 'rgba(74,124,89,.32)' : 'rgba(184,61,52,.06)'); grad.addColorStop(1, up ? 'rgba(74,124,89,.03)' : 'rgba(184,61,52,.3)');
+  g.beginPath(); g.moveTo(x(0), by); days.forEach((d, i) => g.lineTo(x(i), y(d.eq))); g.lineTo(x(n - 1), by); g.closePath(); g.fillStyle = grad; g.fill();
+  g.beginPath(); days.forEach((d, i) => (i ? g.lineTo(x(i), y(d.eq)) : g.moveTo(x(i), y(d.eq))));
+  g.strokeStyle = col; g.lineWidth = 2.5; g.lineJoin = 'round'; g.stroke();
+  if (n <= 45) days.forEach((d, i) => { g.beginPath(); g.arc(x(i), y(d.eq), 2.6, 0, 7); g.fillStyle = col; g.fill(); });
+  // daily profit/loss bars
+  const maxAbs = Math.max(1, ...days.map((d) => Math.abs(d.net))), zeroY = barTop + (B - barTop) / 2, half = (B - barTop) / 2 - 1;
+  g.strokeStyle = 'rgba(92,58,33,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(L, zeroY + 0.5); g.lineTo(R, zeroY + 0.5); g.stroke();
+  const bw = Math.max(1.5, Math.min(16, ((R - L) / n) * 0.7));
+  days.forEach((d, i) => { const h = Math.max(1, (Math.abs(d.net) / maxAbs) * half); g.fillStyle = d.net >= 0 ? '#4a7c59' : '#c0443c'; g.fillRect(x(i) - bw / 2, d.net >= 0 ? zeroY - h : zeroY, bw, h); });
+  g.fillStyle = '#8b5a2b'; g.textAlign = 'right'; g.fillText(tr('daily', 'รายวัน'), L - 6, zeroY);
+  // date labels
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  const count = Math.min(n, Math.max(2, Math.floor((R - L) / 64)));
+  for (let k = 0; k < count; k++) {
+    const i = count === 1 ? 0 : Math.round((k / (count - 1)) * (n - 1)), [, mm, dd] = days[i].date.split('-');
+    g.fillText(`${+dd}/${+mm}`, Math.min(R - 14, Math.max(L + 14, x(i))), ch - 6);
+  }
+  // hover guide
+  if (chartHover >= 0 && chartHover < n) {
+    const hx = x(chartHover), d = days[chartHover];
+    g.strokeStyle = 'rgba(217,119,6,.85)'; g.lineWidth = 1; g.beginPath(); g.moveTo(hx, T); g.lineTo(hx, B); g.stroke();
+    g.beginPath(); g.arc(hx, y(d.eq), 5, 0, 7); g.fillStyle = '#fff8e6'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = col; g.stroke();
   }
 }
-chart.addEventListener('pointermove', (e) => {
-  const s = state.stats, n = s.equity.length; if (n < 2) return;
-  const r = chart.getBoundingClientRect(), i = Math.round(clamp((e.clientX - r.left) / r.width) * (n - 1));
+function renderChartSummary(days) {
+  const el = $('#chart-summary'); if (!el) return;
+  if (!days.length) { el.innerHTML = ''; return; }
+  const base = days[0].eq - days[0].net, end = days.at(-1).eq, chg = end - base;
+  let peak = base, dd = 0; for (const d of days) { peak = Math.max(peak, d.eq); dd = Math.max(dd, peak - d.eq); }
+  const green = days.filter((d) => d.net > 0).length;
+  const item = (label, val, c = '') => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${label}</div><div class="num text-base sm:text-lg ${c}">${val}</div></div>`;
+  el.innerHTML = item(tr('Balance', 'ยอดเงิน'), money(end, 0)) + item(tr('Change', 'เปลี่ยนแปลง'), signed(chg, 0), cls(chg))
+    + item(tr('Max drawdown', 'ดรอว์ดาวน์สูงสุด'), dd ? money(-dd, 0) : '$0', dd ? 'down' : '') + item(tr('Green days', 'วันที่กำไร'), `${green} / ${days.length}`);
+}
+function chartTip(e) {
+  const n = chartDays.length; if (!n) return;
+  const r = chart.getBoundingClientRect(), i = n === 1 ? 0 : Math.round(clamp((e.clientX - r.left - CHART_L) / (r.width - CHART_L - CHART_R)) * (n - 1));
   if (i !== chartHover) { chartHover = i; drawChart(); }
-  const p = s.equity[i];
-  chart.dataset.tipHtml = p.t ? `${esc(p.t.date)} · ${esc(p.t.asset)}<br><span class="${cls(p.t.pnl)}">${signed(p.t.pnl)}</span> → ${money(p.v)}` : `Starting gold ${money(p.v)}`;
-  chart.dataset.tip = '1';
-});
-chart.addEventListener('pointerleave', () => { chartHover = -1; drawChart(); hideTip(); });
+  const d = chartDays[i], dt = new Date(d.date + 'T12:00:00');
+  const html = `<b>${dt.toLocaleDateString(LANG === 'th' ? 'th-TH' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</b><br>${tr('Day result', 'ผลวันนั้น')}: <span class="${cls(d.net)}">${signed(d.net)}</span> · ${d.n} ${tr('trades', 'เทรด')}<br>${tr('Balance', 'ยอดเงิน')}: ${money(d.eq)}`;
+  chart.dataset.tipHtml = html; chart.dataset.tip = '1';
+  tipEl.innerHTML = html; tipEl.classList.add('show');
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  let tx = e.clientX + 14, ty = e.clientY - h - 14;
+  if (tx + w > innerWidth - 8) tx = e.clientX - w - 14;
+  if (ty < 8) ty = e.clientY + 18;
+  tx = Math.max(8, Math.min(tx, innerWidth - w - 8));
+  tipEl.style.left = tx + 'px'; tipEl.style.top = ty + 'px';
+}
+chart.addEventListener('pointermove', chartTip);
+chart.addEventListener('pointerdown', chartTip);
+chart.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse') return; chartHover = -1; drawChart(); tipEl.classList.remove('show'); });
+$$('[data-crange]').forEach((b) => (b.onclick = () => { chartRange = +b.dataset.crange; $$('[data-crange]').forEach((x) => x.classList.toggle('sel', x === b)); chartHover = -1; tipEl.classList.remove('show'); drawChart(); Sfx.select(); }));
+addEventListener('resize', () => chart.clientWidth && drawChart());
 
 let wisdomIdx = 0;
 function wisdoms() {
