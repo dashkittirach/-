@@ -1,3 +1,21 @@
+# Harvest Ledger 🌾 — cozy pixel-art trading journal
+
+`harvest-ledger/index.html` is a **single self-contained file**: pixel-farm-RPG style, Tailwind (CDN), vanilla JS,
+8-bit Web Audio sound effects, and data saved in localStorage. **Double-click the file to open it** (you need internet for the CDN fonts and Tailwind).
+
+- **Farm:** Level/XP, ❤ win rate, ⚡ Energy (drains as you approach your daily loss limit), ⭐ Discipline.
+  Inventory of stats (PnL, Win rate, Profit factor, Streak…), a seasonal calendar with a pixel icon per day,
+  a field where every trade grows a crop (win = pumpkin/golden star, loss = withered plant), and an animated farm scene
+  whose weather follows today's PnL.
+- **Quest Board:** log a trade (auto-calculated PnL, setup, emotions, "followed the plan" hearts, notes / mistakes / lessons, screenshot
+  via drag, click or paste). Winning trades fly coins into your gold counter; losing trades shake the screen. Level-up and achievement popups.
+- **Quest Details:** RPG-style windows that grow dot → bar → full, with dialogue text that types out with blip sounds.
+- **Tavern:** pixel equity chart (hover), win rate by setup / mood / weekday, Innkeeper tips generated from your data, 12 achievements.
+- Shortcuts: `N` new trade · `Ctrl/⌘+Enter` save · `Esc` close · `1–3` tabs · `M` sound · `/` search.
+- Settings ⚙: name, starting gold, daily loss limit, volume, export/import JSON, demo data, reset.
+
+---
+
 # EDGE — Trading Journal (WebGL) + promo video rendered from code
 
 A personal trading journal where every chart is drawn with **raw WebGL2** (no three.js, no chart library),
