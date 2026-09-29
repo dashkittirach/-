@@ -1186,7 +1186,7 @@ function renderFarm() {
   const hr = new Date().getHours();
   const greet = hr < 5 ? tr('Up late', 'ดึกแล้วนะ') : hr < 12 ? tr('Good morning', 'อรุณสวัสดิ์') : hr < 17 ? tr('Good afternoon', 'สวัสดีตอนบ่าย') : hr < 21 ? tr('Good evening', 'สวัสดีตอนเย็น') : tr('Up late', 'ดึกแล้วนะ');
   const todayN = state.trades.filter((t) => t.date === todayISO()).length;
-  $('#banner-msg').innerHTML = `${esc(greet)}, ${esc(st.name)}! ` + (todayN
+  $('#banner-msg').innerHTML = `${esc(greet)}, ${esc(t(st.name))}! ` + (todayN
     ? tr(`Today: <span class="num ${cls(s.todayNet)}">${signed(s.todayNet, 0)}</span> from ${todayN} quest${todayN > 1 ? 's' : ''}.`, `วันนี้: <span class="num ${cls(s.todayNet)}">${signed(s.todayNet, 0)}</span> จาก ${todayN} เควส`)
     : s.energy > 0 ? tr('No quests yet today.', 'วันนี้ยังไม่มีเควส') : '');
   const L = s.level;
