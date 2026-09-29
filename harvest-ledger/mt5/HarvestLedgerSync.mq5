@@ -25,12 +25,44 @@ datetime g_next    = 0;         // earliest time for the next attempt
 int      g_backoff = 0;         // seconds to wait after a failed upload
 
 //+------------------------------------------------------------------+
+string g_gist  = "";            // cleaned-up Gist ID
+string g_token = "";            // cleaned-up token
+
+// accepts the bare ID or a whole gist link (https://gist.github.com/user/<id>)
+string CleanGistId(string s)
+  {
+   StringTrimLeft(s);
+   StringTrimRight(s);
+   while(StringLen(s) > 0 && StringSubstr(s, StringLen(s) - 1) == "/")
+      s = StringSubstr(s, 0, StringLen(s) - 1);
+   int slash = StringFind(s, "/");
+   while(slash >= 0)
+     {
+      s = StringSubstr(s, slash + 1);
+      slash = StringFind(s, "/");
+     }
+   int hash = StringFind(s, "#");
+   if(hash >= 0)
+      s = StringSubstr(s, 0, hash);
+   return(s);
+  }
+
 int OnInit()
   {
+   g_gist  = CleanGistId(InpGistId);
+   g_token = InpToken;
+   StringTrimLeft(g_token);
+   StringTrimRight(g_token);
    EventSetTimer(5);
    g_dirty = true;
-   if(StringLen(InpGistId) == 0 || StringLen(InpToken) == 0)
-      Print("Harvest Ledger: no Gist ID/token set - writing MQL5/Files/", FILE_NAME, " only.");
+   if(StringLen(g_gist) == 0 && StringLen(g_token) == 0)
+      Print("Harvest Ledger: InpGistId and InpToken are empty - writing MQL5/Files/", FILE_NAME, " only. Set them in the EA's Inputs tab.");
+   else if(StringLen(g_gist) == 0)
+      Print("Harvest Ledger: InpGistId is empty - set it in the EA's Inputs tab.");
+   else if(StringLen(g_token) == 0)
+      Print("Harvest Ledger: InpToken is empty - set it in the EA's Inputs tab.");
+   else
+      Print("Harvest Ledger: ready. Gist ", g_gist, ", token ", StringSubstr(g_token, 0, 4), "... - first upload in a few seconds.");
    return(INIT_SUCCEEDED);
   }
 
@@ -52,7 +84,7 @@ void OnTimer()
       return;
    SaveFile(json);
    bool ok = true;
-   if(StringLen(InpGistId) > 0 && StringLen(InpToken) > 0)
+   if(StringLen(g_gist) > 0 && StringLen(g_token) > 0)
       ok = PushGist(json);
    if(ok)
      {
@@ -223,12 +255,12 @@ bool PushGist(const string json)
       ArrayResize(data, len - 1);        // drop the terminating zero
    char   result[];
    string resHeaders;
-   string headers = "Authorization: Bearer " + InpToken + "\r\n" +
+   string headers = "Authorization: Bearer " + g_token +"\r\n" +
                     "Accept: application/vnd.github+json\r\n" +
                     "Content-Type: application/json\r\n" +
                     "User-Agent: HarvestLedgerSync\r\n";
    ResetLastError();
-   int code = WebRequest("PATCH", "https://api.github.com/gists/" + InpGistId, headers, 15000, data, result, resHeaders);
+   int code = WebRequest("PATCH", "https://api.github.com/gists/" + g_gist,headers, 15000, data, result, resHeaders);
    if(code == -1)
      {
       Print("Harvest Ledger: WebRequest failed (error ", GetLastError(),
