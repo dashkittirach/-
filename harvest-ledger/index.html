@@ -246,6 +246,16 @@
   ::-webkit-scrollbar-track { background: #e3cf9f; }
   ::-webkit-scrollbar-thumb { background: #8b5a2b; border: 3px solid #e3cf9f; }
   [hidden] { display: none !important; }
+  /* leisure */
+  #fun-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); z-index: 30; width: min(460px, calc(100vw - 16px)); padding: .7rem .8rem; }
+  body.photo #fun-bar { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+  body.photo #hud, body.photo #labels, body.photo #prompt { display: none !important; }
+  #breath { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: radial-gradient(circle, rgba(15, 23, 53, .25), rgba(15, 23, 53, .6)); pointer-events: auto; }
+  .breath-ring { position: relative; width: min(64vw, 280px); aspect-ratio: 1; display: grid; place-items: center; }
+  .breath-circle { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 244, 214, .95), rgba(159, 211, 240, .55) 60%, rgba(159, 211, 240, .1)); box-shadow: 0 0 60px rgba(255, 244, 214, .6); transform: scale(.45); transition: transform 4s linear; }
+  .breath-word { position: relative; font-size: 1.5rem; color: #3b2314; text-shadow: 0 1px 0 #fff; }
+  #scope { position: fixed; inset: 0; z-index: 40; background: #070b1f; }
+  .shutter { position: fixed; inset: 0; z-index: 99; background: #fff; pointer-events: none; animation: fadein .45s steps(6) reverse both; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition: none !important; }
   }
@@ -257,6 +267,9 @@
 <div id="labels"></div>
 <div id="prompt" class="parch font-pixel" hidden role="button" tabindex="0"><div class="inner"><span class="key">E</span><span id="prompt-text"></span></div></div>
 <div id="fade"></div>
+<div id="fun-bar" class="wood font-pixel" hidden></div>
+<div id="breath" hidden></div>
+<div id="scope" hidden></div>
 
 <div id="loading"><div class="text-center font-pixel"><img class="px w-16 bob" data-sprite="house" alt=""><div class="text-xl mt-2 text-[#3b2314]">Growing your farm…</div></div></div>
 
@@ -289,6 +302,7 @@
     </div>
     <div class="flex gap-1 sm:gap-2">
       <button class="btn !px-1" id="btn-sound" aria-label="Toggle sound" data-tip="Sound on/off (M)"><img class="px w-6" data-sprite="speaker" alt=""></button>
+ <button class="btn !px-1 font-pixel text-lg" id="btn-fun" aria-label="Things to do" data-tip="Things to do: fishing, stars, pets…">🎒</button>
       <button class="btn !px-2 font-pixel" id="btn-guide" data-tip="Handbook & daily tasks">📖 <span id="daily-count" class="num"></span></button>
       <button class="btn !px-2 font-pixel hide-phone" id="btn-lang" data-tip="Switch language">EN</button>
       <a class="btn !px-2 font-pixel hide-phone" href="2d.html" data-tip="Switch to the lighter 2D version (same data)">2D</a>
@@ -603,7 +617,7 @@ const TH = {
   'Your data is safe.': 'ข้อมูลของคุณปลอดภัย', '✨ New version — tap to update': '✨ มีเวอร์ชันใหม่ — แตะเพื่ออัปเดต',
   '📓 Daily Journal': '📓 บันทึกประจำวัน', '✎ Write': '✎ เขียน', 'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
   'Enter Farmhouse': 'เข้าบ้านไร่', 'Open Quest Board': 'เปิดกระดานเควส', 'Enter Tavern': 'เข้าโรงเตี๊ยม', 'Open chest': 'เปิดหีบ',
-  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า',
+  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า', '🎣 Dock': '🎣 ท่าตกปลา', '🌳 Bench': '🌳 ม้านั่ง', '🔭 Telescope': '🔭 กล้องดูดาว', 'Go fishing': 'ตกปลา', 'Sit & breathe': 'นั่งหายใจ', 'Look at the stars': 'ส่องดาว', '💧 Water crops': '💧 รดน้ำผัก', '🧺 Harvest': '🧺 เก็บเกี่ยว', 'Things to do': 'ทำอะไรดี',
 };
 const TH_RE = [
   [/^(\d+) quests? \(showing (\d+)\)$/, '$1 เควส (แสดง $2)'], [/^(\d+) quests over the last (\d+) days$/, '$1 เควสใน $2 วันที่ผ่านมา'],
@@ -761,6 +775,12 @@ const Sfx = {
   error() { this.tone(160, 0.14, { type: 'sawtooth', vol: 0.12 }); this.tone(120, 0.18, { type: 'sawtooth', vol: 0.12, at: 0.1 }); },
   pop() { this.tone(300, 0.08, { vol: 0.14, slide: 900 }); },
   trash() { this.noise(0.2, { vol: 0.15, freq: 900 }); this.tone(300, 0.2, { vol: 0.1, slide: 90, type: 'triangle' }); },
+  splash() { this.noise(0.3, { vol: 0.14, freq: 900 }); this.tone(500, 0.15, { vol: 0.05, slide: 200, type: 'triangle' }); },
+  bite() { this.seq([988, 1319, 988, 1319], 0.06, { vol: 0.14 }); this.noise(0.15, { vol: 0.1, freq: 1200, at: 0.05 }); },
+  reel() { for (let i = 0; i < 5; i++) this.noise(0.02, { vol: 0.08, freq: 3000, at: i * 0.04 }); },
+  purr() { this.tone(90, 0.5, { vol: 0.1, type: 'triangle', slide: 110 }); this.tone(784, 0.12, { vol: 0.06, type: 'sine', at: 0.1 }); this.tone(1047, 0.18, { vol: 0.05, type: 'sine', at: 0.22 }); },
+  water() { for (let i = 0; i < 6; i++) this.noise(0.08, { vol: 0.06, freq: 2500 + i * 300, at: i * 0.07 }); },
+  shutter() { this.noise(0.05, { vol: 0.2, freq: 4000 }); this.noise(0.06, { vol: 0.15, freq: 2500, at: 0.08 }); },
 };
 
 // ------------------------------------------------------------------ domain (shared with 2D)
@@ -952,11 +972,16 @@ const ACHIEVEMENTS = [
   { id: 'diary', name: tr('Diarist', 'นักบันทึก'), desc: tr('Write 7 daily journals', 'เขียนบันทึกประจำวันครบ 7 วัน'), icon: 'note', test: () => Object.keys(state.days || {}).length >= 7 },
   { id: 'slayer', name: tr('Boss Slayer', 'ผู้ปราบบอส'), desc: tr('Defeat a weekly boss', 'ปราบบอสประจำสัปดาห์ได้'), icon: 'flame', test: (s) => s.bossWins >= 1 },
   { id: 'lawful', name: tr('Law of the Land', 'ชาวนาผู้มีวินัย'), desc: tr('Keep every farm rule on 10 trading days', 'ทำตามกฎของฟาร์มครบ 10 วันเทรด'), icon: 'star', test: (s) => [...s.ruleDays.values()].filter((x) => x.ok).length >= 10 },
+  { id: 'angler', name: tr('Angler', 'นักตกปลา'), desc: tr('Catch 10 fish at the dock', 'ตกปลาได้ 10 ตัว'), icon: 'sun', test: () => Object.values(state.settings.fun.fish).reduce((a, b) => a + b, 0) >= 10 },
+  { id: 'beach', name: tr('Beachcomber', 'นักเก็บของริมหาด'), desc: tr('Collect 10 beach finds', 'เก็บของริมหาดได้ 10 ชิ้น'), icon: 'star', test: () => Object.values(state.settings.fun.beach).reduce((a, b) => a + b, 0) >= 10 },
+  { id: 'breathe', name: tr('Still Water', 'ใจนิ่งดั่งน้ำ'), desc: tr('Finish 5 breathing sessions', 'นั่งหายใจครบ 5 ครั้ง'), icon: 'heart', test: () => state.settings.fun.breath >= 5 },
+  { id: 'stars', name: tr('Stargazer', 'นักดูดาว'), desc: tr('Find every constellation', 'พบกลุ่มดาวครบทุกกลุ่ม'), icon: 'star', test: () => state.settings.fun.stars.length >= 8 },
   { id: 'builder', name: tr('Homesteader', 'เจ้าของฟาร์ม'), desc: tr('Build 3 farm upgrades', 'สร้างของในฟาร์ม 3 อย่าง'), icon: 'house', test: () => (state.settings.farm.owned || []).length >= 3 },
   { id: 'rich', name: 'Gold Rush', desc: 'Net profit over $1,000', icon: 'coin', test: (s) => s.net >= 1000 },
 ];
 
 // ------------------------------------------------------------------ persistence (same key as the 2D version)
+const FUN_DEFAULT_WORLD = { fish: {}, fishBest: {}, beach: {}, beachDay: '', beachTaken: [], jars: 0, jarNight: '', jarN: 0, breath: 0, breathMin: 0, stars: [], water: { date: '', ids: [] }, harvestDate: '', basket: 0, petLove: 0, petDay: '', petN: 0, fedDay: '', items: [], place: {}, musicMode: 'auto', photos: 0, talks: 0 };
 const KEY = 'harvest-ledger-v1';
 const DEFAULT_SETTINGS = { name: 'Farmer', startBalance: 10000, dailyLoss: 300, sound: true, volume: 0.6, gfx: { pixel: true, shadows: true } };
 function load() {
@@ -979,6 +1004,7 @@ Sfx.on = state.settings.sound; Sfx.vol = state.settings.volume;
 state.settings.mt5 = { gist: '', ignored: [], last: null, ...(state.settings.mt5 || {}) };
 state.settings.rules = { ...RULES_DEFAULT, ...(state.settings.rules || {}) };
 state.settings.farm = { owned: [], pet: '', petName: '', festival: '', ...(state.settings.farm || {}) };
+state.settings.fun = { ...JSON.parse(JSON.stringify(FUN_DEFAULT_WORLD)), ...(state.settings.fun || {}) };
 
 // ------------------------------------------------------------------ UI primitives
 function toast(title, body = '', icon = 'star') {
@@ -1779,12 +1805,16 @@ const SHOP = [
   { id: 'pond', icon: '🐟', cost: 16, en: 'Fish pond', th: 'บ่อปลา', den: 'A calm pond with koi.', dth: 'บ่อน้ำสงบ มีปลาคาร์ปว่าย' },
   { id: 'beehive', icon: '🐝', cost: 18, en: 'Beehives', th: 'รังผึ้ง', den: 'Busy bees, patient honey.', dth: 'ผึ้งขยัน น้ำผึ้งต้องรอ' },
   { id: 'coop', icon: '🐔', cost: 22, en: 'Chicken coop', th: 'เล้าไก่', den: 'Three hens pecking around.', dth: 'แม่ไก่สามตัวจิกกินอยู่รอบเล้า' },
+  { id: 'path', icon: '🪨', cost: 1, multi: 40, en: 'Stepping stones', th: 'ทางเดินหิน', den: 'Place them anywhere to make paths.', dth: 'วางตรงไหนก็ได้ ทำเป็นทางเดิน' },
+  { id: 'fence', icon: '🪵', cost: 2, multi: 30, en: 'Fence piece', th: 'รั้วไม้', den: 'Build little fences around your things.', dth: 'ทำรั้วเล็กๆ ล้อมของในฟาร์ม' },
+  { id: 'bush', icon: '🌺', cost: 3, multi: 20, en: 'Flower bush', th: 'พุ่มดอกไม้', den: 'A round bush with flowers.', dth: 'พุ่มไม้กลมมีดอกไม้' },
+  { id: 'lamp', icon: '🏮', cost: 4, multi: 10, en: 'Lamp post', th: 'เสาโคมไฟ', den: 'Glows in the evening.', dth: 'ส่องสว่างตอนเย็น' },
   { id: 'windmill', icon: '🌬', cost: 30, en: 'Windmill', th: 'กังหันลม', den: 'The pride of a disciplined farmer.', dth: 'ความภูมิใจของชาวนาที่มีวินัย' },
 ];
 function seedsInfo() {
   const s = state.stats, j = Object.keys(state.days || {}).length, r = [...s.ruleDays.values()].filter((x) => x.ok).length, b = s.bossWins, a = state.achievements.length, d = daily.doneDays || 0;
   const earned = 10 + j * 3 + r * 3 + b * 10 + a * 2 + d * 2;
-  const spent = (state.settings.farm.owned || []).reduce((acc, id) => acc + (SHOP.find((x) => x.id === id)?.cost || 0), 0);
+  const spent = (state.settings.farm.owned || []).reduce((acc, id) => acc + (SHOP.find((x) => x.id === id)?.cost || 0), 0) + (state.settings.fun.items || []).reduce((acc, it) => acc + (SHOP.find((x) => x.id === it.k)?.cost || 0), 0);
   return { earned, spent, have: earned - spent, j, r, b, a, d };
 }
 const bossName = (b) => tr(b.en, b.th);
@@ -1827,8 +1857,11 @@ function openPet() {
     html: `<div class="text-center text-6xl bob">${item.icon}</div><p class="text-center mt-2"><b>${esc(name)}</b> ${say} <span class="text-2xl">${m.emoji}</span></p>
       <label class="block mt-3"><span class="field-label">${tr('Name', 'ชื่อ')}</span><input class="inp" name="petname" maxlength="16" value="${esc(name)}"></label>
       ${(f.owned || []).filter((id) => SHOP.find((x) => x.id === id)?.pet && id !== kind).map((id) => `<button class="btn w-full mt-2" data-petswap="${id}">${SHOP.find((x) => x.id === id).icon} ${tr('Walk with the other pet', 'สลับไปเดินกับอีกตัว')}</button>`).join('')}
+      <div class="grid grid-cols-3 gap-2 mt-3"><button class="btn" data-petplay="pat">🤚 ${tr('Pat', 'ลูบหัว')}</button><button class="btn" data-petplay="ball">⚾ ${tr('Fetch', 'โยนบอล')}</button><button class="btn" data-petplay="feed" ${state.settings.fun.fedDay === todayISO() ? 'disabled style="opacity:.5"' : ''}>🍖 ${state.settings.fun.fedDay === todayISO() ? tr('Fed ✔', 'กินแล้ว ✔') : tr('Feed', 'ให้อาหาร')}</button></div>
+      <div class="text-xs text-center mt-1 text-[#8b5a2b]">❤ ${state.settings.fun.petLove}</div>
       <div class="flex justify-end mt-3"><button class="btn btn-green" data-petsave>OK</button></div>`,
     onMount(win, w) {
+      win.addEventListener('click', (e) => { const b = e.target.closest('[data-petplay]'); if (!b || b.disabled) return; f.petName = $('[name=petname]', win).value.trim().slice(0, 16) || name; save(); w.close(); const k = b.dataset.petplay; setTimeout(() => { world?.petAction(k); if (k === 'pat') petLoved('pat'); }, 300); });
       $('[data-petsave]', win).onclick = () => { f.petName = $('[name=petname]', win).value.trim().slice(0, 16) || name; save(); w.close(); world?.sync(); };
       $('[data-petswap]', win)?.addEventListener('click', (e) => { f.pet = e.target.closest('[data-petswap]').dataset.petswap; save(); w.close(); world?.sync(); Sfx.pop(); });
     },
@@ -1838,6 +1871,7 @@ function openShop() {
   const f = state.settings.farm, sd = seedsInfo();
   const row = (x) => {
     const own = (f.owned || []).includes(x.id), can = sd.have >= x.cost;
+    if (x.multi) { const n = state.settings.fun.items.filter((i) => i.k === x.id).length, ok = can && n < x.multi; return `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center">${x.icon}</div><div class="flex-1 min-w-0"><div class="font-pixel font-bold">${tr(x.en, x.th)} <span class="text-xs text-[#8b5a2b]">${n}/${x.multi}</span></div><div class="text-xs text-[#8b5a2b]">${tr(x.den, x.dth)}</div></div><button class="btn ${ok ? 'btn-green' : ''} text-sm whitespace-nowrap" data-buyx="${x.id}" ${ok ? '' : 'disabled style="opacity:.55"'}>🌰 ${x.cost}</button></div>`; }
     return `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center">${x.icon}</div>
       <div class="flex-1 min-w-0"><div class="font-pixel font-bold">${tr(x.en, x.th)}</div><div class="text-xs text-[#8b5a2b]">${tr(x.den, x.dth)}</div></div>
       ${own ? (x.pet ? (f.pet === x.id ? `<span class="tag good">${tr('with you', 'อยู่ด้วยกัน')}</span>` : `<button class="btn text-sm" data-shoppet="${x.id}">${tr('Walk', 'พาเดิน')}</button>`) : `<span class="tag good">✔ ${tr('built', 'สร้างแล้ว')}</span>`)
@@ -1847,9 +1881,13 @@ function openShop() {
     title: tr('Farm Shop', 'ร้านค้าฟาร์ม'), width: 560, autofocus: false,
     html: `<div class="flex items-center gap-3 mb-2"><div class="text-4xl bob">🌰</div><div><div class="num text-3xl">${sd.have}</div><div class="font-pixel text-sm text-[#8b5a2b]">${tr('discipline seeds', 'เมล็ดวินัย')}</div></div></div>
       <div class="parch text-xs leading-relaxed mb-3">${tr('Seeds come from discipline, never from profit', 'เมล็ดได้มาจากวินัย ไม่ใช่จากกำไร')}: 📓 ${tr('journal day', 'บันทึกประจำวัน')} +3 (${sd.j}) · 📏 ${tr('day keeping every rule', 'วันที่ทำตามกฎครบ')} +3 (${sd.r}) · ⚔️ ${tr('boss defeated', 'ปราบบอส')} +10 (${sd.b}) · 🏆 ${tr('achievement', 'ความสำเร็จ')} +2 (${sd.a}) · 📋 ${tr('daily tasks done', 'ทำภารกิจประจำวันครบ')} +2 (${sd.d}) · 🎁 ${tr('welcome gift', 'ของขวัญต้อนรับ')} +10</div>
+      <button class="btn w-full mb-2" data-decostart>🪑 ${tr('Decorate: move things around', 'จัดฟาร์ม: ย้ายของไปวางตรงไหนก็ได้')}</button>
       <div class="flex flex-col gap-2">${SHOP.map(row).join('')}</div>`,
     onMount(win, w) {
       win.addEventListener('click', (e) => {
+        if (e.target.closest('[data-decostart]')) { w.close(); setTimeout(startDecorate, 250); return; }
+        const bx = e.target.closest('[data-buyx]');
+        if (bx && !bx.disabled) { const x = SHOP.find((i) => i.id === bx.dataset.buyx); if (seedsInfo().have < x.cost) return; w.close(); windows.slice().forEach((ww) => ww.close()); Sfx.coin(); if (activity !== 'deco') { stopActivity(); activity = 'deco'; } world?.addItem(x.id); return; }
         const b = e.target.closest('[data-buy]'), p = e.target.closest('[data-shoppet]');
         if (p) { f.pet = p.dataset.shoppet; save(); w.close(); world?.sync(); Sfx.pop(); return; }
         if (!b || b.disabled) return;
@@ -2324,10 +2362,13 @@ const LAYOUT = {
   calendar: { pos: [-4.4, 0, -10.6], approach: [-4.4, 0, -8.7], radius: 2.2, label: '📅 Calendar', collide: 1.3 },
   mailbox: { pos: [-14, 0, -4.2], approach: [-13, 0, -3.2], radius: 2.0, label: '📮 Settings', collide: 0.5 },
   shop: { pos: [14.5, 0, -1.5], approach: [12.3, 0, -0.4], radius: 2.4, label: '🛒 Shop', collide: 1.6 },
+  dock: { pos: [4, 0, 20.2], approach: [4, 0, 19.3], radius: 2.2, label: '🎣 Dock', collide: 0.05 },
+  bench: { pos: [-4.5, 0, 13.2], approach: [-4.5, 0, 11.7], radius: 2.2, label: '🌳 Bench', collide: 0.9 },
+  telescope: { pos: [-17, 0, 8.5], approach: [-15.8, 0, 7.3], radius: 2.2, label: '🔭 Telescope', collide: 0.5 },
 };
 const FIELD = { cx: 0, cz: 4.2, cols: 6, rows: 4, gap: 1.8 };
 // spots kept free of trees for farm upgrades and the weekly boss: [x, z, radius]
-const RESERVED = [[-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
+const RESERVED = [[4, 19.5, 2.4], [6.1, 19.2, 1], [-4.5, 13, 2.2], [-6.5, 12.4, 1.2], [-17, 8.5, 1.6], [6.6, -6.4, 0.9], [-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
 const DECOR_POS = { flowers: [[-4.8, -1.6], [4.8, -1.6]], scarecrow: [[0, 10.4]], well: [[-15.5, -0.5]], pond: [[-14, 5]], beehive: [[-10, 12.5]], coop: [[10.5, 12.5]], windmill: [[15.5, 6]] };
 const BOSS_POS = [8.8, 2.5];
 const plotPos = (i) => [FIELD.cx + ((i % FIELD.cols) - (FIELD.cols - 1) / 2) * FIELD.gap, FIELD.cz + (Math.floor(i / FIELD.cols) - (FIELD.rows - 1) / 2) * FIELD.gap];
@@ -2624,7 +2665,7 @@ function createWorld() {
   // ---------------- labels (HTML, projected every frame)
   const labels = [];
   const addLabel = (text, pos, cls = '') => { const el = document.createElement('div'); el.className = 'label3d ' + cls; el.textContent = text; $('#labels').appendChild(el); const l = { el, pos: new THREE.Vector3(...pos), visible: true }; labels.push(l); return l; };
-  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3 };
+  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3, dock: 1.4, bench: 1.6, telescope: 2.3 };
   for (const [id, o] of Object.entries(LAYOUT)) addLabel(o.label, [o.pos[0], LABEL_H[id], o.pos[2]]);
   addLabel('🌾 Field', [FIELD.cx, 1.6, FIELD.cz - 4.6]);
   const zzz = addLabel('Z z z', [0, 3, 0], 'zzz'); zzz.visible = false;
@@ -2731,10 +2772,10 @@ function createWorld() {
     const owned = new Set(state.settings.farm.owned || []);
     for (const [id, spots] of Object.entries(DECOR_POS)) {
       if (!owned.has(id) || built.has(id)) continue;
-      const groups = spots.map(([x, z], i) => {
-        const g = BUILD[id](x, z, i);
-        g.position.set(x, 0, z); scene.add(pickable(g, 'decor:' + id));
-        colliders.push({ x, z, r: reservedR(x, z) * 0.75 });
+      const groups = spots.map(([x0, z0], i) => {
+        const [x, z, r] = decorPos(id, i), g = BUILD[id](x0, z0, i);
+        g.position.set(x, 0, z); g.rotation.y += r || 0; scene.add(pickable(g, 'decor:' + id));
+        const c = { x, z, r: reservedR(x0, z0) * 0.75 }; colliders.push(c); decorColl.set(`${id}:${i}`, c);
         return g;
       });
       built.set(id, groups);
@@ -2747,7 +2788,7 @@ function createWorld() {
     syncPet(); syncBoss();
   }
   function showDecor(id) {
-    const sp = DECOR_POS[id]?.[0] || (pet ? [pet.position.x, pet.position.z] : null); if (!sp) return;
+    const sp = DECOR_POS[id] ? decorPos(id, 0) : (pet ? [pet.position.x, pet.position.z] : null); if (!sp) return;
     cam.focus = new THREE.Vector3(sp[0], 0.8, sp[1]); cam.dist = Math.min(cam.dist, 16);
     setTimeout(() => { if (!activePanel) cam.focus = null; }, 2800);
   }
@@ -2783,13 +2824,13 @@ function createWorld() {
   function petJump() { if (pet) pet.userData.jump = 1; }
   function tickPet(dt, time) {
     if (!pet) return;
-    const P = pet.userData, fw = Math.sin(player.rotation.y), fz = Math.cos(player.rotation.y);
-    const tx = player.position.x - fw * 1.3 + fz * 0.8, tz = player.position.z - fz * 1.3 - fw * 0.8;
+    const P = pet.userData, fw = Math.sin(player.rotation.y), fz = Math.cos(player.rotation.y), tg = petTarget();
+    const tx = tg ? tg.x : player.position.x - fw * 1.3 + fz * 0.8, tz = tg ? tg.z : player.position.z - fz * 1.3 - fw * 0.8;
     const dx = tx - pet.position.x, dz = tz - pet.position.z, d = Math.hypot(dx, dz);
     let moving = false;
     if (d > 12) pet.position.set(tx, 0, tz);
     else if (d > 0.3) {
-      const sp = Math.min(d * 3.2, 7.5);
+      const sp = Math.min(d * 3.2, petTask ? 9 : 7.5);
       pet.position.x += (dx / d) * sp * dt; pet.position.z += (dz / d) * sp * dt; moving = sp > 0.8;
       let df = Math.atan2(dx, dz) - pet.rotation.y; df = Math.atan2(Math.sin(df), Math.cos(df)); pet.rotation.y += df * Math.min(1, dt * 10);
     }
@@ -2877,6 +2918,353 @@ function createWorld() {
       seasonArr[i * 3 + 1] = y; seasonArr[i * 3] += Math.sin(time * 0.9 + seasonSeed[i]) * dt * 0.6; seasonArr[i * 3 + 2] += Math.cos(time * 0.7 + seasonSeed[i]) * dt * 0.3;
     }
     seasonGeo.attributes.position.needsUpdate = true; seasonPts.position.set(cam.target.x, 0, cam.target.z);
+  }
+
+  // ================= leisure: dock & fishing, breathing bench, telescope, villagers, beach finds, fireflies, watering, pet play, decorating, photos
+  const FUN = () => state.settings.fun;
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitBox = (r) => new THREE.Mesh(new THREE.SphereGeometry(r, 6, 4), hitMat);
+  let pose = null;
+
+  // --- dock (fishing spot on the south shore)
+  const dock = new THREE.Group();
+  for (let i = 0; i < 7; i++) dock.add(mesh(box(1.6, 0.12, 0.62), M(i % 2 ? '#b57b44' : '#a8703d'), 0, 0.04, 0.3 + i * 0.66));
+  for (const x of [-0.75, 0.75]) for (const z of [0.6, 2.4, 4.2]) dock.add(mesh(cyl(0.09, 0.09, 1.8, 6), M('#7a4b2a'), x, -0.8, z));
+  dock.add(mesh(box(0.5, 0.4, 0.5), M('#9a6a4a'), 0.5, 0.3, 0.9));
+  dock.position.set(4, 0, 19.3); scene.add(pickable(dock, 'dock'));
+  // rod, line and bobber
+  const rod = new THREE.Group(); rod.visible = false;
+  rod.add(mesh(cyl(0.022, 0.04, 2.4, 5), M('#7a4b2a'), 0, 1.2, 0, { cast: false }));
+  const rodTip = new THREE.Object3D(); rodTip.position.y = 2.4; rod.add(rodTip);
+  rod.position.set(0, -0.58, 0.05); rod.rotation.x = 1.6; armR.add(rod);
+  const lineGeo = new THREE.BufferGeometry(); lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const fishLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: '#fff8e6' })); fishLine.frustumCulled = false; fishLine.visible = false; scene.add(fishLine);
+  const bobber = new THREE.Group();
+  bobber.add(mesh(new THREE.SphereGeometry(0.13, 8, 6), M('#e0453f'), 0, 0.06, 0, { cast: false }));
+  bobber.add(mesh(new THREE.SphereGeometry(0.11, 8, 6), M('#ffffff'), 0, -0.05, 0, { cast: false }));
+  bobber.visible = false; scene.add(bobber);
+  const fishSt = { mode: 'off', t: 0, spot: new THREE.Vector3(4, -1, 26.5), from: new THREE.Vector3() };
+  const seaY = (x, z, time) => -1.1 + Math.sin(x * 0.25 + time * 1.3) * 0.12 + Math.cos(z * 0.3 + time * 1.1) * 0.12;
+  const tipV = new THREE.Vector3();
+  function fishVisual(mode) {
+    fishSt.mode = mode; fishSt.t = 0;
+    rod.visible = mode !== 'off'; pose = mode === 'off' ? (pose === 'fish' ? null : pose) : 'fish';
+    if (mode === 'cast') { rodTip.getWorldPosition(fishSt.from); fishSt.spot.set(4 + (Math.random() - 0.5) * 2.4, 0, 25.6 + Math.random() * 1.6); bobber.visible = true; Sfx.warp(); }
+    if (mode === 'ready' || mode === 'off') bobber.visible = false;
+    fishLine.visible = bobber.visible;
+  }
+  function fishCatch(item) {
+    const from = bobber.position.clone(), to = player.position.clone().add(new THREE.Vector3(0, 1.6, 0.4));
+    const g = new THREE.Group(), col = item.color || '#9fd3f0';
+    g.add(mesh(box(0.5, 0.22, 0.14), M(col), 0, 0, 0, { cast: false })); g.add(mesh(box(0.18, 0.26, 0.06), M(col), -0.32, 0, 0, { cast: false }));
+    g.add(mesh(box(0.05, 0.05, 0.15), M('#1b1b1b'), 0.16, 0.04, 0, { cast: false }));
+    g.scale.setScalar(0.6 + (item.rar || 1) * 0.2); g.position.copy(from); scene.add(g);
+    burst(from.clone().setY(-0.8), '#dff3ff', 16, { speed: 2, up: 4, size: 0.1, gravity: 9 });
+    bobber.visible = false; fishLine.visible = false;
+    let t = 0;
+    addTicker((dt) => { t += dt; const k = Math.min(1, t / 0.9); g.position.lerpVectors(from, to, k); g.position.y += Math.sin(k * Math.PI) * 3; g.rotation.z += dt * 10; if (k >= 1) { burst(to, '#ffe08a', 10, { speed: 1.5, up: 2, size: 0.08, gravity: 5 }); scene.remove(g); return false; } return true; });
+  }
+  function tickFish(dt, time) {
+    if (fishSt.mode === 'off') return;
+    fishSt.t += dt;
+    const s = fishSt.spot, baseY = seaY(s.x, s.z, time) + 0.05;
+    if (fishSt.mode === 'cast') {
+      const k = Math.min(1, fishSt.t / 0.6); bobber.position.lerpVectors(fishSt.from, new THREE.Vector3(s.x, baseY, s.z), k); bobber.position.y += Math.sin(k * Math.PI) * 2.5;
+      if (k >= 1) { fishSt.mode = 'wait'; Sfx.splash(); burst(new THREE.Vector3(s.x, baseY, s.z), '#dff3ff', 10, { speed: 1.2, up: 2.5, size: 0.08, gravity: 8 }); }
+    } else if (fishSt.mode === 'wait') bobber.position.set(s.x, baseY + (Math.sin(time * 9) > 0.97 ? -0.06 : 0), s.z);
+    else if (fishSt.mode === 'bite') bobber.position.set(s.x + Math.sin(time * 40) * 0.04, baseY - 0.22 - Math.abs(Math.sin(time * 14)) * 0.15, s.z);
+    else if (fishSt.mode === 'reel') bobber.position.set(s.x + Math.sin(time * 25) * 0.1, baseY - 0.15, s.z + Math.sin(time * 7) * 0.2);
+    if (bobber.visible) { rodTip.getWorldPosition(tipV); const a = lineGeo.attributes.position.array; a.set([tipV.x, tipV.y, tipV.z, bobber.position.x, bobber.position.y + 0.1, bobber.position.z]); lineGeo.attributes.position.needsUpdate = true; }
+  }
+
+  // --- bench under a shade tree (breathing) and telescope (stars)
+  const bench = new THREE.Group();
+  bench.add(mesh(box(1.8, 0.1, 0.5), M('#b57b44'), 0, 0.48, 0)); bench.add(mesh(box(1.8, 0.45, 0.08), M('#a8703d'), 0, 0.8, -0.24));
+  for (const x of [-0.75, 0.75]) bench.add(mesh(box(0.1, 0.45, 0.45), M('#7a4b2a'), x, 0.23, 0));
+  bench.position.set(...LAYOUT.bench.pos); scene.add(pickable(bench, 'bench'));
+  const shade = new THREE.Group(); shade.add(mesh(cyl(0.2, 0.3, 2, 6), M('#7a4b2a'), 0, 1, 0));
+  const shadeTop = new THREE.Group(); shadeTop.position.y = 2; shade.add(shadeTop);
+  shadeTop.add(mesh(new THREE.IcosahedronGeometry(1.5, 0), treeTop[0], 0, 0.8, 0)); shadeTop.add(mesh(new THREE.IcosahedronGeometry(1.0, 0), treeTop[1], 0.4, 1.8, 0.2));
+  shade.position.set(-6.5, 0, 12.4); scene.add(shade); trees.push({ top: shadeTop, phase: 1.3 }); colliders.push({ x: -6.5, z: 12.4, r: 0.5 });
+  const scope = new THREE.Group();
+  for (const a of [0, 2.1, 4.2]) { const l = mesh(cyl(0.04, 0.04, 1.35, 4), M('#7a4b2a'), Math.sin(a) * 0.28, 0.64, Math.cos(a) * 0.28); l.rotation.set(-Math.cos(a) * 0.4, 0, Math.sin(a) * 0.4); scope.add(l); }
+  const tube = new THREE.Group(); tube.position.y = 1.35; tube.rotation.x = -0.9; scope.add(tube);
+  tube.add(mesh(cyl(0.1, 0.14, 1.3, 10), M('#4f7bb8'), 0, 0.3, 0)); tube.add(mesh(cyl(0.16, 0.16, 0.12, 10), M('#e9b92c'), 0, 0.95, 0)); tube.add(mesh(cyl(0.06, 0.06, 0.2, 8), M('#e9b92c'), 0, -0.4, 0));
+  scope.position.set(...LAYOUT.telescope.pos); scope.rotation.y = 2.4; scene.add(pickable(scope, 'telescope'));
+
+  // --- villagers
+  function makeVillager(o) {
+    const g = new THREE.Group();
+    g.add(mesh(box(0.7, 0.85, 0.44), M(o.shirt), 0, 1.05, 0));
+    if (o.apron) g.add(mesh(box(0.5, 0.62, 0.02), M('#fff4d6'), 0, 0.95, 0.23, { cast: false }));
+    for (const x of [-0.17, 0.17]) g.add(mesh(box(0.22, 0.62, 0.22), M(o.pants), x, 0.31, 0));
+    for (const x of [-0.45, 0.45]) g.add(mesh(box(0.18, 0.6, 0.18), M(o.shirt), x, 1.1, 0));
+    const hd = new THREE.Group(); hd.position.y = 1.75; g.add(hd);
+    hd.add(mesh(box(0.58, 0.54, 0.54), M('#f5c9a0')));
+    for (const x of [-0.12, 0.12]) hd.add(mesh(box(0.07, 0.1, 0.02), M('#3b2314'), x, 0.02, 0.28, { cast: false }));
+    hd.add(mesh(box(0.62, 0.2, 0.58), M(o.hair), 0, 0.22, -0.03));
+    if (o.bun) hd.add(mesh(new THREE.SphereGeometry(0.17, 8, 6), M(o.hair), 0, 0.32, -0.3));
+    if (o.beard) hd.add(mesh(box(0.5, 0.24, 0.1), M('#e3e3e3'), 0, -0.17, 0.27, { cast: false }));
+    if (o.hat) { hd.add(mesh(cyl(0.5, 0.55, 0.06, 10), M(o.hat), 0, 0.33, 0)); hd.add(mesh(cyl(0.3, 0.34, 0.26, 10), M(o.hat), 0, 0.46, 0)); }
+    g.add(hitBox(0.7).translateY(1.1));
+    g.userData.hd = hd; return g;
+  }
+  const npcs = [
+    { id: 'rosa', g: makeVillager({ shirt: '#c0443c', pants: '#5c3a21', hair: '#7a4b2a', apron: true, bun: true }), x: 6.6, z: -6.4, face: 0.4 },
+    { id: 'tom', g: makeVillager({ shirt: '#4f7bb8', pants: '#3b4a5c', hair: '#9aa0a6', beard: true, hat: '#f6c945' }), x: 6.1, z: 19.2, face: 2.6 },
+  ];
+  npcs.forEach((n) => {
+    n.g.position.set(n.x, 0, n.z); n.g.rotation.y = n.face; scene.add(pickable(n.g, 'npc:' + n.id)); colliders.push({ x: n.x, z: n.z, r: 0.4 });
+    n.label = addLabel(n.id === 'rosa' ? tr('Rosa', 'โรซ่า') : tr('Old Tom', 'ลุงทอม'), [n.x, 2.6, n.z]); n.label.visible = false;
+  });
+  function tickNpcs(dt, time) {
+    for (const n of npcs) {
+      const dx = player.position.x - n.x, dz = player.position.z - n.z, d = Math.hypot(dx, dz);
+      const want = d < 5 ? Math.atan2(dx, dz) : n.face;
+      let df = want - n.g.rotation.y; df = Math.atan2(Math.sin(df), Math.cos(df)); n.g.rotation.y += df * Math.min(1, dt * 4);
+      n.g.userData.hd.position.y = 1.75 + Math.sin(time * 2 + n.x) * 0.02;
+      n.label.visible = d < 9;
+    }
+  }
+
+  // --- beach finds: new ones wash up every day
+  const beachG = [];
+  const hashStr = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+  function makeFind(k) {
+    const g = new THREE.Group();
+    if (k === 'shell') { const c = mesh(new THREE.ConeGeometry(0.16, 0.3, 7), M('#f7b5c8'), 0, 0.1, 0); c.rotation.z = 1.4; g.add(c); }
+    else if (k === 'clam') { const a = mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M('#fff1dc'), 0, 0.02, 0); a.scale.y = 0.5; g.add(a); }
+    else if (k === 'star') { const s = mesh(starGeo3, M('#ec8a2e'), 0, 0.05, 0); s.scale.setScalar(0.5); s.rotation.x = -Math.PI / 2; g.add(s); }
+    else if (k === 'stone') { const s = mesh(new THREE.DodecahedronGeometry(0.15, 0), M('#8fb3c9'), 0, 0.08, 0); s.scale.y = 0.6; g.add(s); }
+    else if (k === 'glass') g.add(mesh(new THREE.IcosahedronGeometry(0.1, 0), new THREE.MeshToonMaterial({ color: '#7fe0b8', gradientMap: grad, transparent: true, opacity: 0.8 }), 0, 0.08, 0));
+    else if (k === 'bottle') { const b = mesh(cyl(0.08, 0.1, 0.4, 8), new THREE.MeshToonMaterial({ color: '#5fa36b', gradientMap: grad, transparent: true, opacity: 0.85 }), 0, 0.1, 0); b.rotation.z = 1.45; g.add(b); g.add(mesh(box(0.2, 0.12, 0.02), M('#f7e9c6'), 0, 0.1, 0, { cast: false })); }
+    else { g.add(mesh(box(0.34, 0.14, 0.24), M('#d0554b'), 0, 0.09, 0)); for (const s of [-1, 1]) g.add(mesh(box(0.1, 0.1, 0.1), M('#d0554b'), s * 0.24, 0.1, 0.14)); g.userData.crab = true; }
+    g.add(hitBox(0.6));
+    return g;
+  }
+  function syncBeach() {
+    beachG.forEach((b) => { scene.remove(b.g); pickables.splice(pickables.indexOf(b.g), 1); }); beachG.length = 0;
+    const f = FUN(), today = todayISO();
+    if (f.beachDay !== today) { f.beachDay = today; f.beachTaken = []; }
+    const r = mulberry32(hashStr(today));
+    for (let i = 0; i < 6; i++) {
+      let x = 0, z = 0;
+      for (let g = 0; g < 40; g++) { const a = r() * Math.PI * 2, rad = 19.3 + r() * 0.9; x = Math.cos(a) * rad; z = Math.sin(a) * rad; if (freeAt(x, z, 0.3) && Math.hypot(x - 4, z - 20) > 2.5) break; }
+      const kind = pickBeach(r());
+      if (f.beachTaken.includes(i)) continue;
+      const g = makeFind(kind); g.position.set(x, 0, z); g.rotation.y = r() * 6; scene.add(pickable(g, 'beach:' + i));
+      beachG.push({ i, kind, g, x, z });
+    }
+  }
+  function collectFind(b) {
+    const k = beachG.indexOf(b); if (k < 0) return;
+    beachG.splice(k, 1); scene.remove(b.g); pickables.splice(pickables.indexOf(b.g), 1);
+    burst(new THREE.Vector3(b.x, 0.4, b.z), '#fff6a8', 12, { speed: 1.5, up: 3, size: 0.08, gravity: 6 });
+    foundBeach(b.i, b.kind);
+  }
+
+  // --- fireflies to catch in the evening; jars glow by the farmhouse
+  const bugMat = new THREE.MeshBasicMaterial({ color: '#fff27a' });
+  const bugs = Array.from({ length: 7 }, (_, i) => {
+    const g = new THREE.Group(); g.add(mesh(new THREE.SphereGeometry(0.09, 6, 4), bugMat, 0, 0, 0, { cast: false, receive: false })); g.add(hitBox(0.6));
+    g.visible = false; g.userData = { i, home: new THREE.Vector3(), ph: rnd() * 6, away: 0 }; scene.add(pickable(g, 'bug:' + i)); return g;
+  });
+  const bugHome = (b) => { for (let k = 0; k < 30; k++) { const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 15, x = Math.cos(a) * r, z = Math.sin(a) * r; if (freeAt(x, z, 0.5)) { b.userData.home.set(x, 0.8 + Math.random() * 1.2, z); return; } } };
+  bugs.forEach(bugHome);
+  const jarGlow = new THREE.MeshToonMaterial({ color: '#fff6b0', emissive: '#ffe27a', emissiveIntensity: 0.3, gradientMap: grad });
+  const jarGlass = new THREE.MeshToonMaterial({ color: '#dff3ff', gradientMap: grad, transparent: true, opacity: 0.45 });
+  const jarG = new THREE.Group(); scene.add(jarG);
+  const JAR_SPOTS = [[-12.9, -6.9], [-12.5, -6.9], [-12.1, -6.9], [-12.7, -6.5], [-12.3, -6.5], [-11.9, -6.5], [-7.9, -6.9], [-7.5, -6.9], [-7.1, -6.9], [-7.7, -6.5], [-7.3, -6.5], [-6.9, -6.5]];
+  function syncJars() {
+    jarG.clear();
+    const n = Math.min(JAR_SPOTS.length, FUN().jars || 0);
+    for (let i = 0; i < n; i++) { const [x, z] = JAR_SPOTS[i], j = new THREE.Group(); j.add(mesh(cyl(0.13, 0.13, 0.3, 8), jarGlass, 0, 0.15, 0, { cast: false })); j.add(mesh(new THREE.SphereGeometry(0.07, 6, 4), jarGlow, 0, 0.15, 0, { cast: false })); j.add(mesh(cyl(0.14, 0.14, 0.05, 8), M('#7a4b2a'), 0, 0.32, 0, { cast: false })); j.position.set(x, 0, z); jarG.add(j); }
+  }
+  let beachBuilt = false;
+  const eveningNow = () => env.phase === 'evening' || env.phase === 'night';
+  function tickBugs(dt, time) {
+    const on = eveningNow() && !reduced && canCatchBug();
+    for (const b of bugs) {
+      const u = b.userData;
+      if (!on) { b.visible = false; continue; }
+      if (u.away > 0) { u.away -= dt; b.visible = false; if (u.away <= 0) bugHome(b); continue; }
+      b.visible = true;
+      b.position.set(u.home.x + Math.sin(time * 0.7 + u.ph) * 1.2, u.home.y + Math.sin(time * 1.9 + u.ph) * 0.3, u.home.z + Math.cos(time * 0.6 + u.ph) * 1.2);
+      b.children[0].scale.setScalar(0.7 + Math.max(0, Math.sin(time * 5 + u.ph)) * 0.6);
+      if (Math.hypot(player.position.x - b.position.x, player.position.z - b.position.z) < 1.5) catchBugNow(b);
+    }
+  }
+  function catchBugNow(b) {
+    if (!b.visible || !canCatchBug()) return;
+    burst(b.position.clone(), '#fff27a', 12, { speed: 1.2, up: 1.5, size: 0.07, gravity: 2 });
+    b.userData.away = 25 + Math.random() * 20; b.visible = false;
+    caughtBug(); syncJars();
+  }
+
+  // --- watering & harvesting the field
+  const wetMat = M('#4a2c16'), dryMat = M('#6e4526');
+  const inField = () => Math.abs(player.position.x - FIELD.cx) < 6 && Math.abs(player.position.z - FIELD.cz) < 4.1;
+  function wateredIds() { const w = FUN().water; return w.date === todayISO() ? w.ids : []; }
+  function syncWater() { const ids = wateredIds(); plots.forEach((p) => { p.g.children[0].material = p.id && ids.includes(p.id) ? wetMat : dryMat; }); }
+  function fieldTask() {
+    const ids = wateredIds(), withCrop = plots.filter((p) => p.id);
+    if (!withCrop.length) return null;
+    if (withCrop.some((p) => !ids.includes(p.id))) return 'water';
+    return FUN().harvestDate !== todayISO() ? 'harvest' : null;
+  }
+  function waterNear() {
+    const ids = wateredIds(), todo = plots.filter((p) => p.id && !ids.includes(p.id)).sort((a, b) => Math.hypot(a.x - player.position.x, a.z - player.position.z) - Math.hypot(b.x - player.position.x, b.z - player.position.z));
+    if (!todo.length) return;
+    const near = todo.filter((p) => Math.hypot(p.x - player.position.x, p.z - player.position.z) < 2.3);
+    if (!near.length) { const p = todo[0]; walkTo(p.x - 1.0, p.z - 0.2, () => waterNear()); return; }
+    pose = 'water'; setTimeout(() => { if (pose === 'water') pose = null; }, 700);
+    player.rotation.y = Math.atan2(near[0].x - player.position.x, near[0].z - player.position.z);
+    Sfx.water();
+    const f = FUN(); if (f.water.date !== todayISO()) f.water = { date: todayISO(), ids: [] };
+    near.forEach((p) => { f.water.ids.push(p.id); burst(new THREE.Vector3(p.x, 1.2, p.z), '#6fb4ee', 14, { speed: 1.2, up: 0.5, size: 0.07, gravity: 10 }); if (p.crop) bounceCrop(p.id); });
+    save(); syncWater();
+    if (!fieldTask() || fieldTask() === 'harvest') fieldWatered();
+  }
+  function harvestField() {
+    const wins = plots.filter((p) => p.crop && state.trades.find((t) => t.id === p.id)?.pnl > 0);
+    wins.forEach((p, i) => setTimeout(() => { burst(new THREE.Vector3(p.x, 0.8, p.z), '#ec8a2e', 10, { speed: 1.5, up: 4, size: 0.1, gravity: 9 }); bounceCrop(p.id); Sfx.coin(i); }, i * 90));
+    harvested(wins.length);
+  }
+
+  // --- pet play: pat, fetch, feed
+  let petTask = null;
+  function petAction(kind) {
+    if (!pet) return;
+    const hearts = () => burst(pet.position.clone().add(new THREE.Vector3(0, 1, 0)), '#f28fad', 10, { speed: 0.8, up: 2.5, size: 0.09, gravity: 2 });
+    if (kind === 'pat') { pet.userData.jump = 1; hearts(); Sfx.purr(); return; }
+    if (kind === 'ball') {
+      const fw = new THREE.Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+      let to = player.position.clone().addScaledVector(fw, 6);
+      for (let k = 0; k < 8 && !freeAt(to.x, to.z, 0.2); k++) to = player.position.clone().addScaledVector(fw.applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.8), 5);
+      const ball = mesh(new THREE.SphereGeometry(0.14, 8, 6), M('#e0453f'), player.position.x, 1.4, player.position.z); scene.add(ball);
+      petTask = { kind: 'fetch', phase: 'fly', ball, from: ball.position.clone(), to: to.setY(0.14), t: 0, done: hearts };
+      pose = 'water'; setTimeout(() => { if (pose === 'water') pose = null; }, 400); Sfx.pop();
+      return;
+    }
+    if (kind === 'feed') {
+      const p = player.position.clone().add(new THREE.Vector3(Math.sin(player.rotation.y) * 1.2, 0, Math.cos(player.rotation.y) * 1.2));
+      const bowl = new THREE.Group(); bowl.add(mesh(cyl(0.22, 0.16, 0.12, 10), M('#4f8fd6'), 0, 0.06, 0)); bowl.add(mesh(cyl(0.18, 0.18, 0.04, 10), M('#c69a62'), 0, 0.12, 0));
+      bowl.position.copy(p); scene.add(bowl); petTask = { kind: 'eat', phase: 'go', bowl, t: 0, done: hearts }; Sfx.pop();
+    }
+  }
+  function petTarget() {
+    if (!petTask) return null;
+    const T = petTask;
+    if (T.kind === 'fetch') {
+      if (T.phase === 'back') return player.position;
+      return T.to;
+    }
+    return T.bowl.position;
+  }
+  function tickPetTask(dt, time) {
+    const T = petTask; if (!T || !pet) return;
+    T.t += dt;
+    if (T.kind === 'fetch') {
+      if (T.phase === 'fly') { const k = Math.min(1, T.t / 0.7); T.ball.position.lerpVectors(T.from, T.to, k); T.ball.position.y = lerp(T.from.y, 0.14, k) + Math.sin(k * Math.PI) * 2; if (k >= 1) T.phase = 'run'; }
+      else if (T.phase === 'run') { if (pet.position.distanceTo(T.to) < 0.6) { T.phase = 'back'; pet.userData.hd.add(T.ball); T.ball.position.set(0, -0.05, 0.25); Sfx.select(); } }
+      else if (pet.position.distanceTo(player.position) < 1.5) { pet.userData.hd.remove(T.ball); petTask = null; pet.userData.jump = 1; T.done(); petLoved('ball'); }
+    } else {
+      if (T.phase === 'go' && pet.position.distanceTo(T.bowl.position) < 0.7) { T.phase = 'eat'; T.t = 0; }
+      if (T.phase === 'eat') { pet.userData.hd.rotation.x = 0.5 + Math.sin(time * 14) * 0.25; if (T.t > 2.2) { scene.remove(T.bowl); petTask = null; T.done(); petLoved('feed'); } }
+    }
+  }
+
+  // --- decorating: move bought things anywhere, place extra items
+  let deco = null;
+  const decorColl = new Map(), itemGroups = [];
+  const decorPos = (id, i) => FUN().place?.[`${id}:${i}`] || [...DECOR_POS[id][i], 0];
+  const BUILD_X = {
+    lamp() { const g = new THREE.Group(); g.add(mesh(cyl(0.06, 0.08, 1.8, 6), M('#3b3b3b'), 0, 0.9, 0)); g.add(mesh(box(0.3, 0.32, 0.3), lampMat, 0, 1.95, 0, { cast: false })); g.add(mesh(new THREE.ConeGeometry(0.26, 0.2, 4), M('#3b3b3b'), 0, 2.2, 0).rotateY(Math.PI / 4)); return g; },
+    fence() { const g = new THREE.Group(); for (const x of [-0.65, 0.65]) g.add(mesh(box(0.16, 0.85, 0.16), railMat, x, 0.42, 0)); for (const y of [0.36, 0.66]) g.add(mesh(box(1.4, 0.08, 0.06), railMat, 0, y, 0)); return g; },
+    bush() { const g = new THREE.Group(), c = ['#f28fad', '#fff6a8', '#c7a3ff']; g.add(mesh(new THREE.IcosahedronGeometry(0.55, 0), treeTop[1], 0, 0.4, 0)); g.add(mesh(new THREE.IcosahedronGeometry(0.4, 0), treeTop[0], 0.35, 0.3, 0.1)); for (let k = 0; k < 5; k++) g.add(mesh(new THREE.IcosahedronGeometry(0.08, 0), M(c[k % 3]), Math.cos(k * 1.3) * 0.45, 0.55 + (k % 2) * 0.2, Math.sin(k * 1.3) * 0.45, { cast: false })); return g; },
+    path() { const g = new THREE.Group(); for (const [x, z] of [[-0.4, -0.2], [0.35, 0.1], [-0.05, 0.45]]) g.add(mesh(cyl(0.36, 0.4, 0.1, 7), stoneMat, x, 0.03, z, { cast: false })); return g; },
+  };
+  function syncItems() {
+    itemGroups.forEach((g) => { scene.remove(g); pickables.splice(pickables.indexOf(g), 1); }); itemGroups.length = 0;
+    (FUN().items || []).forEach((it, k) => { const g = BUILD_X[it.k](); g.position.set(it.x, 0, it.z); g.rotation.y = it.r || 0; scene.add(pickable(g, 'item:' + k)); itemGroups.push(g); });
+  }
+  const canPlace = (x, z) => Math.hypot(x, z) < 20.2 && !(Math.abs(x - FIELD.cx) < 6.6 && Math.abs(z - FIELD.cz) < 4.7) && Object.values(LAYOUT).every((o) => Math.hypot(x - o.pos[0], z - o.pos[2]) > o.collide + 0.7);
+  const decoMarker = mesh(new THREE.RingGeometry(0.8, 1.0, 20), new THREE.MeshBasicMaterial({ color: '#ffe08a', transparent: true, opacity: 0.9 }), 0, 0.06, 0, { cast: false, receive: false });
+  decoMarker.rotation.x = -Math.PI / 2; decoMarker.visible = false; scene.add(decoMarker);
+  function decoSelect(sel) {
+    deco.sel = sel; decoMarker.visible = !!sel;
+    if (sel) { decoMarker.position.set(sel.g.position.x, 0.06, sel.g.position.z); Sfx.select(); }
+    decoInfo(sel);
+  }
+  function decoPick(h) {
+    let o = h.obj; while (o && !pickables.includes(o)) o = o.parent;
+    if (!o) return false;
+    const id = String(o.userData.pick);
+    if (id.startsWith('decor:')) { const k = id.slice(6), i = built.get(k)?.indexOf(o); decoSelect({ type: 'decor', id: k, i, g: o }); return true; }
+    if (id.startsWith('item:')) { decoSelect({ type: 'item', k: +id.slice(5), g: o }); return true; }
+    return false;
+  }
+  function decoPlace(x, z) {
+    const s = deco?.sel; if (!s) return;
+    if (!canPlace(x, z)) { Sfx.error(); toast(tr('Can\'t place it there', 'วางตรงนี้ไม่ได้'), tr('Keep it off the field, paths of buildings and the shore.', 'ห้ามทับแปลงผัก อาคาร และริมเกาะ'), 'rain'); return; }
+    s.g.position.set(x, 0, z); decoMarker.position.set(x, 0.06, z);
+    burst(new THREE.Vector3(x, 0.3, z), '#ffe08a', 10, { speed: 1.5, up: 2.5, size: 0.08, gravity: 6 }); Sfx.dirt();
+    saveDecoSel();
+  }
+  function saveDecoSel() {
+    const s = deco.sel, f = FUN();
+    if (s.type === 'decor') { f.place = { ...f.place, [`${s.id}:${s.i}`]: [s.g.position.x, s.g.position.z, s.g.rotation.y - (s.id === 'windmill' ? -0.5 : 0)] }; const c = decorColl.get(`${s.id}:${s.i}`); if (c) { c.x = s.g.position.x; c.z = s.g.position.z; } }
+    else { const it = f.items[s.k]; Object.assign(it, { x: s.g.position.x, z: s.g.position.z, r: s.g.rotation.y }); }
+    save();
+  }
+  function decoAction(a) {
+    const s = deco?.sel;
+    if (a === 'rotate' && s) { s.g.rotation.y += Math.PI / 4; Sfx.select(); saveDecoSel(); }
+    if (a === 'remove' && s?.type === 'item') { FUN().items.splice(s.k, 1); save(); syncItems(); decoSelect(null); Sfx.trash(); }
+  }
+  function decoMode(on) {
+    deco = on ? { sel: null } : null; decoMarker.visible = false;
+    if (on) { keepCam(); cam.dist = Math.max(cam.dist, 24); cam.pitch = 1.0; decoInfo(null); } else restoreCam();
+  }
+  function addItem(k) {
+    const fw = { x: Math.sin(player.rotation.y), z: Math.cos(player.rotation.y) };
+    let x = player.position.x + fw.x * 2, z = player.position.z + fw.z * 2;
+    if (!canPlace(x, z)) { for (let a = 0; a < 12; a++) { const tx = player.position.x + Math.cos(a) * 2.5, tz = player.position.z + Math.sin(a) * 2.5; if (canPlace(tx, tz)) { x = tx; z = tz; break; } } }
+    FUN().items.push({ k, x, z, r: 0 }); save(); syncItems();
+    decoMode(true); decoSelect({ type: 'item', k: FUN().items.length - 1, g: itemGroups.at(-1) });
+  }
+
+  // --- photo mode: free camera, captured at full size
+  let photoMode = false;
+  const camLim = () => (photoMode ? [4, 48, 0.06, 1.45] : [9, 32, 0.42, 1.2]);
+  function photo(on) { photoMode = on; if (on) keepCam(); else restoreCam(); }
+  function capture(filter) {
+    renderer.render(scene, camera);
+    const src = renderer.domElement, scale = Math.max(1, Math.round(Math.min(2400, innerWidth * 2) / src.width));
+    const c = document.createElement('canvas'); c.width = src.width * scale; c.height = src.height * scale;
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    if (filter && filter !== 'none') g.filter = filter;
+    g.drawImage(src, 0, 0, c.width, c.height); g.filter = 'none';
+    return c;
+  }
+
+  // --- where the farmer sits / stands for an activity
+  let savedCam = null;
+  const keepCam = () => { if (!savedCam) savedCam = { yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist }; };
+  const restoreCam = () => { if (savedCam) { Object.assign(cam, savedCam); savedCam = null; } };
+  function seat(kind) {
+    nav.target = null; nav.pending = null; marker.visible = false;
+    if (kind && kind !== 'scope') keepCam();
+    if (kind === 'fish') { player.position.set(4, 0, 22.4); player.rotation.y = 0; cam.focus = new THREE.Vector3(4, 0.3, 23.8); cam.yaw = Math.PI - 0.5; cam.pitch = 0.8; cam.dist = isTouch ? 15 : 12; fishVisual('ready'); }
+    else if (kind === 'bench') { player.position.set(LAYOUT.bench.pos[0], 0, LAYOUT.bench.pos[2] + 0.05); player.rotation.y = 0; pose = 'sit'; cam.focus = new THREE.Vector3(LAYOUT.bench.pos[0], 0.8, LAYOUT.bench.pos[2] + 2); cam.yaw = Math.PI - 0.35; cam.pitch = 0.32; cam.dist = 9; }
+    else if (kind === 'scope') { player.position.set(LAYOUT.telescope.approach[0], 0, LAYOUT.telescope.approach[2]); player.rotation.y = Math.atan2(LAYOUT.telescope.pos[0] - player.position.x, LAYOUT.telescope.pos[2] - player.position.z); pose = 'look'; }
+    else { fishVisual('off'); pose = null; cam.focus = null; restoreCam(); if (Math.hypot(player.position.x, player.position.z) > 20.6) player.position.set(4, 0, 19.4); }
+  }
+  function applyPose(time) {
+    head.rotation.x = pose === 'look' ? lerp(head.rotation.x, -0.5, 0.1) : lerp(head.rotation.x, 0, 0.2);
+    if (pose === 'sit') { legL.rotation.x = legR.rotation.x = -1.5; armL.rotation.x = armR.rotation.x = -0.35; rig.position.y = -0.12 + Math.sin(time * 0.8) * 0.01; }
+    else if (pose === 'fish') { armR.rotation.x = fishSt.mode === 'bite' || fishSt.mode === 'reel' ? -1.45 + Math.sin(time * 30) * 0.06 : -1.1; armL.rotation.x = -0.7; }
+    else if (pose === 'water') { armR.rotation.x = -1.4; armL.rotation.x = -0.3; }
   }
 
 
@@ -2982,7 +3370,7 @@ function createWorld() {
     // drop stale pickables for removed crops
     for (let i = pickables.length - 1; i >= 0; i--) if (String(pickables[i].userData.pick).startsWith('crop:') && !pickables[i].parent) pickables.splice(i, 1);
   }
-  function sync(animateId) { syncField(animateId); syncNotes(); drawCalendarTexture(); applyEnvironment(); syncDecor(); zzz.visible = state.stats.energy <= 0 && state.stats.n > 0; sleeping = zzz.visible; }
+  function sync(animateId) { syncField(animateId); syncNotes(); drawCalendarTexture(); applyEnvironment(); syncDecor(); syncWater(); syncJars(); if (FUN().beachDay !== todayISO() || !beachBuilt) { beachBuilt = true; syncBeach(); } zzz.visible = state.stats.energy <= 0 && state.stats.n > 0; sleeping = zzz.visible; }
 
   // ---------------- camera & player control
   const cam = { yaw: 0.35, pitch: 0.78, dist: isTouch ? 21 : 18, target: new THREE.Vector3(0, 0, -3), focus: null, shake: 0 };
@@ -3002,6 +3390,10 @@ function createWorld() {
     else if (id === 'chest') { openLid(); openChest(); }
     else if (id === 'mailbox') openSettings();
     else if (id === 'shop') openShop();
+    else if (id === 'dock') startFishing();
+    else if (id === 'bench') startBreathing();
+    else if (id === 'telescope') openTelescope();
+    else if (id === 'field') { const k = fieldTask(); if (k === 'water') waterNear(); else if (k === 'harvest') harvestField(); }
   }
   function walkTo(x, z, pending = null) { nav.target = new THREE.Vector3(x, 0, z); nav.pending = pending; marker.position.set(x, 0.05, z); marker.visible = !pending; marker.scale.setScalar(1); }
   function nearest() {
@@ -3013,6 +3405,7 @@ function createWorld() {
     return best;
   }
   function travel(id) {
+    if (activity) stopActivity();
     if (windows.length && id !== 'field') windows.slice().forEach((w) => w !== activePanel?.w && w.close());
     const fade = $('#fade');
     Sfx.warp();
@@ -3035,9 +3428,9 @@ function createWorld() {
   function pick(clientX, clientY) {
     ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects([...pickables, island], true)[0];
+    const hit = ray.intersectObjects([...pickables.filter((p) => p.visible), island], true)[0];
     if (!hit) return null;
-    if (hit.object.userData.pick) return { id: hit.object.userData.pick, point: hit.point };
+    if (hit.object.userData.pick) return { id: hit.object.userData.pick, point: hit.point, obj: hit.object };
     return { ground: true, point: hit.point }; // island, plots, trees… walk towards it
   }
   canvas.addEventListener('pointerdown', (e) => {
@@ -3051,11 +3444,11 @@ function createWorld() {
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinch0) cam.dist = clamp(cam.dist * (pinch0 / d), 9, 32); pinch0 = d; return;
+      if (pinch0) cam.dist = clamp(cam.dist * (pinch0 / d), camLim()[0], camLim()[1]); pinch0 = d; return;
     }
     if (drag && pointers.size === 1) {
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
-      if (drag.moved > 6) { cam.yaw = drag.yaw - dx * 0.006; cam.pitch = clamp(drag.pitch + dy * 0.004, 0.42, 1.2); }
+      if (drag.moved > 6) { cam.yaw = drag.yaw - dx * 0.006; cam.pitch = clamp(drag.pitch + dy * 0.004, camLim()[2], camLim()[3]); }
       return;
     }
     if (e.pointerType === 'mouse') {
@@ -3083,9 +3476,16 @@ function createWorld() {
     drag = null;
     const h = pick(e.clientX, e.clientY);
     if (!h) return;
+    if (activity === 'photo') return;
+    if (deco) { if (!decoPick(h) && h.ground) decoPlace(h.point.x, h.point.z); return; }
+    if (h.id?.startsWith('npc:')) { const id = h.id.slice(4), n = npcs.find((x) => x.id === id); Sfx.click(); if (Math.hypot(player.position.x - n.x, player.position.z - n.z) < 3) talkTo(id); else walkTo(n.x + 0.9, n.z - 0.9, () => talkTo(id)); return; }
+    if (h.id?.startsWith('beach:')) { const b = beachG.find((x) => x.i === +h.id.slice(6)); if (b) { Sfx.select(); if (activity) stopActivity(); walkTo(b.x, b.z); } return; }
+    if (h.id?.startsWith('bug:')) { const b = bugs[+h.id.slice(4)]; Sfx.select(); if (activity) stopActivity(); walkTo(b.position.x, b.position.z); return; }
+    if (activity && (h.ground || h.id)) stopActivity();
     if (h.id?.startsWith('crop:')) { Sfx.click(); bounceCrop(h.id.slice(5)); openQuest(h.id.slice(5)); return; }
     if (h.id === 'boss') { Sfx.click(); openBoss(); return; }
     if (h.id === 'pet') { Sfx.pop(); petJump(); setTimeout(openPet, 350); return; }
+    if (h.id?.startsWith('item:')) return;
     if (h.id?.startsWith('decor:')) { const item = SHOP.find((x) => x.id === h.id.slice(6)); Sfx.select(); burst(new THREE.Vector3(h.point.x, h.point.y + 0.3, h.point.z), '#ffe08a', 8, { speed: 1.2, up: 2.5, size: 0.08, gravity: 5 }); toast(`${item.icon} ${tr(item.en, item.th)}`, tr('Bought with discipline seeds 🌰', 'ซื้อด้วยเมล็ดวินัย 🌰'), 'house'); return; }
     if (h.id && LAYOUT[h.id]) {
       const o = LAYOUT[h.id], d = Math.hypot(player.position.x - o.approach[0], player.position.z - o.approach[2]);
@@ -3096,7 +3496,7 @@ function createWorld() {
   };
   canvas.addEventListener('pointerup', endPointer);
   canvas.addEventListener('pointercancel', endPointer);
-  canvas.addEventListener('wheel', (e) => { e.preventDefault(); cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.08), 9, 32); }, { passive: false });
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.08), camLim()[0], camLim()[1]); }, { passive: false });
   canvas.addEventListener('pointerleave', () => { if (tipEl.dataset.world) { delete tipEl.dataset.world; hideTip(); } canvas.classList.remove('pointing'); });
   addEventListener('keydown', (e) => { if (!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) && !windows.length) keys.add(e.key.toLowerCase()); });
   addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -3270,6 +3670,7 @@ function createWorld() {
       if (keys.has('d') || keys.has('arrowright')) mx += 1;
     }
     let moving = false;
+    if ((mx || mz) && activity && activity !== 'deco' && activity !== 'photo') stopActivity();
     if (mx || mz) {
       nav.target = null; nav.pending = null; marker.visible = false;
       const fwd = new THREE.Vector3(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), right = new THREE.Vector3(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
@@ -3278,8 +3679,8 @@ function createWorld() {
     } else if (nav.target && !sleeping) {
       v3.subVectors(nav.target, player.position); v3.y = 0;
       const d = v3.length();
-      const arrived = d < 0.25 || (nav.pending && d < LAYOUT[nav.pending].radius * 0.45);
-      if (arrived) { nav.target = null; marker.visible = false; if (nav.pending) interact(nav.pending); }
+      const arrived = d < 0.25 || (typeof nav.pending === 'string' && d < LAYOUT[nav.pending].radius * 0.45) || (typeof nav.pending === 'function' && d < 0.9);
+      if (arrived) { const pend = nav.pending; nav.target = null; nav.pending = null; marker.visible = false; if (typeof pend === 'function') pend(); else if (pend) interact(pend); }
       else { v3.normalize(); moving = true; }
     }
     if (moving) {
@@ -3297,7 +3698,7 @@ function createWorld() {
       if (d < min && d > 1e-4) { player.position.x = c.x + (dx / d) * min; player.position.z = c.z + (dz / d) * min; }
     }
     const r = Math.hypot(player.position.x, player.position.z);
-    if (r > 20.6) player.position.multiplyScalar(20.6 / r);
+    if (r > 20.6 && pose !== 'fish') player.position.multiplyScalar(20.6 / r);
     // walk / idle / sleep animation
     const sw = Math.sin(walkPhase) * (moving ? 0.7 : 0);
     legL.rotation.x = sw; legR.rotation.x = -sw; armL.rotation.x = -sw * 0.8; armR.rotation.x = sw * 0.8;
@@ -3305,6 +3706,8 @@ function createWorld() {
     rig.rotation.z = sleeping ? lerp(rig.rotation.z, Math.PI / 2, dt * 3) : lerp(rig.rotation.z, 0, dt * 6);
     rig.position.x = sleeping ? lerp(rig.position.x, 0.6, dt * 3) : lerp(rig.position.x, 0, dt * 6);
     marker.scale.setScalar(1 + Math.sin(time * 6) * 0.12);
+    applyPose(time);
+    if (deco?.sel) decoMarker.scale.setScalar(1 + Math.sin(time * 5) * 0.08);
 
     // --- camera
     const desired = cam.focus || player.position;
@@ -3332,14 +3735,15 @@ function createWorld() {
       decorTick.forEach((f) => f(dt, time)); tickSeason(dt, time);
       plots.forEach((p, i) => { if (!p.crop) return; p.crop.rotation.z = Math.sin(time * 1.6 + i) * 0.04; p.crop.children.forEach((o) => { if (o.userData.spin) { o.rotation.y = Math.sin(time * 1.2 + i) * 1.1; o.position.y = 1.25 + Math.sin(time * 2 + i) * 0.08; } }); });
     }
-    tickPet(dt, time); tickBoss(dt, time);
+    tickPet(dt, time); tickPetTask(dt, time); tickBoss(dt, time); tickFish(dt, time); tickNpcs(dt, time); tickBugs(dt, time);
+    for (const b of beachG) { if (b.g.userData.crab) b.g.position.x = b.x + Math.sin(time * 1.5 + b.i) * 0.3; if (Math.hypot(player.position.x - b.x, player.position.z - b.z) < 1.1) { collectFind(b); break; } }
     lid.rotation.x = lerp(lid.rotation.x, -lidTarget * 1.9, Math.min(1, dt * 8));
     chestGlow.visible = lid.rotation.x < -0.2;
     for (let i = tickers.length - 1; i >= 0; i--) if (tickers[i](dt) === false) tickers.splice(i, 1);
     envTimer += dt; if (envTimer > 60) { envTimer = 0; applyEnvironment(); renderHUD(); }
 
     // --- labels & interaction prompt
-    const hideLabels = panelOpen;
+    const hideLabels = panelOpen || photoMode || activity === 'breath' || activity === 'scope';
     for (const l of labels) {
       if (l === zzz) l.pos.set(player.position.x + (sleeping ? 0.6 : 0), sleeping ? 1.4 : 2.9, player.position.z);
       if (!l.visible || hideLabels) { l.el.style.display = 'none'; continue; }
@@ -3348,11 +3752,18 @@ function createWorld() {
       l.el.style.display = '';
       l.el.style.transform = `translate(${((p.x + 1) / 2) * innerWidth}px, ${((1 - p.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
     }
-    const near = !panelOpen && !sleeping ? nearest() : null;
-    promptFor = near?.id || null;
-    promptEl.hidden = !near;
+    let near = !panelOpen && !sleeping && !activity ? nearest() : null;
+    const ft = !near && !panelOpen && !sleeping && !activity && inField() ? fieldTask() : null;
+    if (ft) {
+      promptFor = 'field'; promptEl.hidden = false;
+      const pt = t(ft === 'water' ? '💧 Water crops' : '🧺 Harvest');
+      if (promptText.textContent !== pt) promptText.textContent = pt;
+      const p = v3.set(player.position.x, 2.9, player.position.z).project(camera);
+      promptEl.style.transform = `translate(${((p.x + 1) / 2) * innerWidth}px, ${((1 - p.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
+      near = null;
+    } else { promptFor = near?.id || null; promptEl.hidden = !near; }
     if (near) {
-      const pt = t({ house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop' }[near.id]);
+      const pt = t({ house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
       if (promptText.textContent !== pt) promptText.textContent = pt;
       const o = LAYOUT[near.id], p = v3.set(o.approach[0], 2.6, o.approach[2]).project(camera);
       promptEl.style.transform = `translate(${((p.x + 1) / 2) * innerWidth}px, ${((1 - p.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
@@ -3362,11 +3773,16 @@ function createWorld() {
 
   document.fonts.ready.then(() => { drawSign(); drawCalendarTexture(); });
   drawSign();
+  syncItems();
   resize();
   renderer.setAnimationLoop(loop);
   return {
     sync, applyGraphics, plantSequence, fireworks, showCrop, showField, setSleeping, hasCrop, travel, focusOn,
     build(id) { syncDecor(id); showDecor(id); },
+    seat, fishVisual, fishCatch, petAction, decoMode, decoAction, addItem, photo, capture,
+    goField() { travel('field'); setTimeout(() => walkTo(FIELD.cx - 0.9, FIELD.cz - 2.7), reduced ? 50 : 700); },
+    goBeach() { const b = [...beachG].sort((a, c) => Math.hypot(a.x - player.position.x, a.z - player.position.z) - Math.hypot(c.x - player.position.x, c.z - player.position.z))[0]; if (b) { walkTo(b.x, b.z); cam.focus = null; } },
+    goNpc(id) { const n = npcs.find((x) => x.id === id); if (Math.hypot(player.position.x - n.x, player.position.z - n.z) < 3) talkTo(id); else walkTo(n.x + 0.9, n.z - 0.9, () => talkTo(id)); },
     interactNearest() { if (promptFor) interact(promptFor); },
   };
 }
@@ -3401,6 +3817,10 @@ document.addEventListener('pointerover', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
+  if (activity && !windows.length && !typing) {
+    if (e.key === 'Escape') { stopActivity(); return; }
+    if (activity === 'fish' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (fishing?.phase === 'ready' || fishing?.phase === 'done') fishCast(); else fishPull(); return; }
+  }
   if (e.key === 'Escape' && windows.length) { const w = windows.at(-1); if (w.win.querySelector('[data-close]')) w.close(); return; }
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && activePanel?.name === 'board') { e.preventDefault(); form.requestSubmit(); return; }
   if (e.key === 'Enter' && document.activeElement?.matches('.note')) { openQuest(document.activeElement.dataset.open); return; }
@@ -3525,6 +3945,9 @@ const GUIDE = {
       ['calendar', '📅', 'Calendar stone', 'ป้ายหินปฏิทิน', 'This month at a glance: green days and red days.', 'ดูทั้งเดือนในแวบเดียว วันเขียววันแดง'],
       ['shop', '🛒', 'Farm shop', 'ร้านค้าฟาร์ม', 'Spend discipline seeds 🌰 on a windmill, pond, pets… Seeds come from journals, kept rules and beaten bosses — never from profit.', 'ใช้เมล็ดวินัย 🌰 ซื้อกังหันลม บ่อปลา สัตว์เลี้ยง… เมล็ดได้จากการเขียนบันทึก ทำตามกฎ และปราบบอส ไม่ใช่จากกำไร'],
       ['field', '⚔️', 'Weekly boss', 'บอสประจำสัปดาห์', 'A bad habit stands by the field. Each good trading day hits it; 4 hits win.', 'นิสัยเสียหนึ่งอย่างยืนอยู่ข้างแปลง วันเทรดที่ดีแต่ละวัน = โจมตี 1 ครั้ง ครบ 4 ครั้งชนะ'],
+      ['dock', '🎣', 'Dock', 'ท่าตกปลา', 'Fishing mini-game. Some fish only bite at night, in the rain, or on a green day.', 'มินิเกมตกปลา บางชนิดกินเบ็ดเฉพาะกลางคืน ตอนฝนตก หรือวันที่พอร์ตเขียว'],
+      ['bench', '🌳', 'Breathing bench', 'ม้านั่งหายใจ', 'Sit under the tree for 1–3 minutes of box breathing before trading.', 'นั่งใต้ต้นไม้ หายใจแบบกล่อง 1–3 นาทีก่อนเทรด'],
+      ['telescope', '🔭', 'Telescope', 'กล้องดูดาว', 'Find 8 hidden constellations in the night sky.', 'ตามหากลุ่มดาว 8 กลุ่มบนท้องฟ้า'],
       ['mailbox', '📮', 'Mailbox', 'ตู้จดหมาย', 'Settings: name, starting gold, daily loss limit, graphics, backup (export/import).', 'ตั้งค่า: ชื่อ ทุนเริ่มต้น ลิมิตขาดทุนรายวัน กราฟิก และสำรองข้อมูล'],
     ];
     const crops = tr('🎃 pumpkin = win · ⭐ golden pumpkin = big win · 🌱 sprout = small win · 🥀 withered = loss · 🌿 weed = revenge / tilt / oversized trade', '🎃 ฟักทอง = ชนะ · ⭐ ฟักทองทอง = ชนะเยอะ · 🌱 ต้นอ่อน = ชนะนิดหน่อย · 🥀 ต้นเหี่ยว = แพ้ · 🌿 วัชพืช = เทรดแก้แค้น / หัวร้อน / lot ใหญ่เกิน');
@@ -3532,6 +3955,7 @@ const GUIDE = {
       <button class="slot slot-click flex items-center gap-3 w-full text-left mb-1" data-guide-go="${id}">
         <span class="text-2xl">${ic}</span><span class="flex-1"><b class="font-pixel">${tr(en, th)}</b><br><span class="text-sm">${tr(den, dth)}</span></span>
         <span class="font-pixel text-xs text-sunset">${tr('go ▶', 'ไป ▶')}</span></button>`).join('') + `<div class="parch mt-2 text-sm">${crops}</div>
+      <div class="parch mt-2 text-sm">${tr('🎒 at the top opens Things to do: fishing, beachcombing, fireflies (evenings), watering, pet play, villagers, decorating, photo mode and the radio.', '🎒 ด้านบนคือเมนูกิจกรรม: ตกปลา เก็บของริมหาด จับหิ่งห้อย (ตอนเย็น) รดน้ำ เล่นกับสัตว์เลี้ยง คุยกับชาวบ้าน จัดฟาร์ม ถ่ายรูป และวิทยุ')}</div>
       <div class="parch mt-2 text-sm">${tr('Weather follows today\'s PnL (sun = green day, rain = red day). The sky follows your real clock.', 'สภาพอากาศตามผลวันนี้ (แดดออก = วันกำไร, ฝนตก = วันขาดทุน) ท้องฟ้าเปลี่ยนตามเวลาจริง')}</div>`;
   },
   daily: () => `<button class="btn btn-green w-full mb-2" data-open-journal>📓 ${tr('Write today\'s journal', 'เขียนบันทึกประจำวันของวันนี้')}</button><div id="guide-daily">${dailyHTML()}</div>`,
@@ -3658,13 +4082,29 @@ const Music = {
     night: { bpm: 70, key: 57, prog: [0, 8, 3, 10], minor: [1, 0, 0, 0], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: false },
     rain: { bpm: 76, key: 50, prog: [0, 5, 8, 7], minor: [1, 1, 0, 1], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: false },
   },
-  want() { return !!Sfx.ctx && Sfx.on && state.settings.music !== false && !document.hidden; },
-  sync() { if (!this.want()) { this.stop(); return; } this.start(); const m = musicMood(); if (m !== this.mood) this.setMood(m); },
+  want() { return !!Sfx.ctx && Sfx.on && state.settings.music !== false && state.settings.fun.musicMode !== 'off' && !document.hidden; },
+  sync() {
+    if (!this.want()) { this.stop(); return; }
+    this.start();
+    const nature = state.settings.fun.musicMode === 'nature', m = musicMood(), key = (nature ? 'n:' : '') + m;
+    if (key !== this.key) { this.key = key; this.nature = nature; this.setMood(m); this.setWaves(nature); }
+  },
+  setWaves(on) {
+    if (on && !this.waves) {
+      const c = Sfx.ctx, n = c.sampleRate * 3, buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+      let last = 0; for (let i = 0; i < n; i++) { last = last * 0.97 + (Math.random() * 2 - 1) * 0.03; d[i] = last * 8; }
+      const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700;
+      const g = c.createGain(); g.gain.value = 0.12;
+      const lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.09; lfo.connect(lg).connect(g.gain); lfo.start();
+      src.connect(f).connect(g).connect(this.gain); src.start(); this.waves = [src, lfo];
+    } else if (!on && this.waves) { this.waves.forEach((x) => { try { x.stop(); } catch (e) { /* stopped */ } }); this.waves = null; }
+  },
   start() {
     if (this.timer) return;
     const c = Sfx.ctx;
     this.gain = c.createGain(); this.gain.gain.setValueAtTime(0, c.currentTime); this.gain.gain.linearRampToValueAtTime(1, c.currentTime + 3); this.gain.connect(Sfx.master);
-    this.t = c.currentTime + 0.2; this.step = 0; this.mood = null;
+    this.t = c.currentTime + 0.2; this.step = 0; this.mood = null; this.key = null;
     this.timer = setInterval(() => this.tick(), 100);
   },
   stop() {
@@ -3673,7 +4113,7 @@ const Music = {
     const c = Sfx.ctx, g = this.gain;
     g.gain.cancelScheduledValues(c.currentTime); g.gain.setValueAtTime(g.gain.value, c.currentTime); g.gain.linearRampToValueAtTime(0, c.currentTime + 0.5);
     setTimeout(() => g.disconnect(), 800);
-    this.rain = null; this.mood = null;
+    this.rain = null; this.mood = null; this.key = null; this.waves = null;
   },
   setMood(m) {
     this.mood = m; this.song = this.SONGS[m]; this.step = 0; this.melody = this.compose(this.song);
@@ -3719,7 +4159,7 @@ const Music = {
     const c = Sfx.ctx, S = this.song; if (!S || c.state !== 'running') return;
     if (this.t < c.currentTime) this.t = c.currentTime + 0.05; // after a stall, don't play catch-up
     const spb = 30 / S.bpm;
-    while (this.t < c.currentTime + 0.4) {
+    while (!this.nature && this.t < c.currentTime + 0.4) {
       const st = this.step, bar = Math.floor(st / 8) % 4, s = st % 8, root = S.key + S.prog[bar], ch = [0, S.minor[bar] ? 3 : 4, 7];
       if (s === 0 || s === 4) this.note(root - 12 + (s === 4 ? 7 : 0), this.t, spb * 3.6, 'triangle', 0.14);
       if (S.bpm > 80 || s % 2 === 0) this.note(root + 12 + ch[[0, 1, 2, 1][s % 4]], this.t, spb * 0.8, 'square', 0.022);
@@ -3730,7 +4170,7 @@ const Music = {
       if (this.step % 128 === 0) this.melody = this.compose(S);
     }
     if (c.currentTime > this.nextFx) {
-      this.nextFx = c.currentTime + 5 + Math.random() * 7;
+      this.nextFx = c.currentTime + (this.nature ? 2.5 : 5) + Math.random() * (this.nature ? 4 : 7);
       const at = c.currentTime + 0.1;
       if (this.mood === 'morning' || this.mood === 'day') for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) this.chirp(at + i * 0.11, 2300 + Math.random() * 500, 3400 + Math.random() * 600, 0.07, 0.025);
       else if (this.mood === 'night') for (let k = 0; k < 2; k++) for (let i = 0; i < 3; i++) this.chirp(at + k * 0.5 + i * 0.06, 4300, 4200, 0.03, 0.012);
@@ -3738,12 +4178,395 @@ const Music = {
   },
 };
 function musicMood() {
+  const fixed = state.settings.fun?.musicMode;
+  if (Music.SONGS[fixed]) return fixed;
   if (weatherNow() === 'rain') return 'rain';
   const h = new Date().getHours() + new Date().getMinutes() / 60;
   return h >= 5 && h < 9 ? 'morning' : h >= 9 && h < 17 ? 'day' : h >= 17 && h < 19.5 ? 'evening' : 'night';
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) Sfx.keepAlive?.pause(); Music.sync(); });
 setInterval(() => Music.sync(), 30000);
+
+// ------------------------------------------------------------------ leisure: things to do on the farm just to unwind
+// fishing at the dock, a breathing bench, stargazing, villagers, beach finds, fireflies, watering & harvest,
+// pet play, decorating, photo mode and a radio. Nothing here touches trading stats; it's for calm.
+let activity = null;
+const activityClose = {};
+function stopActivity() { const a = activity; if (a) activityClose[a]?.(); }
+const funBar = $('#fun-bar');
+function showBar(html) { funBar.innerHTML = html; funBar.hidden = false; translateTree(funBar); }
+function hideBar() { funBar.hidden = true; funBar.innerHTML = ''; }
+
+// --- fishing
+const FISH = [
+  { id: 'tilapia', icon: '🐟', en: 'Tilapia', th: 'ปลานิล', rar: 1, color: '#8fa7b8', size: [18, 40] },
+  { id: 'mackerel', icon: '🐟', en: 'Mackerel', th: 'ปลาทู', rar: 1, color: '#6f8fb0', size: [15, 28] },
+  { id: 'sardine', icon: '🐟', en: 'Sardine', th: 'ปลาซาร์ดีน', rar: 1, color: '#b8c9d9', size: [10, 20] },
+  { id: 'snapper', icon: '🐠', en: 'Red Snapper', th: 'ปลากะพงแดง', rar: 2, color: '#e0453f', size: [30, 70] },
+  { id: 'grouper', icon: '🐠', en: 'Grouper', th: 'ปลาเก๋า', rar: 2, color: '#a8703d', size: [35, 90] },
+  { id: 'puffer', icon: '🐡', en: 'Pufferfish', th: 'ปลาปักเป้า', rar: 2, color: '#e9b92c', size: [12, 30] },
+  { id: 'squid', icon: '🦑', en: 'Squid', th: 'ปลาหมึก', rar: 2, color: '#f2c1d1', size: [20, 45], when: 'night' },
+  { id: 'tuna', icon: '🐟', en: 'Tuna', th: 'ปลาทูน่า', rar: 3, color: '#4f6f9f', size: [60, 160] },
+  { id: 'eel', icon: '🐍', en: 'Sea Eel', th: 'ปลาไหลทะเล', rar: 3, color: '#5c5a3a', size: [50, 130], when: 'rain' },
+  { id: 'octopus', icon: '🐙', en: 'Octopus', th: 'ปลาหมึกยักษ์', rar: 3, color: '#c0443c', size: [40, 110], when: 'night' },
+  { id: 'shark', icon: '🦈', en: 'Baby Shark', th: 'ฉลามน้อย', rar: 4, color: '#9aa0a6', size: [80, 150], when: 'rain' },
+  { id: 'goldfish', icon: '✨', en: 'Lucky Goldfish', th: 'ปลาทองนำโชค', rar: 4, color: '#f6c945', size: [20, 35], when: 'green' },
+  { id: 'boot', icon: '👢', en: 'Old boot', th: 'รองเท้าบูทเก่า', rar: 0, color: '#7a4b2a', size: [25, 30] },
+];
+const RAR = { 0: tr('junk', 'ขยะ'), 1: tr('common', 'ธรรมดา'), 2: tr('uncommon', 'หายาก'), 3: tr('rare', 'หายากมาก'), 4: tr('legendary', 'ตำนาน') };
+function fishNow() {
+  const hr = new Date().getHours(), night = hr >= 19 || hr < 5, rain = weatherNow() === 'rain', green = state.stats.todayN && state.stats.todayNet > 0;
+  const ok = FISH.filter((f) => !f.when || (f.when === 'night' && night) || (f.when === 'rain' && rain) || (f.when === 'green' && green));
+  const w = (f) => ({ 0: 6, 1: 55, 2: 28, 3: 12, 4: 4 }[f.rar]);
+  let r = Math.random() * ok.reduce((a, f) => a + w(f), 0);
+  for (const f of ok) { r -= w(f); if (r <= 0) return f; }
+  return ok[0];
+}
+let fishing = null;
+function startFishing() {
+  stopActivity(); activity = 'fish'; world?.seat('fish');
+  fishing = { phase: 'ready', timers: [] }; fishBar();
+}
+activityClose.fish = () => { if (!fishing) return; fishing.timers.forEach(clearTimeout); cancelAnimationFrame(fishing.raf); fishing = null; activity = null; hideBar(); world?.seat(null); };
+const fishLater = (fn, ms) => fishing.timers.push(setTimeout(fn, ms));
+function fishBar(msg = '') {
+  const F = fishing; if (!F) return;
+  const close = `<button class="btn btn-red !px-2" data-fish="quit" aria-label="close">✕</button>`;
+  const pull = `<button class="btn btn-orange text-lg flex-1" data-fish="pull">‼ ${tr('Pull!', 'ดึง!')}</button>`;
+  if (F.phase === 'ready' || F.phase === 'done') showBar(`<div class="font-pixel text-sm mb-2">${msg || tr('🎣 Cast your line, then wait calmly for a bite.', '🎣 เหวี่ยงเบ็ด แล้วรอปลากินอย่างใจเย็น')}</div><div class="flex gap-2"><button class="btn btn-green text-lg flex-1" data-fish="cast">🎣 ${F.phase === 'done' ? tr('Cast again', 'เหวี่ยงอีกครั้ง') : tr('Cast', 'เหวี่ยงเบ็ด')}</button><button class="btn" data-fish="book">📖</button>${close}</div>`);
+  else if (F.phase === 'wait') showBar(`<div class="font-pixel text-sm mb-2">🌊 ${tr('Waiting… don\'t pull yet. Patience, like waiting for your setup.', 'รอปลากิน… อย่าเพิ่งดึงนะ ใจเย็นเหมือนรอจุดเข้าเทรด')}</div><div class="flex gap-2">${pull}${close}</div>`);
+  else if (F.phase === 'bite') showBar(`<div class="font-pixel text-lg mb-2 text-berry blink">‼ ${tr('A bite! Pull now!', 'ปลากินเบ็ด! ดึงเลย!')}</div><div class="flex gap-2">${pull}${close}</div>`);
+  else if (F.phase === 'reel') showBar(`<div class="font-pixel text-sm mb-1">${tr('Stop the needle in the green!', 'หยุดเข็มให้อยู่ในช่องเขียว!')} (${F.hits}/${F.need})</div>
+    <div class="track bar relative mb-2" style="height:26px"><div class="absolute top-0 bottom-0" style="left:${(F.zone[0] * 100).toFixed(1)}%;width:${((F.zone[1] - F.zone[0]) * 100).toFixed(1)}%;background:#6aa84f"></div><div data-needle class="absolute top-0 bottom-0 w-[4px] bg-[#fff4d6]" style="left:0"></div></div><div class="flex gap-2">${pull}${close}</div>`);
+}
+function fishCast() {
+  const F = fishing; F.phase = 'wait'; world?.fishVisual('cast'); fishBar();
+  fishLater(() => { if (fishing !== F) return; F.phase = 'bite'; F.fish = fishNow(); world?.fishVisual('bite'); Sfx.bite(); navigator.vibrate?.(90); fishBar();
+    fishLater(() => { if (fishing !== F || F.phase !== 'bite') return; F.phase = 'done'; world?.fishVisual('ready'); Sfx.fail(); fishBar(tr('💨 It got away… next one will come.', '💨 ปลาหลุดไปแล้ว… เดี๋ยวตัวใหม่ก็มา')); }, F.fish.rar >= 3 ? 850 : 1150);
+  }, 2200 + Math.random() * 5000);
+}
+function fishPull() {
+  const F = fishing; if (!F) return;
+  if (F.phase === 'wait') { F.timers.forEach(clearTimeout); F.timers = []; F.phase = 'done'; world?.fishVisual('ready'); Sfx.error(); fishBar(tr('🐟 Too early — the fish got scared. Wait for the bobber to dip.', '🐟 ดึงเร็วไป ปลาตกใจหนีไปแล้ว รอให้ทุ่นจมก่อนนะ')); return; }
+  if (F.phase === 'bite') {
+    F.timers.forEach(clearTimeout); F.timers = [];
+    const rar = F.fish.rar, w = [0.34, 0.3, 0.22, 0.16, 0.12][rar], c = 0.15 + Math.random() * (0.7 - w);
+    Object.assign(F, { phase: 'reel', hits: 0, need: rar >= 3 ? 2 : 1, zone: [c, c + w], speed: 0.8 + rar * 0.3, t0: performance.now() });
+    world?.fishVisual('reel'); fishBar(); Sfx.reel();
+    const tick = () => { if (fishing !== F || F.phase !== 'reel') return; const k = ((performance.now() - F.t0) / 1000) * F.speed, x = 1 - Math.abs((k % 2) - 1); F.pos = x; const n = funBar.querySelector('[data-needle]'); if (n) n.style.left = `calc(${(x * 100).toFixed(1)}% - 2px)`; F.raf = requestAnimationFrame(tick); };
+    tick(); return;
+  }
+  if (F.phase === 'reel') {
+    if (F.pos >= F.zone[0] && F.pos <= F.zone[1]) {
+      F.hits++; Sfx.reel();
+      if (F.hits < F.need) { const w = F.zone[1] - F.zone[0], c = 0.1 + Math.random() * (0.8 - w); F.zone = [c, c + w * 0.85]; F.speed *= 1.15; fishBar(); return; }
+      cancelAnimationFrame(F.raf); landFish(F.fish);
+    } else { cancelAnimationFrame(F.raf); F.phase = 'done'; world?.fishVisual('ready'); Sfx.fail(); fishBar(tr('🎣 The line slipped… try again.', '🎣 สายหลุด… ลองใหม่อีกครั้ง')); }
+  }
+}
+function landFish(fish) {
+  const f = state.settings.fun, size = Math.round(fish.size[0] + Math.random() * (fish.size[1] - fish.size[0])), isNew = !f.fish[fish.id];
+  f.fish[fish.id] = (f.fish[fish.id] || 0) + 1; f.fishBest[fish.id] = Math.max(f.fishBest[fish.id] || 0, size); save();
+  fishing.phase = 'done'; world?.fishCatch(fish); world?.fishVisual('ready');
+  if (fish.rar >= 3) { Sfx.levelUp(); } else Sfx.success();
+  fishBar(`${fish.icon} ${tr('Caught', 'ได้')} <b>${tr(fish.en, fish.th)}</b> ${fish.rar ? `${size} ${tr('cm', 'ซม.')}` : ''} · <span class="text-sunset">${RAR[fish.rar]}</span>${isNew ? ` <span class="tag good">✨ ${tr('new!', 'ใหม่!')}</span>` : ''}`);
+  checkAchievements(true);
+}
+funBar.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fish]'); if (!b) return;
+  const a = b.dataset.fish;
+  if (a === 'quit') stopActivity(); else if (a === 'cast') fishCast(); else if (a === 'pull') fishPull(); else if (a === 'book') openFun('book');
+});
+
+// --- breathing bench (box breathing 4-4-4-4)
+const breathEl = $('#breath');
+let breathing = null;
+function startBreathing() {
+  stopActivity(); activity = 'breath'; world?.seat('bench');
+  breathEl.hidden = false;
+  breathEl.innerHTML = `<div class="parch max-w-[360px] text-center pointer-events-auto">
+    <div class="font-pixel text-xl font-bold">🌳 ${tr('Breathing bench', 'ม้านั่งหายใจ')}</div>
+    <p class="text-sm my-2">${tr('Box breathing: in 4 · hold 4 · out 4 · hold 4. Great before the market opens, or after a losing streak.', 'หายใจแบบกล่อง: เข้า 4 · กลั้น 4 · ออก 4 · กลั้น 4 เหมาะก่อนตลาดเปิด หรือหลังแพ้ติดกัน')}</p>
+    <div class="flex gap-2 justify-center">${[1, 2, 3].map((m) => `<button class="btn btn-green" data-bmin="${m}">${m} ${tr('min', 'นาที')}</button>`).join('')}</div>
+    <button class="btn mt-2 text-sm" data-bstop>${tr('Stand up', 'ลุกขึ้น')}</button></div>`;
+}
+function runBreathing(min) {
+  const total = min * 60, phases = [[tr('Breathe in', 'หายใจเข้า'), 1, 523], [tr('Hold', 'กลั้นไว้'), 1, 659], [tr('Breathe out', 'หายใจออก'), 0.45, 392], [tr('Hold', 'กลั้นไว้'), 0.45, 330]];
+  breathEl.innerHTML = `<div class="flex flex-col items-center gap-4 pointer-events-auto">
+    <div class="breath-ring"><div data-bcircle class="breath-circle"></div><div data-bword class="breath-word font-pixel"></div></div>
+    <div class="plate font-pixel"><span data-btime class="num"></span></div>
+    <button class="btn text-sm" data-bstop>${tr('Stop', 'หยุด')}</button></div>`;
+  const B = (breathing = { t0: Date.now(), total, min, i: -1 });
+  const step = () => {
+    if (breathing !== B) return;
+    const el = Math.floor((Date.now() - B.t0) / 1000);
+    if (el >= total) { breathDone(B); return; }
+    const i = Math.floor(el / 4) % 4;
+    if (i !== B.i) { B.i = i; const [word, scale, f] = phases[i]; $('[data-bcircle]', breathEl).style.transform = `scale(${scale})`; $('[data-bword]', breathEl).textContent = word; Sfx.tone(f, 0.9, { type: 'sine', vol: 0.07 }); }
+    $('[data-btime]', breathEl).textContent = `${Math.floor((total - el) / 60)}:${pad2((total - el) % 60)}`;
+    B.timer = setTimeout(step, 250);
+  };
+  step();
+}
+function breathDone(B) {
+  const f = state.settings.fun; f.breath++; f.breathMin += B.min; save(); markDaily('mind');
+  breathing = null; Sfx.achievement();
+  breathEl.innerHTML = `<div class="parch max-w-[340px] text-center pointer-events-auto"><div class="text-4xl">🍃</div><div class="font-pixel text-lg font-bold mt-1">${tr('Well done', 'เยี่ยมมาก')}</div>
+    <p class="text-sm mt-1">${tr('A calm mind trades its plan. Take this feeling to the chart.', 'ใจที่นิ่งจะเทรดตามแผน พาความรู้สึกนี้ไปที่กราฟนะ')}</p>
+    <p class="text-xs text-[#8b5a2b] mt-1">${tr(`Sessions: ${f.breath} · ${f.breathMin} min total · daily task "check your mood" ticked`, `ทำไปแล้ว ${f.breath} ครั้ง · รวม ${f.breathMin} นาที · ติ๊กภารกิจ "เช็กใจตัวเอง" ให้แล้ว`)}</p>
+    <button class="btn btn-green mt-2" data-bstop>OK</button></div>`;
+  checkAchievements(true);
+}
+activityClose.breath = () => { if (breathing) clearTimeout(breathing.timer); breathing = null; activity = null; breathEl.hidden = true; breathEl.innerHTML = ''; world?.seat(null); };
+breathEl.addEventListener('click', (e) => {
+  const m = e.target.closest('[data-bmin]'); if (m) { runBreathing(+m.dataset.bmin); return; }
+  if (e.target.closest('[data-bstop]')) stopActivity();
+});
+
+// --- telescope: find the constellations
+const CONSTS = [
+  { id: 'pumpkin', en: 'The Great Pumpkin', th: 'ฟักทองยักษ์', sEn: 'Farmers say it rises in good seasons. Harvests come to those who tend the field daily.', sTh: 'ชาวนาเชื่อว่าจะขึ้นในฤดูที่ดี ผลผลิตมาหาคนที่ดูแลแปลงทุกวัน', c: [300, 430], p: [[-45, 15], [-25, -25], [20, -28], [45, 5], [30, 45], [-20, 48], [-5, -62]], l: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [1, 6]] },
+  { id: 'cat', en: 'The Patient Cat', th: 'แมวผู้อดทน', sEn: 'A cat waits hours for one pounce. It never chases every mouse.', sTh: 'แมวรอเป็นชั่วโมงเพื่อตะครุบครั้งเดียว มันไม่วิ่งไล่หนูทุกตัว', c: [720, 300], p: [[-40, 0], [-32, -48], [-5, -18], [22, -48], [36, 0], [0, 36]], l: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0]] },
+  { id: 'bull', en: 'The Bull', th: 'กระทิง', sEn: 'Charges upward with horns high. Even bulls must rest.', sTh: 'พุ่งขึ้นด้วยเขาที่ชูสูง แต่กระทิงก็ต้องพักเหมือนกัน', c: [1120, 520], p: [[-72, -52], [-30, -10], [30, -10], [72, -52], [0, 52], [-25, 20], [25, 20]], l: [[0, 1], [1, 2], [2, 3], [1, 5], [5, 4], [4, 6], [6, 2]] },
+  { id: 'bear', en: 'The Sleeping Bear', th: 'หมีจำศีล', sEn: 'Swipes downward, then sleeps all winter. Cash is a position too.', sTh: 'ตะปบลงแล้วจำศีลทั้งฤดูหนาว การถือเงินสดก็เป็นสถานะหนึ่ง', c: [1520, 330], p: [[-82, 0], [-40, -30], [20, -30], [70, -10], [92, 30], [-62, 42], [42, 42]], l: [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [2, 6]] },
+  { id: 'fish', en: 'The Golden Fish', th: 'ปลาทองคำ', sEn: 'Only bites for the one who waits quietly on the dock.', sTh: 'จะกินเบ็ดเฉพาะคนที่รออย่างเงียบๆ บนท่าเรือ', c: [1900, 620], p: [[-60, 0], [-20, -30], [30, -25], [60, 0], [30, 25], [-20, 30], [85, -25], [85, 25]], l: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [3, 6], [3, 7]] },
+  { id: 'key', en: 'The Key of Discipline', th: 'กุญแจแห่งวินัย', sEn: 'Opens every door, but only if you carry it every day.', sTh: 'เปิดได้ทุกประตู แต่ต้องพกติดตัวทุกวัน', c: [2200, 260], p: [[-62, 0], [-42, -20], [-22, 0], [-42, 20], [40, 0], [40, 20], [62, 0], [62, 16]], l: [[0, 1], [1, 2], [2, 3], [3, 0], [2, 4], [4, 6], [4, 5], [6, 7]] },
+  { id: 'scale', en: 'The Scales', th: 'ตาชั่ง', sEn: 'Weighs every win against every loss. Keep the losses light.', sTh: 'ชั่งทุกไม้ชนะเทียบกับไม้แพ้ ทำให้ไม้แพ้เบาไว้', c: [520, 760], p: [[0, -62], [0, 42], [-62, -42], [62, -42], [-82, 2], [-42, 2], [42, 2], [82, 2]], l: [[0, 1], [2, 3], [2, 4], [2, 5], [3, 6], [3, 7], [4, 5], [6, 7]] },
+  { id: 'candle', en: 'The Candle', th: 'แท่งเทียน', sEn: 'A green candle, lit patiently. Every chart is made of these.', sTh: 'แท่งเทียนเขียวที่จุดอย่างอดทน ทุกกราฟสร้างจากสิ่งนี้', c: [1320, 820], p: [[0, -82], [0, -50], [-20, -50], [20, -50], [20, 40], [-20, 40], [0, 40], [0, 72]], l: [[0, 1], [2, 3], [3, 4], [4, 5], [5, 2], [6, 7]] },
+];
+const SKY_W = 2400, SKY_H = 1000;
+const scopeEl = $('#scope');
+let scopeSt = null;
+function openTelescope() {
+  stopActivity(); activity = 'scope'; world?.seat('scope');
+  scopeEl.hidden = false;
+  scopeEl.innerHTML = `<canvas class="absolute inset-0 w-full h-full" style="touch-action:none"></canvas>
+    <div class="absolute left-1/2 -translate-x-1/2 safe-top top-3 parch font-pixel text-sm text-center max-w-[92vw]" data-scap></div>
+    <button class="btn btn-red absolute right-3 top-3 safe-top safe-right" data-sclose aria-label="close">✕</button>`;
+  const c = $('canvas', scopeEl), r = mulberry32(99);
+  const bg = Array.from({ length: 520 }, () => [r() * SKY_W, r() * SKY_H, r() < 0.08 ? 2 : 1, r() * 6]);
+  scopeSt = { c, bg, vx: 300, vy: 430, drag: null, found: null, raf: 0 };
+  const P = (x, y) => { const w = c.clientWidth, h = c.clientHeight; let dx = x - scopeSt.vx; dx = ((dx + SKY_W / 2) % SKY_W + SKY_W) % SKY_W - SKY_W / 2; return [w / 2 + dx, h / 2 + (y - scopeSt.vy)]; };
+  scopeSt.P = P;
+  const cap = () => { const n = state.settings.fun.stars.length; $('[data-scap]', scopeEl).innerHTML = scopeSt.found ? `✨ <b>${tr(scopeSt.found.en, scopeSt.found.th)}</b><br><span class="text-xs">${tr(scopeSt.found.sEn, scopeSt.found.sTh)}</span>` : `🔭 ${tr('Drag to look around · tap a group of bright stars that looks like something', 'ลากเพื่อส่องฟ้า · แตะกลุ่มดาวสว่างที่ดูเป็นรูปร่างอะไรสักอย่าง')}<br><span class="text-xs">${tr('found', 'พบแล้ว')} ${n} / ${CONSTS.length}</span>`; };
+  scopeSt.cap = cap; cap();
+  const draw = (now) => {
+    if (!scopeSt) return;
+    const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+    if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#070b1f'); grd.addColorStop(1, '#1b2550'); g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    for (const [x, y, s, ph] of bg) { const [px, py] = P(x, y); if (px < -4 || px > w + 4 || py < -4 || py > h + 4) continue; g.globalAlpha = 0.45 + Math.sin(now / 700 + ph) * 0.3; g.fillStyle = '#fffbe8'; g.fillRect(px, py, s, s); }
+    g.globalAlpha = 1;
+    const found = state.settings.fun.stars;
+    for (const k of CONSTS) {
+      const has = found.includes(k.id), pts = k.p.map(([dx, dy]) => P(k.c[0] + dx, k.c[1] + dy));
+      if (has) { g.strokeStyle = 'rgba(255,224,138,.8)'; g.lineWidth = 1.5; g.beginPath(); for (const [a, b] of k.l) { g.moveTo(...pts[a]); g.lineTo(...pts[b]); } g.stroke(); g.fillStyle = '#ffe08a'; g.font = '600 13px "Pixelify Sans", Mali, sans-serif'; g.textAlign = 'center'; g.fillText(tr(k.en, k.th), pts[0][0] + 20, Math.max(...pts.map((p) => p[1])) + 22); }
+      for (const [px, py] of pts) { g.fillStyle = has ? '#ffe08a' : '#ffffff'; g.beginPath(); g.arc(px, py, 2.6 + Math.sin(now / 400 + px) * 0.5, 0, 7); g.fill(); }
+    }
+    const R = Math.min(w, h) * 0.46;
+    const v = g.createRadialGradient(w / 2, h / 2, R * 0.8, w / 2, h / 2, R * 1.25); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.92)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
+    scopeSt.raf = requestAnimationFrame(draw);
+  };
+  scopeSt.raf = requestAnimationFrame(draw);
+  c.addEventListener('pointerdown', (e) => { scopeSt.drag = { x: e.clientX, y: e.clientY, vx: scopeSt.vx, vy: scopeSt.vy, moved: 0 }; c.setPointerCapture(e.pointerId); });
+  c.addEventListener('pointermove', (e) => { const d = scopeSt?.drag; if (!d) return; d.moved = Math.max(d.moved, Math.hypot(e.clientX - d.x, e.clientY - d.y)); scopeSt.vx = d.vx - (e.clientX - d.x); scopeSt.vy = clamp(d.vy - (e.clientY - d.y), 150, SKY_H - 150); });
+  c.addEventListener('pointerup', (e) => {
+    const d = scopeSt?.drag; scopeSt.drag = null; if (!d || d.moved > 8) return;
+    const rc = c.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top;
+    let best = null;
+    for (const k of CONSTS) { const [px, py] = P(...k.c), dd = Math.hypot(px - x, py - y); if (dd < 110 && (!best || dd < best.dd)) best = { k, dd }; }
+    if (!best) { Sfx.select(); return; }
+    const f = state.settings.fun;
+    scopeSt.found = best.k;
+    if (!f.stars.includes(best.k.id)) { f.stars.push(best.k.id); save(); Sfx.achievement(); checkAchievements(true); } else Sfx.select();
+    cap(); clearTimeout(scopeSt.capT); scopeSt.capT = setTimeout(() => { if (scopeSt) { scopeSt.found = null; cap(); } }, 6000);
+  });
+}
+activityClose.scope = () => { if (scopeSt) cancelAnimationFrame(scopeSt.raf); scopeSt = null; activity = null; scopeEl.hidden = true; scopeEl.innerHTML = ''; world?.seat(null); };
+scopeEl.addEventListener('click', (e) => { if (e.target.closest('[data-sclose]')) stopActivity(); });
+
+// --- villagers
+const NPC_INFO = {
+  rosa: { icon: '👩‍🍳', en: 'Rosa, the innkeeper', th: 'โรซ่า เจ้าของโรงเตี๊ยม', lines: [
+    ['Every regular I\'ve seen go broke had the same habit: one more trade to "win it back".', 'ลูกค้าประจำทุกคนที่หมดตัว มีนิสัยเดียวกัน คือขออีกไม้เดียว "เอาคืน"'],
+    ['I close the kitchen at the same hour every night, busy or not. You should close your charts the same way.', 'ฉันปิดครัวเวลาเดิมทุกคืน ไม่ว่าลูกค้าจะเยอะแค่ไหน คุณก็ควรปิดกราฟแบบนั้น'],
+    ['A good stew takes time. So does a good setup. Don\'t eat it raw.', 'สตูว์ดีๆ ต้องใช้เวลา setup ดีๆ ก็เหมือนกัน อย่ารีบกินตอนยังดิบ'],
+    ['You look tired, dear. Tired hands make big mistakes. Sit by the bench a while.', 'ดูเหนื่อยนะ มือที่เหนื่อยทำพลาดครั้งใหญ่ ไปนั่งพักที่ม้านั่งสักหน่อยสิ'],
+    ['I write down every coin that comes in and out. That\'s how I know the inn is alive.', 'ฉันจดทุกเหรียญที่เข้าออก นั่นคือวิธีรู้ว่าโรงเตี๊ยมยังไปได้'],
+    ['Small portions, many happy guests. Small lots, many happy days.', 'จานเล็ก แขกยิ้มได้ทุกคน lot เล็ก ยิ้มได้ทุกวัน'],
+    ['When the tavern is empty, I clean. When the market is quiet, you study.', 'ตอนร้านว่าง ฉันทำความสะอาด ตอนตลาดเงียบ คุณก็ทบทวนบันทึก'],
+    ['Losing days happen. Rainy days fill my inn. Something good comes from everything.', 'วันขาดทุนมีได้ วันฝนตกร้านฉันก็เต็ม ทุกอย่างมีข้อดีของมัน'],
+  ] },
+  tom: { icon: '🧓', en: 'Old Tom, the fisherman', th: 'ลุงทอม ชาวประมง', lines: [
+    ['Fish bite more at night and in the rain, they say. Legend says a golden one comes out on a green day.', 'เขาว่าปลากินเบ็ดดีตอนกลางคืนกับตอนฝนตก ตำนานว่าปลาทองจะออกมาในวันที่พอร์ตเขียว'],
+    ['Pull too early and you scare it. Pull too late and it\'s gone. Same with your trades, eh?', 'ดึงเร็วไปปลาก็หนี ดึงช้าไปปลาก็หลุด การเทรดก็เหมือนกันใช่ไหมล่ะ'],
+    ['Forty years on this dock. The sea doesn\'t care how badly I want a fish.', 'สี่สิบปีบนท่านี้ ทะเลไม่สนหรอกว่าลุงอยากได้ปลาแค่ไหน'],
+    ['Some days you go home with an empty bucket. You still come back tomorrow.', 'บางวันก็กลับบ้านมือเปล่า แต่พรุ่งนี้ก็ยังกลับมาใหม่'],
+    ['Never fish in a storm with your whole boat. Keep most of it on shore.', 'อย่าออกเรือทั้งลำตอนพายุ เก็บส่วนใหญ่ไว้บนฝั่ง'],
+    ['A net with holes loses more than a small net. Fix your stop-loss before you cast.', 'แหที่มีรูรั่วเสียปลามากกว่าแหเล็กๆ ซ่อม stop-loss ก่อนเหวี่ยงเบ็ด'],
+    ['Watch the tide, not the fish. The big picture tells you when to cast.', 'ดูน้ำขึ้นน้ำลง ไม่ใช่ดูปลา ภาพใหญ่บอกว่าเมื่อไหร่ควรเหวี่ยงเบ็ด'],
+    ['I once caught a boot. Kept it. Reminds me not to brag.', 'ลุงเคยตกได้รองเท้าบูท ยังเก็บไว้เลย เตือนใจไม่ให้คุยโว'],
+  ] },
+};
+function talkTo(id) {
+  const n = NPC_INFO[id], f = state.settings.fun, day = Math.floor(Date.now() / 864e5);
+  const line = n.lines[(day + (f.talks || 0)) % n.lines.length];
+  f.talks = (f.talks || 0) + 1; save();
+  openWindow({ title: tr(n.en, n.th), width: 440, html: `<div class="flex gap-3 items-start"><div class="text-5xl bob shrink-0">${n.icon}</div><p class="text-[1.05rem] leading-relaxed" data-q></p></div><div class="flex justify-end mt-3"><button class="btn btn-green" data-close>OK</button></div>`, onMount(win) { typewrite($('[data-q]', win), `“${tr(...line)}”`); } });
+}
+
+// --- beach finds, fireflies, watering & harvest, pet play (called by the 3D world)
+const BEACH = [
+  { id: 'shell', icon: '🐚', en: 'Spiral shell', th: 'เปลือกหอยเกลียว', w: 30 }, { id: 'clam', icon: '🦪', en: 'Clam shell', th: 'เปลือกหอยกาบ', w: 25 },
+  { id: 'stone', icon: '🪨', en: 'Smooth stone', th: 'หินกลมเกลี้ยง', w: 20 }, { id: 'star', icon: '⭐', en: 'Starfish', th: 'ปลาดาว', w: 10 },
+  { id: 'glass', icon: '💎', en: 'Sea glass', th: 'แก้วทะเล', w: 8 }, { id: 'crab', icon: '🦀', en: 'Little crab (let go)', th: 'ปูน้อย (ปล่อยคืนทะเล)', w: 5 },
+  { id: 'bottle', icon: '🍾', en: 'Message in a bottle', th: 'จดหมายในขวด', w: 2 },
+];
+const BOTTLE_NOTES = [
+  ['The best trade I ever made was the one I didn\'t take.', 'เทรดที่ดีที่สุดของฉัน คือไม้ที่ฉันไม่ได้เข้า'],
+  ['Protect the seed money. Harvests come back; seeds don\'t.', 'รักษาเมล็ดพันธุ์ (เงินทุน) ไว้ ผลผลิตกลับมาได้ แต่เมล็ดไม่กลับมา'],
+  ['If you feel the urge to win it back, walk to the sea first.', 'ถ้ารู้สึกอยากเอาคืน เดินไปดูทะเลก่อน'],
+  ['Consistency beats intensity. Water a little, every day.', 'สม่ำเสมอดีกว่าหักโหม รดน้ำทีละนิด ทุกวัน'],
+];
+const pickBeach = (x) => { let r = x * BEACH.reduce((a, b) => a + b.w, 0); for (const b of BEACH) { r -= b.w; if (r <= 0) return b.id; } return 'shell'; };
+function foundBeach(i, kind) {
+  const f = state.settings.fun, b = BEACH.find((x) => x.id === kind), isNew = !f.beach[kind];
+  f.beach[kind] = (f.beach[kind] || 0) + 1; f.beachTaken.push(i); save();
+  Sfx.coin(2);
+  if (kind === 'bottle') { const n = BOTTLE_NOTES[(f.beach.bottle - 1) % BOTTLE_NOTES.length]; openWindow({ title: tr('Message in a bottle', 'จดหมายในขวด'), width: 420, html: `<div class="text-center text-5xl">🍾</div><p class="text-center italic mt-2 text-[1.05rem]">“${tr(...n)}”</p><div class="flex justify-end mt-3"><button class="btn btn-green" data-close>OK</button></div>` }); }
+  else toast(`${b.icon} ${tr(b.en, b.th)}${isNew ? ' ✨' : ''}`, tr(`Beach collection: ${Object.values(f.beach).reduce((a, c) => a + c, 0)} finds`, `ของสะสมริมหาด: ${Object.values(f.beach).reduce((a, c) => a + c, 0)} ชิ้น`), 'star');
+  checkAchievements(true);
+}
+const eveningKey = () => { const d = new Date(); if (d.getHours() < 5) d.setDate(d.getDate() - 1); return isoOf(d); };
+const JAR_MAX = 10;
+function canCatchBug() { const f = state.settings.fun; return f.jarNight !== eveningKey() || f.jarN < JAR_MAX; }
+function caughtBug() {
+  const f = state.settings.fun; if (f.jarNight !== eveningKey()) { f.jarNight = eveningKey(); f.jarN = 0; }
+  f.jarN++; f.jars++; save(); Sfx.tone(1568, 0.25, { type: 'sine', vol: 0.1 }); Sfx.tone(2093, 0.3, { type: 'sine', vol: 0.08, at: 0.1 });
+  toast(tr(`Firefly caught! (${f.jarN}/${JAR_MAX} tonight)`, `จับหิ่งห้อยได้! (${f.jarN}/${JAR_MAX} คืนนี้)`), tr(`${f.jars} jars glow by the farmhouse`, `โหลหิ่งห้อย ${f.jars} โหลส่องแสงหน้าบ้านไร่`), 'star');
+  checkAchievements(true);
+}
+function fieldWatered() { Sfx.grow(); toast(tr('The whole field is watered 💧', 'รดน้ำครบทั้งแปลงแล้ว 💧'), tr('Stand in the field again to harvest the pumpkins 🧺', 'ยืนในแปลงอีกครั้งเพื่อเก็บเกี่ยวฟักทอง 🧺'), 'sprout'); }
+function harvested(n) {
+  const f = state.settings.fun; f.harvestDate = todayISO(); f.basket += n; save();
+  toast(n ? tr(`Harvested ${n} pumpkin(s) 🧺`, `เก็บฟักทองได้ ${n} ลูก 🧺`) : tr('Nothing ripe today, but the soil is happy', 'วันนี้ยังไม่มีผลสุก แต่ดินชุ่มชื่นดี'), tr(`Basket total: ${f.basket}`, `ในตะกร้ารวม ${f.basket} ลูก`), 'pumpkin');
+}
+function petLoved(kind) {
+  const f = state.settings.fun, today = todayISO();
+  if (f.petDay !== today) { f.petDay = today; f.petN = 0; }
+  if (kind === 'feed') f.fedDay = today;
+  if (f.petN < 10) { f.petN++; f.petLove++; }
+  save(); Sfx.purr();
+}
+function decoInfo(sel) {
+  showBar(`<div class="font-pixel text-sm mb-2">🪑 ${sel ? tr('Tap the ground to move it · rotate or put away', 'แตะพื้นเพื่อย้าย · หมุน หรือเก็บ') : tr('Decorate: tap something you built, then tap where it should go', 'จัดฟาร์ม: แตะของที่สร้างไว้ แล้วแตะจุดที่อยากวาง')}</div>
+    <div class="flex gap-2 flex-wrap"><button class="btn" data-deco="rotate" ${sel ? '' : 'disabled style="opacity:.5"'}>↻ ${tr('Rotate', 'หมุน')}</button>${sel?.type === 'item' ? `<button class="btn" data-deco="remove">🗑 ${tr('Put away', 'เก็บ')}</button>` : ''}<button class="btn btn-orange" data-deco="shop">🛒 ${tr('Add more', 'ซื้อเพิ่ม')}</button><div class="flex-1"></div><button class="btn btn-green" data-deco="done">✓ ${tr('Done', 'เสร็จ')}</button></div>`);
+}
+function startDecorate() { stopActivity(); windows.slice().forEach((w) => w.close()); activity = 'deco'; world?.decoMode(true); }
+activityClose.deco = () => { activity = null; world?.decoMode(false); hideBar(); };
+funBar.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-deco]'); if (!b) return;
+  const a = b.dataset.deco;
+  if (a === 'done') { stopActivity(); toast(tr('Farm saved', 'บันทึกการจัดฟาร์มแล้ว'), '', 'house'); }
+  else if (a === 'shop') openShop();
+  else world?.decoAction(a);
+});
+
+// --- photo mode
+const PHOTO_FILTERS = [['none', tr('Natural', 'ธรรมชาติ')], ['saturate(1.25) sepia(.25) brightness(1.05)', tr('Warm', 'อบอุ่น')], ['contrast(1.1) saturate(.8) sepia(.35)', tr('Film', 'ฟิล์ม')], ['grayscale(1) contrast(1.1)', tr('B&W', 'ขาวดำ')], ['saturate(1.4) hue-rotate(-12deg) brightness(1.08)', tr('Dreamy', 'ฝันหวาน')]];
+let photoFilter = 'none';
+function startPhoto() {
+  stopActivity(); windows.slice().forEach((w) => w.close()); activity = 'photo';
+  document.body.classList.add('photo'); world?.photo(true);
+  showBar(`<div class="font-pixel text-xs mb-1 text-center">📷 ${tr('Drag to rotate · pinch/scroll to zoom', 'ลากเพื่อหมุน · ใช้สองนิ้ว/scroll ซูม')}</div>
+    <div class="flex gap-1 flex-wrap justify-center mb-2">${PHOTO_FILTERS.map(([f, l]) => `<button class="btn text-xs ${f === photoFilter ? 'sel' : ''}" data-pf="${f}">${l}</button>`).join('')}</div>
+    <div class="flex gap-2"><button class="btn btn-green text-lg flex-1" data-shot>📸 ${tr('Take photo', 'ถ่ายรูป')}</button><button class="btn btn-red" data-pclose aria-label="close">✕</button></div>`);
+  canvas.style.filter = photoFilter === 'none' ? '' : photoFilter;
+}
+activityClose.photo = () => { activity = null; document.body.classList.remove('photo'); canvas.style.filter = ''; world?.photo(false); hideBar(); };
+async function shareBlob(blob, name) {
+  const file = new File([blob], name, { type: blob.type });
+  try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Harvest Ledger' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast(tr('Picture saved', 'บันทึกรูปแล้ว'), name, 'note');
+}
+funBar.addEventListener('click', (e) => {
+  const f = e.target.closest('[data-pf]');
+  if (f) { photoFilter = f.dataset.pf; canvas.style.filter = photoFilter === 'none' ? '' : photoFilter; $$('[data-pf]', funBar).forEach((b) => b.classList.toggle('sel', b === f)); Sfx.select(); return; }
+  if (e.target.closest('[data-pclose]')) { stopActivity(); return; }
+  if (!e.target.closest('[data-shot]') || !world) return;
+  const c = world.capture(photoFilter), g = c.getContext('2d'), s = Math.max(1, c.width / 900);
+  g.font = `700 ${Math.round(16 * s)}px "Pixelify Sans", Mali, sans-serif`; g.textAlign = 'right'; g.fillStyle = 'rgba(59,35,20,.55)'; g.fillText('🌾 Harvest Ledger', c.width - 14 * s + 2, c.height - 14 * s + 2); g.fillStyle = '#fff4d6'; g.fillText('🌾 Harvest Ledger', c.width - 14 * s, c.height - 14 * s);
+  const fl = document.createElement('div'); fl.className = 'shutter'; document.body.appendChild(fl); setTimeout(() => fl.remove(), 450);
+  Sfx.shutter(); state.settings.fun.photos++; save();
+  c.toBlob((b) => b && shareBlob(b, `harvest-farm-${Date.now()}.png`), 'image/png');
+});
+
+// --- radio
+const RADIO = [['auto', tr('🕰 Auto (time & weather)', '🕰 อัตโนมัติ (ตามเวลาและอากาศ)')], ['morning', tr('🌅 Morning', '🌅 เช้าสดใส')], ['day', tr('☀️ Sunny day', '☀️ กลางวัน')], ['evening', tr('🌇 Evening', '🌇 ยามเย็น')], ['night', tr('🌙 Night', '🌙 กลางคืน')], ['rain', tr('🌧 Rainy', '🌧 ฝนพรำ')], ['nature', tr('🌊 Nature only (waves, birds)', '🌊 เสียงธรรมชาติล้วน (คลื่น นก)')], ['off', tr('🔇 Off', '🔇 ปิดเพลง')]];
+
+// --- the activities window
+function openFun(tab = 'do') {
+  const f = state.settings.fun, sd = state.stats;
+  const hasPet = f && state.settings.farm.pet && (state.settings.farm.owned || []).includes(state.settings.farm.pet);
+  const eve = (() => { const h = new Date().getHours(); return h >= 17 || h < 5; })();
+  const beachLeft = f.beachDay === todayISO() ? 6 - f.beachTaken.length : 6;
+  const card = (icon, title, desc, btn, attrs, dis = false) => `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center shrink-0">${icon}</div><div class="flex-1 min-w-0"><div class="font-pixel font-bold">${title}</div><div class="text-xs text-[#8b5a2b]">${desc}</div></div><button class="btn text-sm whitespace-nowrap ${dis ? '' : 'btn-green'}" ${attrs} ${dis ? 'disabled style="opacity:.55"' : ''}>${btn}</button></div>`;
+  const tabs = {
+    do: () => `<div class="flex flex-col gap-2">
+      ${card('🎣', tr('Fishing', 'ตกปลา'), tr(`At the dock · ${Object.keys(f.fish).length}/${FISH.length} kinds found`, `ที่ท่าเรือ · พบแล้ว ${Object.keys(f.fish).length}/${FISH.length} ชนิด`), tr('Go ▶', 'ไป ▶'), 'data-fgo="dock"')}
+      ${card('🌳', tr('Breathing bench', 'ม้านั่งหายใจ'), tr('1–3 minutes of calm breathing', 'หายใจให้ใจนิ่ง 1–3 นาที'), tr('Go ▶', 'ไป ▶'), 'data-fgo="bench"')}
+      ${card('💧', tr('Water & harvest', 'รดน้ำ & เก็บเกี่ยว'), tr('Walk into the field and tap the prompt', 'เดินเข้าแปลงผักแล้วแตะปุ่มที่ขึ้นมา') + (f.harvestDate === todayISO() ? tr(' · done today ✔', ' · วันนี้ทำแล้ว ✔') : ''), tr('Go ▶', 'ไป ▶'), 'data-fgo="field"')}
+      ${card(hasPet ? SHOP.find((x) => x.id === state.settings.farm.pet).icon : '🐾', tr('Play with your pet', 'เล่นกับสัตว์เลี้ยง'), hasPet ? tr(`Pat, fetch, feed · ❤ ${f.petLove}`, `ลูบหัว โยนบอล ให้อาหาร · ❤ ${f.petLove}`) : tr('Get a cat or dog at the farm shop', 'ซื้อแมวหรือหมาได้ที่ร้านค้าฟาร์ม'), hasPet ? tr('Play', 'เล่น') : tr('Shop', 'ร้านค้า'), hasPet ? 'data-fgo="pet"' : 'data-fgo="shop"')}
+      ${card('✨', tr('Catch fireflies', 'จับหิ่งห้อย'), eve ? tr('They\'re out! Walk close to a glowing bug', 'ออกมาแล้ว! เดินเข้าไปใกล้แสงระยิบ') : tr('Come back in the evening (after 17:00)', 'กลับมาตอนเย็น (หลัง 17:00)'), tr('OK', 'โอเค'), 'data-close', !eve)}
+      ${card('🐚', tr('Beachcombing', 'เดินเก็บของริมหาด'), tr(`${beachLeft} finds left on the shore today`, `วันนี้เหลือของริมหาด ${beachLeft} ชิ้น`), tr('Go ▶', 'ไป ▶'), 'data-fgo="beach"', !beachLeft)}
+      ${card('👩‍🍳', tr('Talk to Rosa', 'คุยกับโรซ่า'), tr('The innkeeper, by the tavern', 'เจ้าของโรงเตี๊ยม อยู่หน้าโรงเตี๊ยม'), tr('Talk', 'คุย'), 'data-fgo="rosa"')}
+      ${card('🧓', tr('Talk to Old Tom', 'คุยกับลุงทอม'), tr('The fisherman, by the dock', 'ชาวประมง อยู่ที่ท่าเรือ'), tr('Talk', 'คุย'), 'data-fgo="tom"')}
+      ${card('🔭', tr('Stargazing', 'ดูดาว'), tr(`Telescope · ${f.stars.length}/${CONSTS.length} constellations`, `กล้องดูดาว · พบ ${f.stars.length}/${CONSTS.length} กลุ่มดาว`), tr('Go ▶', 'ไป ▶'), 'data-fgo="telescope"')}
+      ${card('🪑', tr('Decorate the farm', 'จัดฟาร์ม'), tr('Move what you built, add lamps, fences, bushes, paths', 'ย้ายของที่สร้าง เพิ่มโคมไฟ รั้ว พุ่มดอกไม้ ทางเดิน'), tr('Start', 'เริ่ม'), 'data-fgo="deco"')}
+      ${card('📷', tr('Photo mode', 'โหมดถ่ายรูป'), tr('Hide the UI, free camera, filters', 'ซ่อนเมนู กล้องอิสระ มีฟิลเตอร์'), tr('Start', 'เริ่ม'), 'data-fgo="photo"')}
+    </div>`,
+    book: () => {
+      const grid = (items, have, extra = () => '') => `<div class="grid grid-cols-3 sm:grid-cols-4 gap-2">${items.map((x) => `<div class="slot text-center !p-2 ${have(x) ? '' : 'opacity-50'}"><div class="text-2xl">${have(x) ? x.icon : '❔'}</div><div class="text-xs font-semibold leading-tight">${have(x) ? tr(x.en, x.th) : '???'}</div>${have(x) ? `<div class="text-[10px] text-[#8b5a2b] num">${extra(x)}</div>` : ''}</div>`).join('')}</div>`;
+      return `<div class="font-pixel font-bold mb-1">🎣 ${tr('Fish', 'ปลา')} (${Object.keys(f.fish).length}/${FISH.length})</div>
+        ${grid(FISH, (x) => f.fish[x.id], (x) => `×${f.fish[x.id]}${x.rar ? ` · ${f.fishBest[x.id]} ${tr('cm', 'ซม.')}` : ''}`)}
+        <div class="font-pixel font-bold mt-3 mb-1">🐚 ${tr('Beach finds', 'ของริมหาด')} (${Object.keys(f.beach).length}/${BEACH.length})</div>
+        ${grid(BEACH, (x) => f.beach[x.id], (x) => `×${f.beach[x.id]}`)}
+        <div class="font-pixel font-bold mt-3 mb-1">🔭 ${tr('Constellations', 'กลุ่มดาว')} (${f.stars.length}/${CONSTS.length})</div>
+        <div class="flex flex-wrap gap-1">${CONSTS.map((k) => `<span class="tag ${f.stars.includes(k.id) ? 'good' : ''}">${f.stars.includes(k.id) ? '✨ ' + tr(k.en, k.th) : '???'}</span>`).join('')}</div>
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <div class="slot"><div class="text-xs text-[#8b5a2b]">✨ ${tr('Firefly jars', 'โหลหิ่งห้อย')}</div><div class="num text-lg">${f.jars}</div></div>
+          <div class="slot"><div class="text-xs text-[#8b5a2b]">🧺 ${tr('Pumpkins harvested', 'ฟักทองที่เก็บได้')}</div><div class="num text-lg">${f.basket}</div></div>
+          <div class="slot"><div class="text-xs text-[#8b5a2b]">🌳 ${tr('Breathing', 'หายใจ')}</div><div class="num text-lg">${f.breath} · ${f.breathMin} ${tr('min', 'นาที')}</div></div>
+          <div class="slot"><div class="text-xs text-[#8b5a2b]">🐾 ${tr('Pet love', 'ความรักของสัตว์เลี้ยง')}</div><div class="num text-lg">❤ ${f.petLove}</div></div>
+        </div>`;
+    },
+    radio: () => `<p class="text-sm mb-2">${tr('Pick what plays in the background. Volume is in the Mailbox settings.', 'เลือกเพลงพื้นหลังที่อยากฟัง ปรับความดังได้ที่ตู้จดหมาย (ตั้งค่า)')}</p>
+      <div class="flex flex-col gap-1">${RADIO.map(([k, l]) => `<button class="slot slot-click text-left font-pixel ${f.musicMode === k ? '!bg-[#cfe8c0]' : ''}" data-radio="${k}">${f.musicMode === k ? '▶ ' : ''}${l}</button>`).join('')}</div>
+      ${!Sfx.on ? `<div class="parch mt-2 text-sm">🔇 ${tr('Sound is off — tap the speaker button at the top.', 'ตอนนี้ปิดเสียงอยู่ แตะปุ่มลำโพงด้านบนเพื่อเปิด')}</div>` : ''}`,
+  };
+  const names = [['do', tr('🎮 Activities', '🎮 กิจกรรม')], ['book', tr('📖 Collection', '📖 ของสะสม')], ['radio', tr('📻 Radio', '📻 วิทยุ')]];
+  openWindow({
+    title: tr('Things to do', 'ทำอะไรดี'), width: 560, autofocus: false,
+    html: `<div class="flex gap-1 mb-3">${names.map(([k, l]) => `<button class="btn text-sm" data-ftab="${k}">${l}</button>`).join('')}</div><div data-fbody></div>`,
+    onMount(win, w) {
+      const show = (k) => { $$('[data-ftab]', win).forEach((b) => b.classList.toggle('sel', b.dataset.ftab === k)); $('[data-fbody]', win).innerHTML = tabs[k](); tab = k; };
+      show(tab);
+      win.addEventListener('click', (e) => {
+        const tb = e.target.closest('[data-ftab]'); if (tb) { Sfx.select(); show(tb.dataset.ftab); return; }
+        const r = e.target.closest('[data-radio]'); if (r) { f.musicMode = r.dataset.radio; save(); Sfx.unlock(); Music.sync(); show('radio'); return; }
+        const g = e.target.closest('[data-fgo]'); if (!g) return;
+        const id = g.dataset.fgo; w.close();
+        setTimeout(() => {
+          if (id === 'pet') openPet(); else if (id === 'shop') openShop(); else if (id === 'deco') startDecorate(); else if (id === 'photo') startPhoto();
+          else if (id === 'beach') world?.goBeach(); else if (id === 'field') world?.goField(); else if (id === 'rosa' || id === 'tom') world?.goNpc(id); else world?.travel(id);
+        }, 280);
+      });
+    },
+  });
+}
+$('#btn-fun').onclick = () => openFun();
 
 // ------------------------------------------------------------------ live update
 // When a new version is deployed, reload by itself (data lives in localStorage, so nothing is lost).
