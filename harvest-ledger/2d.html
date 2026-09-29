@@ -1811,6 +1811,41 @@ document.addEventListener('keydown', (e) => {
 });
 setInterval(renderHUD, 30000);
 
+// ------------------------------------------------------------------ live update
+// When a new version is deployed, reload by itself (data lives in localStorage, so nothing is lost).
+// Waits until no window is open and nothing is being typed, so a half-written quest is never thrown away.
+(function liveUpdate() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  let base = null, pending = false;
+  const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; };
+  const idle = () => !windows.length && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
+  async function check() {
+    if (pending) return;
+    try {
+      const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const h = hash(await r.text());
+      if (base === null) base = h; else if (h !== base) ready();
+    } catch (e) { /* offline: try again later */ }
+  }
+  function ready() {
+    pending = true;
+    const b = document.createElement('button');
+    b.className = 'btn btn-orange'; b.textContent = '✨ New version — tap to update';
+    b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:99';
+    b.onclick = () => location.reload();
+    document.body.appendChild(b);
+    Sfx.achievement();
+    const t = setInterval(() => {
+      if (!idle()) return;
+      clearInterval(t); toast('Updating to the new version…', 'Your data is safe.', 'star');
+      setTimeout(() => location.reload(), 1500);
+    }, 3000);
+  }
+  check(); setInterval(check, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+})();
+
 // ------------------------------------------------------------------ boot
 hydrateSprites();
 resetForm();
