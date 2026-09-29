@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ตั้งค่า MT5 Sync — Harvest Ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600;700&family=Mali:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #e3d2b2; color: #3b2314; font: 16px/1.65 "Mali", system-ui, sans-serif; padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 32px); }
+  main { max-width: 760px; margin: 0 auto; }
+  h1, h2 { font-family: "Pixelify Sans", "Mali", sans-serif; line-height: 1.25; }
+  h1 { font-size: 1.7rem; margin: .2em 0 .4em; }
+  h2 { font-size: 1.2rem; margin: 0 0 .4em; }
+  .card { background: #f7e9c6; border: 4px solid #8b5a2b; box-shadow: 4px 4px 0 #5c3a21; padding: 14px 16px; margin: 14px 0; }
+  .note { background: #fbe6c6; border-color: #d97706; }
+  ol { padding-left: 1.3em; margin: .3em 0; } li { margin: .25em 0; }
+  code, kbd { font-family: ui-monospace, monospace; background: #3b2314; color: #ffe08a; padding: 0 .35em; border-radius: 2px; font-size: .9em; word-break: break-all; }
+  a.btn { display: inline-block; background: #4a7c59; color: #f4ffe9; border: 3px solid #1f3a26; padding: .35em .9em; font-family: "Pixelify Sans", "Mali", sans-serif; text-decoration: none; box-shadow: 3px 3px 0 #1f3a26; margin: .2em .3em .2em 0; }
+  a.btn.alt { background: #e6b574; color: #3b2314; border-color: #3b2314; box-shadow: 3px 3px 0 #3b2314; }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: "Pixelify Sans", "Mali", sans-serif; }
+  .flow span { background: #fff8e6; border: 2px solid #8b5a2b; padding: 2px 8px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="btn alt" href="../">◀ กลับไปฟาร์ม</a>
+  <h1>🔗 ดึงเทรดจาก MT5 อัตโนมัติ</h1>
+
+  <div class="card">
+    <h2>ทำงานยังไง</h2>
+    <div class="flow"><span>MT5 บนคอม (EA)</span> ➜ <span>GitHub Gist ลับ</span> ➜ <span>Harvest Ledger บนคอม + iPhone</span></div>
+    <p>EA ตัวเล็กใน MT5 คอยส่งเทรดที่<b>ปิดแล้ว</b>ขึ้น Gist ทุกครั้งที่มีดีลใหม่ แอปบนทุกเครื่องดึงจาก Gist เองทุก 2 นาที และทุกครั้งที่เปิดแอป
+    เทรดที่เปิดจาก <b>แอป MT5 บนมือถือ</b> ก็ถูกส่งด้วย เพราะเป็นบัญชีเดียวกัน ขอแค่ MT5 บนคอม (หรือ VPS) เปิดอยู่</p>
+  </div>
+
+  <div class="card">
+    <h2>ขั้นที่ 1 · สร้าง Gist ลับ (ครั้งเดียว)</h2>
+    <ol>
+      <li>เข้า <a href="https://gist.github.com/" target="_blank" rel="noopener">gist.github.com</a> แล้วล็อกอิน</li>
+      <li>ชื่อไฟล์: <code>harvest-ledger.json</code> · เนื้อหา: <code>[]</code></li>
+      <li>กด <b>Create secret gist</b></li>
+      <li>คัดลอก <b>Gist ID</b> คือรหัสยาวท้ายลิงก์ เช่น <code>gist.github.com/ชื่อคุณ/<b>3f2a9c…</b></code></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>ขั้นที่ 2 · สร้าง Token ให้ EA เขียน Gist ได้</h2>
+    <ol>
+      <li>เข้า <a href="https://github.com/settings/tokens/new?scopes=gist&description=Harvest%20Ledger%20MT5" target="_blank" rel="noopener">GitHub → New token (classic)</a> (ลิงก์นี้ติ๊ก scope <b>gist</b> ไว้ให้แล้ว)</li>
+      <li>ตั้ง Expiration ตามต้องการ แล้วกด <b>Generate token</b></li>
+      <li>คัดลอก token (ขึ้นต้นด้วย <code>ghp_</code>) เก็บไว้ ใช้ใน MT5 บนคอมเท่านั้น ไม่ต้องใส่ในมือถือ</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>ขั้นที่ 3 · ติดตั้ง EA ใน MT5 บนคอม</h2>
+    <p><a class="btn" href="HarvestLedgerSync.mq5" download>⬇ ดาวน์โหลด HarvestLedgerSync.mq5</a></p>
+    <ol>
+      <li>ใน MT5 กด <b>File → Open Data Folder</b> แล้วนำไฟล์ไปวางใน <code>MQL5\Experts</code></li>
+      <li>กด <kbd>F4</kbd> เปิด MetaEditor, ดับเบิลคลิกไฟล์ แล้วกด <kbd>F7</kbd> (Compile)</li>
+      <li><b>Tools → Options → Expert Advisors</b>: ติ๊ก <b>Allow WebRequest for listed URL</b> แล้วเพิ่ม <code>https://api.github.com</code></li>
+      <li>ลาก <b>HarvestLedgerSync</b> จาก Navigator ไปวางบนกราฟไหนก็ได้ 1 กราฟ</li>
+      <li>แท็บ Inputs: ใส่ <b>InpGistId</b> = Gist ID และ <b>InpToken</b> = token แล้วกด OK</li>
+      <li>เปิดปุ่ม <b>Algo Trading</b> ให้เป็นสีเขียว
+        (EA นี้ <b>ไม่เปิดหรือปิดออร์เดอร์</b> แค่อ่านประวัติแล้วส่งออก)</li>
+      <li>ดูแท็บ <b>Experts</b> ด้านล่าง ถ้าขึ้น <code>Harvest Ledger: synced closed trades to the gist.</code> แปลว่าใช้ได้</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>ขั้นที่ 4 · เชื่อมแอป (ทำในทุกเครื่องที่ใช้)</h2>
+    <ol>
+      <li>เปิด Harvest Ledger แล้วกด ⚙ (หรือเดินไปที่ 📮 ตู้จดหมาย)</li>
+      <li>ช่อง <b>ดึงเทรดจาก MT5 อัตโนมัติ</b>: วาง Gist ID (หรือวางทั้งลิงก์ก็ได้)</li>
+      <li>กด <b>🔄 ซิงก์ตอนนี้</b> เทรดจะงอกเป็นผักในแปลง พร้อมแท็ก <b>MT5 · รอจดบันทึก</b></li>
+      <li>แตะเทรดนั้นแล้วกด <b>แก้ไข</b> เพื่อเติมอารมณ์ หัวใจ และบทเรียน (ได้ XP ตามปกติ)</li>
+    </ol>
+  </div>
+
+  <div class="card note">
+    <h2>ควรรู้</h2>
+    <ul>
+      <li><b>Gist ลับ ≠ ส่วนตัว 100%</b> ใครมีลิงก์ Gist ก็อ่านประวัติเทรดได้ (ไม่มีรหัสผ่านหรือเลขบัญชีเทรดนอกจากเลข login) อย่าแชร์ลิงก์</li>
+      <li><b>Token เก็บไว้ในคอมเท่านั้น</b> ใช้ได้แค่เขียน Gist ถ้าหลุด ลบทิ้งได้ที่ GitHub → Settings → Tokens</li>
+      <li><b>MT5 ต้องเปิดอยู่</b> ถ้าคอมปิด เทรดจะถูกส่งเมื่อเปิด MT5 ครั้งถัดไป (EA ส่งย้อนหลัง 90 วันเสมอ)</li>
+      <li><b>แก้ข้อมูลในแอปได้</b> อารมณ์ บทเรียน ฯลฯ ที่คุณจดจะไม่ถูกทับ ถ้าลบเทรด MT5 ในแอป จะไม่ถูกดึงกลับมาอีก</li>
+      <li><b>ไม่อยากใช้ Gist?</b> ไม่ต้องใส่ token ก็ได้ EA จะเขียนไฟล์ <code>MQL5\Files\harvest-ledger.json</code> แล้วนำเข้าด้วยปุ่ม <b>📂 นำเข้าไฟล์จาก MT5</b> ในตั้งค่า</li>
+      <li>แอป MT5 บน iPhone/Android รัน EA ไม่ได้ (ข้อจำกัดของ MetaQuotes) จึงต้องมี MT5 บนคอมหรือ VPS 1 เครื่อง</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>

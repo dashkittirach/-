@@ -828,6 +828,7 @@ function save() {
   catch (e) { toast('Your storage chest is full!', 'Remove some snapshots or export a backup.', 'rain'); return false; }
 }
 Sfx.on = state.settings.sound; Sfx.vol = state.settings.volume;
+state.settings.mt5 = { gist: '', ignored: [], last: null, ...(state.settings.mt5 || {}) };
 
 // ------------------------------------------------------------------ UI primitives
 function toast(title, body = '', icon = 'star') {
@@ -1054,7 +1055,7 @@ function renderBoard() {
       <div class="flex items-center gap-2">${img(cropOf(t, state.stats.avgWin), 'w-8 shrink-0')}
         <div class="min-w-0 flex-1"><div class="font-pixel font-bold truncate">${esc(t.asset)}</div><div class="font-pixel text-xs side-${t.side}">${t.side === 'long' ? '▲ LONG' : '▼ SHORT'} · <span class="text-[#8b5a2b]">${esc(t.date)}</span></div></div>
         <div class="num text-lg font-bold ${cls(t.pnl)}">${signed(t.pnl, 0)}</div></div>
-      <div class="flex flex-wrap gap-1 mt-2">${t.setup ? `<span class="tag setup">${esc(t.setup)}</span>` : ''} ${emos}</div>
+      <div class="flex flex-wrap gap-1 mt-2">${t.source === 'mt5' ? `<span class="tag ${(t.emotions || []).length ? 'setup' : 'bad'}">MT5${(t.emotions || []).length ? '' : ' · ' + tr('add notes', 'รอจดบันทึก')}</span>` : ''}${t.setup ? `<span class="tag setup">${esc(t.setup)}</span>` : ''} ${emos}</div>
       ${t.lessons ? `<div class="text-sm mt-2 line-clamp-2 italic">“${esc(t.lessons)}”</div>` : ''}
       <div class="flex items-center mt-1">${Array.from({ length: t.rating || 0 }, () => img('heart', 'w-3.5')).join('')}<span class="ml-auto font-pixel text-xs text-sunset">+${t.xp || xpOf(t)} XP</span></div></div>`;
   }).join('');
@@ -1207,6 +1208,7 @@ function openQuest(id) {
       $('[data-del]', win).onclick = async () => {
         if (await ask(tr(`Tear the "${t.asset}" quest off the board? This can't be undone.`, `ฉีกเควส "${t.asset}" ออกจากกระดานเลยไหม? ย้อนกลับไม่ได้นะ`), { yes: 'Delete', no: 'Keep', danger: true })) {
           state.trades = state.trades.filter((x) => x.id !== t.id);
+          if (t.source === 'mt5' && !state.settings.mt5.ignored.includes(t.id)) state.settings.mt5.ignored.push(t.id); // don't re-import it
           save(); Sfx.trash(); w.close(); render(); toast('Quest removed', `${t.asset} ${signed(t.pnl)}`, 'withered');
         }
       };
@@ -1255,10 +1257,21 @@ function openSettings() {
         <div class="flex flex-wrap gap-2 mt-2"><button type="button" class="btn text-sm" data-lang>🌐 ${LANG === 'th' ? 'English' : 'ภาษาไทย'}</button><a class="btn text-sm" href="2d.html">Switch to 2D version</a></div>
       </div>
       <div class="parch mt-4">
+        <div class="font-pixel font-bold mb-1">🔗 ${tr('MT5 auto-sync', 'ดึงเทรดจาก MT5 อัตโนมัติ')}</div>
+        <div class="text-xs mb-2 text-[#8b5a2b]">${tr('Paste the Gist ID your MT5 Expert Advisor writes to. Closed trades then appear here by themselves, on any device.', 'วาง Gist ID ที่ EA ใน MT5 ส่งข้อมูลไป แล้วเทรดที่ปิดแล้วจะเข้ามาเอง ทั้งในคอมและมือถือ')}</div>
+        <input class="inp" name="gist" value="${esc(st.mt5?.gist || '')}" placeholder="Gist ID" autocapitalize="off" autocomplete="off" spellcheck="false">
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button type="button" class="btn text-sm" data-mt5sync>🔄 ${tr('Sync now', 'ซิงก์ตอนนี้')}</button>
+          <label class="btn text-sm">📂 ${tr('Import MT5 file', 'นำเข้าไฟล์จาก MT5')}<input type="file" accept=".json,application/json" data-import hidden></label>
+          <a class="btn text-sm" href="mt5/" target="_blank" rel="noopener">📘 ${tr('Setup guide', 'วิธีตั้งค่า')}</a>
+        </div>
+        <div class="text-xs mt-1 font-pixel" data-mt5status>${mt5Status()}</div>
+      </div>
+      <div class="parch mt-4">
         <div class="font-pixel font-bold mb-2">💾 Save file</div>
         <div class="flex flex-wrap gap-2">
           <button class="btn" data-export>Export JSON</button>
-          <label class="btn">Import JSON<input type="file" accept=".json,application/json" data-import hidden></label>
+          <label class="btn">Import JSON<input type="file" accept=".json,application/json" data-import2 hidden></label>
           <button class="btn btn-orange" data-demo>Load demo farm</button>
           <button class="btn btn-red" data-reset>Reset farm</button>
         </div>
@@ -1275,17 +1288,28 @@ function openSettings() {
         st.dailyLoss = Math.max(1, +v('dailyLoss').value || 300);
         st.volume = +v('volume').value;
         st.gfx = { pixel: v('pixel').checked, shadows: v('shadows').checked };
+        const gist = parseGistId(v('gist').value);
+        if (gist !== st.mt5.gist) { st.mt5.gist = gist; MT5.etag = null; }
         save(); world?.applyGraphics(); render(); w.close(); toast('Settings saved', '', 'gear');
+        if (gist) syncMt5({ manual: true });
+      };
+      $('[data-mt5sync]', win).onclick = async () => {
+        st.mt5.gist = parseGistId(v('gist').value); v('gist').value = st.mt5.gist; MT5.etag = null; save();
+        await syncMt5({ manual: true });
+        $('[data-mt5status]', win).textContent = mt5Status();
       };
       $('[data-export]', win).onclick = () => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'harvest-ledger', version: 1, trades: state.trades, settings: state.settings, achievements: state.achievements }, null, 2)], { type: 'application/json' }));
         a.download = `harvest-ledger-${todayISO()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); Sfx.coin();
       };
-      $('[data-import]', win).onchange = async (e) => {
+      const importFile = async (e) => {
         const f = e.target.files[0]; if (!f) return;
         try {
           const d = JSON.parse(await f.text()), list = Array.isArray(d) ? d : d.trades;
+          if (d && d.source === 'mt5') { // file written by the MT5 Expert Advisor
+            const r = mergeMt5(list || []); w.close(); announceMt5(r, true); return;
+          }
           if (!Array.isArray(list)) throw new Error('no trades');
           const ids = new Set(state.trades.map((t) => t.id));
           const fresh = list.filter((t) => t && t.id && t.date && t.asset && isFinite(t.pnl) && !ids.has(t.id)).map((t) => ({ ...t, pnl: +t.pnl, xp: t.xp || xpOf(t) }));
@@ -1295,6 +1319,8 @@ function openSettings() {
           save(); render(); w.close(); toast('Save file loaded', `${fresh.length} quests imported`, 'note'); Sfx.success();
         } catch (err) { Sfx.error(); toast('Could not read that file', 'Use a JSON exported from Harvest Ledger.', 'rain'); }
       };
+      $('[data-import]', win).onchange = importFile;
+      $('[data-import2]', win).onchange = importFile;
       $('[data-demo]', win).onclick = async () => { w.close(); await loadDemo(); };
       $('[data-reset]', win).onclick = async () => {
         w.close();
@@ -2515,6 +2541,71 @@ function openGuide(tab = 'start') {
 }
 $('#btn-guide').onclick = () => openGuide(dailyToday().done ? 'start' : 'daily');
 setInterval(updateDaily, 60000);
+
+// ------------------------------------------------------------------ MT5 auto-sync
+// The Expert Advisor (mt5/HarvestLedgerSync.mq5) writes closed positions to a secret GitHub Gist.
+// Every device reads that gist (no token needed to read) and merges new trades in, keeping
+// anything the user already wrote (mood, hearts, notes, lessons).
+const MT5 = { etag: null, busy: false };
+const MT5_FIELDS = ['date', 'time', 'asset', 'side', 'entry', 'exit', 'size', 'fees', 'pnl'];
+function parseGistId(v) { const s = String(v || '').trim(); const m = s.match(/([0-9a-f]{20,})\/?(?:#.*)?$/i); return m ? m[1] : s; }
+function mt5Status() {
+  const m = state.settings.mt5;
+  if (!m.gist) return tr('Not connected', 'ยังไม่ได้เชื่อมต่อ');
+  return m.last ? tr(`Last sync: ${new Date(m.last).toLocaleString()}`, `ซิงก์ล่าสุด: ${new Date(m.last).toLocaleString('th-TH')}`) : tr('Connected — waiting for first sync', 'เชื่อมต่อแล้ว รอซิงก์ครั้งแรก');
+}
+function mergeMt5(list) {
+  let added = 0, updated = 0;
+  const ignored = new Set(state.settings.mt5.ignored), newest = [];
+  for (const raw of list) {
+    if (!raw || !raw.id || !raw.date || !raw.asset || !isFinite(raw.pnl) || ignored.has(raw.id)) continue;
+    const m = { ...raw, pnl: +raw.pnl, entry: +raw.entry, exit: +raw.exit, size: +raw.size, fees: +raw.fees || 0 };
+    const ex = state.trades.find((t) => t.id === m.id);
+    if (ex) {
+      let changed = false;
+      for (const k of MT5_FIELDS) if (m[k] !== undefined && ex[k] !== m[k]) { ex[k] = m[k]; changed = true; }
+      if (changed) { ex.xp = xpOf(ex); updated++; }
+    } else {
+      const t = { setup: '', emotions: [], rating: 0, notes: '', mistakes: '', lessons: '', shot: null, ...m, source: 'mt5' };
+      t.xp = xpOf(t); state.trades.push(t); newest.push(t); added++;
+    }
+  }
+  state.settings.mt5.last = new Date().toISOString();
+  save();
+  return { added, updated, newest };
+}
+function announceMt5({ added, updated, newest }, manual) {
+  if (!added && !updated) { if (manual) toast(tr('MT5: nothing new', 'MT5: ยังไม่มีเทรดใหม่'), '', 'cloud'); render(); return; }
+  const last = newest.sort(byTime).at(-1);
+  render({ animateId: null });
+  if (added) {
+    Sfx.coin(); setTimeout(() => Sfx.coin(2), 150);
+    toast(tr(`Imported ${added} trade(s) from MT5`, `นำเข้า ${added} เทรดจาก MT5`), tr('Open them on the Quest Board to add mood, hearts and a lesson.', 'เปิดที่กระดานเควสเพื่อใส่อารมณ์ หัวใจ และบทเรียน'), 'note');
+    if (last && !windows.length) setTimeout(() => world?.showCrop(last.id), 600);
+  } else toast(tr(`Updated ${updated} MT5 trade(s)`, `อัปเดต ${updated} เทรดจาก MT5`), '', 'note');
+  checkAchievements(true);
+}
+async function syncMt5({ manual = false } = {}) {
+  const id = state.settings.mt5.gist;
+  if (!id || MT5.busy) return;
+  MT5.busy = true;
+  try {
+    const r = await fetch(`https://api.github.com/gists/${encodeURIComponent(id)}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json', ...(MT5.etag ? { 'If-None-Match': MT5.etag } : {}) } });
+    if (r.status === 304) { if (manual) toast(tr('MT5: nothing new', 'MT5: ยังไม่มีเทรดใหม่'), '', 'cloud'); return; }
+    if (!r.ok) throw new Error(r.status === 404 ? tr('Gist not found — check the ID', 'ไม่พบ Gist — ตรวจสอบ ID') : `GitHub ${r.status}`);
+    MT5.etag = r.headers.get('ETag');
+    const g = await r.json(), f = g.files?.['harvest-ledger.json'] || Object.values(g.files || {})[0];
+    if (!f) throw new Error(tr('The gist has no harvest-ledger.json yet', 'ใน Gist ยังไม่มีไฟล์ harvest-ledger.json'));
+    const content = f.truncated ? await (await fetch(f.raw_url, { cache: 'no-store' })).text() : f.content;
+    const data = JSON.parse(content || '{}');
+    announceMt5(mergeMt5(Array.isArray(data) ? data : data.trades || []), manual);
+  } catch (e) {
+    if (manual) { Sfx.error(); toast(tr('MT5 sync failed', 'ซิงก์ MT5 ไม่สำเร็จ'), String(e.message || e), 'rain'); }
+  } finally { MT5.busy = false; }
+}
+setTimeout(() => syncMt5(), 2000);
+setInterval(() => { if (!document.hidden) syncMt5(); }, 120000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncMt5(); });
 
 // ------------------------------------------------------------------ live update
 // When a new version is deployed, reload by itself (data lives in localStorage, so nothing is lost).
