@@ -1,0 +1,5 @@
+node_modules/
+out/
+video/frames/
+*.log
+__pycache__/

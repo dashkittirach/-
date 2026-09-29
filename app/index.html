@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EDGE — Trading Journal</title>
+  <meta name="description" content="Personal trading journal rendered with raw WebGL">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2322dba0'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' stroke='%23041a12' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 18 18" fill="none"><path d="M2 13l4-4 3 3 6-7" stroke="#041a12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div>EDGE<small>TRADING JOURNAL</small></div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="dash" aria-selected="true">ภาพรวม</button>
+      <button role="tab" data-tab="trades" aria-selected="false">เทรดทั้งหมด</button>
+      <button role="tab" data-tab="insights" aria-selected="false">วิเคราะห์</button>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn primary" id="btn-add">+ บันทึกเทรด <kbd class="hide-sm">N</kbd></button>
+    <div class="rel">
+      <button class="btn ghost" id="btn-menu" aria-haspopup="true" title="ตั้งค่า / ข้อมูล">⋯</button>
+      <div class="menu" id="menu">
+        <div class="setting">ทุนเริ่มต้น ($)<input class="input num" id="set-balance" type="number" min="0" step="100"></div>
+        <hr>
+        <button data-act="export-json">⬇ ส่งออก JSON (backup)</button>
+        <button data-act="export-csv">⬇ ส่งออก CSV</button>
+        <label class="item">⬆ นำเข้า JSON / CSV<input type="file" id="import-file" accept=".json,.csv" hidden></label>
+        <hr>
+        <button data-act="demo">✨ โหลดข้อมูลตัวอย่าง</button>
+        <button data-act="clear" class="danger">🗑 ลบข้อมูลทั้งหมด</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================ empty -->
+  <section id="empty" class="card empty-state" hidden>
+    <h2>เริ่มจดเทรดแรกของคุณ</h2>
+    <p>เทรดที่ไม่ได้จด = บทเรียนที่ไม่ได้เรียน · ข้อมูลเก็บในเบราว์เซอร์ของคุณเท่านั้น</p>
+    <button class="btn primary" data-act="add">+ บันทึกเทรด</button>
+    <button class="btn" data-act="demo">✨ ลองกับข้อมูลตัวอย่าง</button>
+  </section>
+
+  <!-- ============================================================ dashboard -->
+  <section id="tab-dash" data-panel="dash">
+    <div class="kpis">
+      <div class="card kpi hero"><div class="label">กำไร/ขาดทุนสุทธิ</div><div class="value" id="k-net">—</div><div class="sub" id="k-net-sub"></div></div>
+      <div class="card kpi"><div class="label">Win rate</div><div class="value" id="k-wr">—</div><div class="sub" id="k-wr-sub"></div><div class="ring" id="k-ring"></div></div>
+      <div class="card kpi"><div class="label">Profit factor</div><div class="value" id="k-pf">—</div><div class="sub">กำไรรวม ÷ ขาดทุนรวม</div></div>
+      <div class="card kpi"><div class="label">Expectancy / เทรด</div><div class="value" id="k-exp">—</div><div class="sub" id="k-exp-sub"></div></div>
+      <div class="card kpi"><div class="label">Avg R</div><div class="value" id="k-r">—</div><div class="sub" id="k-r-sub"></div></div>
+      <div class="card kpi"><div class="label">Max drawdown</div><div class="value down" id="k-dd">—</div><div class="sub" id="k-dd-sub"></div></div>
+    </div>
+
+    <div class="grid-main">
+      <div class="card">
+        <h3>Equity curve <span class="right seg" id="range">
+          <button data-range="30" aria-pressed="false">1M</button>
+          <button data-range="90" aria-pressed="false">3M</button>
+          <button data-range="0" aria-pressed="true">ทั้งหมด</button>
+        </span></h3>
+        <div class="chart-wrap" id="chart-wrap">
+          <canvas id="equity"></canvas>
+          <div class="tooltip" id="tip"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cal-head">
+          <button class="icon-btn" id="cal-prev" aria-label="เดือนก่อน">‹</button>
+          <strong id="cal-title"></strong>
+          <button class="icon-btn" id="cal-next" aria-label="เดือนถัดไป">›</button>
+          <span class="num" id="cal-total"></span>
+        </div>
+        <div class="cal" id="cal"></div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="card"><h3>เทรดล่าสุด</h3><div class="recent" id="recent"></div></div>
+      <div class="card"><h3>Setup ไหนทำเงิน</h3><div class="bars" id="dash-setups"></div></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ trades -->
+  <section id="tab-trades" data-panel="trades" hidden>
+    <div class="card">
+      <div class="toolbar">
+        <input class="input search" id="q" placeholder="ค้นหา symbol, โน้ต…  ( / )">
+        <select class="input" id="f-setup"><option value="">ทุก setup</option></select>
+        <select class="input" id="f-side"><option value="">Long + Short</option><option value="long">Long</option><option value="short">Short</option></select>
+        <select class="input" id="f-result"><option value="">ทุกผลลัพธ์</option><option value="win">ชนะ</option><option value="loss">แพ้</option></select>
+      </div>
+      <div class="table-scroll">
+        <table class="trades">
+          <thead><tr>
+            <th data-sort="date">วันที่</th><th data-sort="symbol">Symbol</th><th>Side</th>
+            <th class="hide-sm">Setup</th><th class="r hide-sm">Entry</th><th class="r hide-sm">Exit</th>
+            <th class="r" data-sort="r">R</th><th class="r" data-sort="pnl">P&amp;L</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-foot"><span id="t-count"></span><span id="t-sum" class="num"></span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ insights -->
+  <section id="tab-insights" data-panel="insights" hidden>
+    <div class="split" style="margin-top:0">
+      <div class="card"><h3>P&amp;L ตาม Setup</h3><div class="bars" id="ins-setup"></div></div>
+      <div class="card"><h3>P&amp;L ตามอารมณ์ตอนเข้าเทรด</h3><div class="bars" id="ins-mood"></div><div class="lesson" id="ins-lesson"></div></div>
+      <div class="card"><h3>P&amp;L ตามวันในสัปดาห์</h3><div class="bars" id="ins-wd"></div></div>
+      <div class="card"><h3>สถิติที่ควรรู้</h3><div class="facts" id="ins-facts"></div></div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================ drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <header><h2 id="drawer-title">บันทึกเทรด</h2><div class="spacer"></div><button class="icon-btn" data-act="close" aria-label="ปิด">✕</button></header>
+  <form id="form" autocomplete="off">
+    <input type="hidden" name="id">
+    <div class="field"><label>วันที่</label><input class="input" type="date" name="date" required></div>
+    <div class="field"><label>เวลา</label><input class="input" type="time" name="time"></div>
+    <div class="field"><label>Symbol</label><input class="input" name="symbol" list="symbols" required placeholder="BTCUSDT" style="text-transform:uppercase"><datalist id="symbols"></datalist></div>
+    <div class="field"><label>ทิศทาง</label>
+      <div class="side-toggle">
+        <label><input type="radio" name="side" value="long" checked><span>LONG</span></label>
+        <label><input type="radio" name="side" value="short"><span>SHORT</span></label>
+      </div>
+    </div>
+    <div class="field"><label>ราคาเข้า</label><input class="input num" type="number" step="any" name="entry" required></div>
+    <div class="field"><label>ราคาออก</label><input class="input num" type="number" step="any" name="exit" required></div>
+    <div class="field"><label>Stop loss <span class="muted">(ไว้คำนวณ R)</span></label><input class="input num" type="number" step="any" name="stop"></div>
+    <div class="field"><label>จำนวน / Size</label><input class="input num" type="number" step="any" name="qty" required></div>
+    <div class="field"><label>ค่าธรรมเนียม</label><input class="input num" type="number" step="any" name="fees" value="0"></div>
+    <div class="field"><label>Setup</label><input class="input" name="setup" list="setups" placeholder="Breakout"><datalist id="setups"></datalist></div>
+    <div class="preview">
+      <div><div class="label">P&amp;L</div><div class="value" id="pv-pnl">—</div></div>
+      <div><div class="label">R-multiple</div><div class="value" id="pv-r">—</div></div>
+      <div><div class="label">ความเสี่ยง</div><div class="value" id="pv-risk">—</div></div>
+    </div>
+    <div class="field full"><label>อารมณ์ตอนเข้าเทรด</label><div class="chips" id="moods"></div></div>
+    <div class="field full"><label>ให้คะแนนการเทรดนี้ (ทำตามแผนแค่ไหน)</label><div class="stars" id="stars"></div><input type="hidden" name="rating" value="0"></div>
+    <div class="field full"><label>โน้ต / บทเรียน</label><textarea class="input" name="notes" placeholder="ทำไมเข้า? ออกตามแผนไหม? ครั้งหน้าจะทำอะไรต่างไป?"></textarea></div>
+  </form>
+  <footer>
+    <button class="btn danger" data-act="delete" id="btn-delete" hidden>ลบ</button>
+    <div class="spacer"></div>
+    <button class="btn ghost" data-act="close">ยกเลิก</button>
+    <button class="btn primary" type="submit" form="form">บันทึก <kbd class="hide-sm">⌘↵</kbd></button>
+  </footer>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

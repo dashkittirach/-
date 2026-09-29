@@ -1,0 +1,1 @@
+Fonts: Inter, JetBrains Mono, IBM Plex Sans Thai — SIL Open Font License 1.1 (via @fontsource).

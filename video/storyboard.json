@@ -1,0 +1,21 @@
+{
+  "title": "EDGE — Trading Journal (promo)",
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "bpm": 120,
+  "beatsPerBar": 4,
+  "bars": 16,
+  "key": "A minor",
+  "progression": ["Am9", "Fmaj7", "C6", "G6sus"],
+  "seed": 57,
+  "dataEnd": "2026-09-26",
+  "scenes": [
+    { "id": "open",     "bars": [0, 2],   "label": "",               "music": { "layers": ["pad", "tick"], "riserInto": "candles" } },
+    { "id": "candles",  "bars": [2, 5],   "label": "01 — THE MARKET", "music": { "layers": ["pad", "kick", "hat", "bass"], "impact": true } },
+    { "id": "equity",   "bars": [5, 8],   "label": "02 — YOUR EDGE",  "music": { "layers": ["pad", "kick", "hat", "bass", "arp"], "impact": true } },
+    { "id": "stats",    "bars": [8, 11],  "label": "03 — THE NUMBERS","music": { "layers": ["pad", "kick", "hat", "clap", "bass", "arp"], "impact": true } },
+    { "id": "calendar", "bars": [11, 14], "label": "04 — YOUR HABITS","music": { "layers": ["pad", "hat", "bass", "arp", "blip"], "impact": true, "riserInto": "outro" } },
+    { "id": "outro",    "bars": [14, 16], "label": "",               "music": { "layers": ["pad", "bell"], "impact": true, "tail": true } }
+  ]
+}
