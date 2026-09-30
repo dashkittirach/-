@@ -8,7 +8,8 @@
   Logging a trade plays a scene: the camera flies to the plot, the crop grows, then coins fly into the chest (win) or a rain cloud appears (loss).
   Sky follows your local time, weather follows today's PnL, fireworks on level-up, the farmer passes out when the daily loss limit is hit.
 - `harvest-ledger/?mode=2d` — **2D farm** (lighter, no WebGL needed; `2d.html` redirects here). It is the same app with the same features and the same save — only the world is drawn on a 2D canvas instead of Three.js. Devices without WebGL fall back to 2D automatically.
-- Both are single self-contained files: Tailwind + Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage.
+- One self-contained file: Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage. Works offline after the first visit (`sw.js` caches it; the network is always tried first, so updates stay live).
+- Styling is Tailwind, precompiled and inlined into `<style id="tw">`. After adding new Tailwind classes, run `npm run css:harvest`.
 - Controls: `WASD`/click the ground to walk · `E` interact · drag to rotate · scroll/pinch to zoom · `N` new trade · `1–4` fast travel · `M` sound.
   On phones: tap to walk / tap a building, or use the bottom travel bar.
 
