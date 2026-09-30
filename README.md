@@ -10,6 +10,10 @@
 - `harvest-ledger/?mode=2d` — **2D farm** (lighter, no WebGL needed; `2d.html` redirects here). It is the same app with the same features and the same save — only the world is drawn on a 2D canvas instead of Three.js. Devices without WebGL fall back to 2D automatically.
 - One self-contained file: Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage. Works offline after the first visit (`sw.js` caches it; the network is always tried first, so updates stay live).
 - Styling is Tailwind, precompiled and inlined into `<style id="tw">`. After adding new Tailwind classes, run `npm run css:harvest`.
+- **Friends (optional, Firebase):** Google sign-in, friend codes / invite links, a discipline leaderboard, visiting a friend's farm (read-only), watering it and leaving guestbook notes.
+  Only game data is shared (level, rule-kept days, farm, win/loss crops) — never amounts, assets, notes or journals; the journal itself stays on each device.
+  Setup guide: `harvest-ledger/online/` · security rules: `harvest-ledger/online/firestore.rules` · the SDK is bundled to `harvest-ledger/vendor/firebase.js` (`npm run build:firebase`).
+  Put the Firebase web config in `ONLINE_CONFIG` in `index.html`, or paste it in the app (👥) — invite links then carry it to friends.
 - Controls: `WASD`/click the ground to walk · `E` interact · drag to rotate · scroll/pinch to zoom · `N` new trade · `1–4` fast travel · `M` sound.
   On phones: tap to walk / tap a building, or use the bottom travel bar.
 

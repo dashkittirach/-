@@ -1,0 +1,47 @@
+rules_version = '2';
+// Harvest Ledger — Firestore security rules. Paste into Firebase console → Firestore Database → Rules → Publish.
+// Only game data lives here (no money, assets, notes or journals — those stay on each device).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function shortText(v, n) { return v is string && v.size() <= n; }
+
+    // public game profile: any signed-in farmer can read it, only the owner writes it
+    match /farmers/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isMe(uid) && shortText(request.resource.data.name, 24)
+        && request.resource.data.keys().hasOnly(['v', 'name', 'level', 'stats', 'crops', 'ruleDays', 'boss', 'ach', 'farm', 'fun', 'code', 'updatedAt']);
+      allow delete: if isMe(uid);
+
+      // friends: you manage your own list; someone else may only add or remove themselves
+      // (adding a friend by code writes both lists at once)
+      match /friends/{fid} {
+        allow read: if isMe(uid) || isMe(fid);
+        allow create, update, delete: if (isMe(uid) || isMe(fid)) && uid != fid;
+      }
+      // guestbook: short notes signed with the writer's own uid; the owner or the writer can delete
+      match /guestbook/{nid} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.from == request.auth.uid
+          && shortText(request.resource.data.text, 140) && request.resource.data.text.size() > 0
+          && shortText(request.resource.data.name, 24)
+          && request.resource.data.keys().hasOnly(['from', 'name', 'text', 'at']);
+        allow delete: if isMe(uid) || (signedIn() && resource.data.from == request.auth.uid);
+      }
+      // "watered your farm today": one doc per visitor (id = visitor uid), read by the owner
+      match /waters/{vid} {
+        allow read, delete: if isMe(uid);
+        allow create, update: if isMe(vid) && vid != uid && shortText(request.resource.data.day, 10)
+          && shortText(request.resource.data.name, 24) && request.resource.data.keys().hasOnly(['name', 'day', 'at']);
+      }
+    }
+    // friend codes → uid, each claimed once by its owner
+    match /codes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid']) && code.size() >= 4 && code.size() <= 12;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}
