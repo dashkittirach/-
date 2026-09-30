@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&family=Mali:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
 <style type="text/tailwindcss">
   @theme {
     --color-cream: #f4ebd0; --color-sand: #e3d2b2; --color-wood: #8b5a2b; --color-bark: #5c3a21; --color-ink: #3b2314;
@@ -255,6 +255,7 @@
   .breath-circle { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 244, 214, .95), rgba(159, 211, 240, .55) 60%, rgba(159, 211, 240, .1)); box-shadow: 0 0 60px rgba(255, 244, 214, .6); transform: scale(.45); transition: transform 4s linear; }
   .breath-word { position: relative; font-size: 1.5rem; color: #3b2314; text-shadow: 0 1px 0 #fff; }
   #scope { position: fixed; inset: 0; z-index: 40; background: #070b1f; }
+  #dungeon { position: fixed; inset: 0; z-index: 42; background: #0b0710; }
   .shutter { position: fixed; inset: 0; z-index: 99; background: #fff; pointer-events: none; animation: fadein .45s steps(6) reverse both; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition: none !important; }
@@ -270,6 +271,7 @@
 <div id="fun-bar" class="wood font-pixel" hidden></div>
 <div id="breath" hidden></div>
 <div id="scope" hidden></div>
+<div id="dungeon" hidden></div>
 
 <div id="loading"><div class="text-center font-pixel"><img class="px w-16 bob" data-sprite="house" alt=""><div class="text-xl mt-2 text-[#3b2314]">Growing your farm…</div></div></div>
 
@@ -510,7 +512,14 @@ const MODE = (() => {
   try { return localStorage.getItem('harvest-ledger-v1-mode') || '3d'; } catch (e) { return '3d'; }
 })();
 let THREE = null;
-if (MODE === '3d') { try { THREE = await import('three'); } catch (e) { THREE = null; } }
+let FX = null; // post-processing: bloom + toon outlines (3D only, optional)
+if (MODE === '3d') {
+  try { THREE = await import('three'); } catch (e) { THREE = null; }
+  if (THREE) try {
+    const [ec, rp, bl, op, ol] = await Promise.all(['postprocessing/EffectComposer.js', 'postprocessing/RenderPass.js', 'postprocessing/UnrealBloomPass.js', 'postprocessing/OutputPass.js', 'effects/OutlineEffect.js'].map((f) => import('three/addons/' + f)));
+    FX = { EffectComposer: ec.EffectComposer, RenderPass: rp.RenderPass, UnrealBloomPass: bl.UnrealBloomPass, OutputPass: op.OutputPass, OutlineEffect: ol.OutlineEffect };
+  } catch (e) { FX = null; }
+}
 
 /* =====================================================================
    Harvest Ledger 3D — a cozy farming-game trading journal.
@@ -631,7 +640,7 @@ const TH = {
   'Your data is safe.': 'ข้อมูลของคุณปลอดภัย', '✨ New version — tap to update': '✨ มีเวอร์ชันใหม่ — แตะเพื่ออัปเดต',
   '📓 Daily Journal': '📓 บันทึกประจำวัน', '✎ Write': '✎ เขียน', 'Handbook & daily tasks': 'คู่มือและภารกิจประจำวัน', '📖 Handbook': '📖 คู่มือ',
   'Enter Farmhouse': 'เข้าบ้านไร่', 'Open Quest Board': 'เปิดกระดานเควส', 'Enter Tavern': 'เข้าโรงเตี๊ยม', 'Open chest': 'เปิดหีบ',
-  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า', '🎣 Dock': '🎣 ท่าตกปลา', '🌳 Bench': '🌳 ม้านั่ง', '🔭 Telescope': '🔭 กล้องดูดาว', 'Go fishing': 'ตกปลา', 'Sit & breathe': 'นั่งหายใจ', 'Look at the stars': 'ส่องดาว', '💧 Water crops': '💧 รดน้ำผัก', '🧺 Harvest': '🧺 เก็บเกี่ยว', 'Things to do': 'ทำอะไรดี', 'Enter the house': 'เข้าไปในบ้าน', '📓 Desk': '📓 โต๊ะเขียน', '🏆 Trophies': '🏆 ถ้วยรางวัล', '🖼 Photos': '🖼 รูปถ่าย', '🛏 Bed': '🛏 เตียง', '🔥 Fireplace': '🔥 เตาผิง', '🚪 Door': '🚪 ประตู', 'Write at the desk': 'นั่งเขียนที่โต๊ะ', 'Look at trophies': 'ดูถ้วยรางวัล', 'Look at photos': 'ดูรูปถ่าย', 'Rest': 'นอนพัก', 'Sit by the fire': 'นั่งผิงไฟ', 'Go outside': 'ออกไปข้างนอก',
+  'Read calendar': 'ดูปฏิทิน', 'Settings': 'ตั้งค่า', 'Previous month': 'เดือนก่อน', 'Next month': 'เดือนถัดไป', 'Toggle sound': 'เปิด/ปิดเสียง', 'Close ': 'ปิด', 'Open shop': 'เปิดร้านค้า', '🛒 Shop': '🛒 ร้านค้า', '🎣 Dock': '🎣 ท่าตกปลา', '🌳 Bench': '🌳 ม้านั่ง', '🔭 Telescope': '🔭 กล้องดูดาว', 'Go fishing': 'ตกปลา', 'Sit & breathe': 'นั่งหายใจ', 'Look at the stars': 'ส่องดาว', '💧 Water crops': '💧 รดน้ำผัก', '🧺 Harvest': '🧺 เก็บเกี่ยว', 'Things to do': 'ทำอะไรดี', '⛏ Cave': '⛏ ถ้ำ', 'Enter the cave': 'เข้าถ้ำ', 'Enter the house': 'เข้าไปในบ้าน', '📓 Desk': '📓 โต๊ะเขียน', '🏆 Trophies': '🏆 ถ้วยรางวัล', '🖼 Photos': '🖼 รูปถ่าย', '🛏 Bed': '🛏 เตียง', '🔥 Fireplace': '🔥 เตาผิง', '🚪 Door': '🚪 ประตู', 'Write at the desk': 'นั่งเขียนที่โต๊ะ', 'Look at trophies': 'ดูถ้วยรางวัล', 'Look at photos': 'ดูรูปถ่าย', 'Rest': 'นอนพัก', 'Sit by the fire': 'นั่งผิงไฟ', 'Go outside': 'ออกไปข้างนอก',
 };
 const TH_RE = [
   [/^(\d+) quests? \(showing (\d+)\)$/, '$1 เควส (แสดง $2)'], [/^(\d+) quests over the last (\d+) days$/, '$1 เควสใน $2 วันที่ผ่านมา'],
@@ -995,6 +1004,8 @@ const ACHIEVEMENTS = [
   { id: 'reviewer', name: tr('Weekly Ritual', 'พิธีประจำสัปดาห์'), desc: tr('Finish 4 weekly reviews', 'ทบทวนรายสัปดาห์ครบ 4 ครั้ง'), icon: 'mug', test: () => Object.keys(state.settings.reviews || {}).length >= 4 },
   { id: 'chef', name: tr('Farm Chef', 'เชฟประจำฟาร์ม'), desc: tr('Cook 5 dishes', 'ทำอาหาร 5 จาน'), icon: 'mug', test: () => Object.values(state.settings.fun.dishes || {}).reduce((a, b) => a + b, 0) >= 5 },
   { id: 'sailor', name: tr('Sailor', 'กะลาสี'), desc: tr('Sail a full lap around the island', 'ล่องเรือครบรอบเกาะ'), icon: 'sun', test: () => (state.settings.fun.laps || 0) >= 1 },
+  { id: 'delver', name: tr('Cave Delver', 'นักสำรวจถ้ำ'), desc: tr('Reach floor 3 of the cave', 'ลงถ้ำถึงชั้น 3'), icon: 'bolt', test: () => (state.settings.dun?.best || 0) >= 3 },
+  { id: 'dragon', name: tr('Margin Call Slayer', 'ผู้ปราบ Margin Call'), desc: tr('Defeat the Margin Call Dragon', 'ปราบมังกร Margin Call'), icon: 'flame', test: () => (state.settings.dun?.bossKills || 0) >= 1 },
   { id: 'builder', name: tr('Homesteader', 'เจ้าของฟาร์ม'), desc: tr('Build 3 farm upgrades', 'สร้างของในฟาร์ม 3 อย่าง'), icon: 'house', test: () => (state.settings.farm.owned || []).length >= 3 },
   { id: 'rich', name: 'Gold Rush', desc: 'Net profit over $1,000', icon: 'coin', test: (s) => s.net >= 1000 },
 ];
@@ -1002,7 +1013,7 @@ const ACHIEVEMENTS = [
 // ------------------------------------------------------------------ persistence (same key as the 2D version)
 const FUN_DEFAULT_WORLD = { fish: {}, fishBest: {}, beach: {}, beachDay: '', beachTaken: [], jars: 0, jarNight: '', jarN: 0, breath: 0, breathMin: 0, stars: [], water: { date: '', ids: [] }, harvestDate: '', basket: 0, petLove: 0, petDay: '', petN: 0, fedDay: '', items: [], place: {}, musicMode: 'auto', photos: 0, talks: 0 };
 const KEY = 'harvest-ledger-v1';
-const DEFAULT_SETTINGS = { name: 'Farmer', startBalance: 10000, dailyLoss: 300, sound: true, volume: 0.6, gfx: { pixel: true, shadows: true } };
+const DEFAULT_SETTINGS = { name: 'Farmer', startBalance: 10000, dailyLoss: 300, sound: true, volume: 0.6, gfx: { pixel: true, shadows: true, fx: true } };
 function load() {
   try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && Array.isArray(d.trades)) return d; } catch (e) { /* private mode / corrupt */ }
   return null;
@@ -1029,6 +1040,7 @@ state.settings.rules = { ...RULES_DEFAULT, ...(state.settings.rules || {}) };
 state.settings.farm = { owned: [], pet: '', petName: '', festival: '', ...(state.settings.farm || {}) };
 state.settings.fun = { ...JSON.parse(JSON.stringify(FUN_DEFAULT_WORLD)), ...(state.settings.fun || {}) };
 state.settings = { view: { range: 'all', since: '' }, reviews: {}, goals: {}, compare: { date: '' }, deleted: [], notify: false, ...state.settings };
+state.settings.dun = { coins: 0, ore: {}, gear: [], day: '', runs: 0, best: 0, kills: 0, bossKills: 0, lock: { on: false, from: '19:00', to: '23:00' }, ...(state.settings.dun || {}) };
 state.settings.fun = { bag: {}, dishes: {}, fest: null, prizes: 0, laps: 0, thumbs: [], ...state.settings.fun };
 
 // ------------------------------------------------------------------ UI primitives
@@ -2050,6 +2062,7 @@ function openSettings() {
         <div class="font-pixel font-bold mb-2">🎮 Graphics</div>
         <label class="flex items-center gap-2 font-pixel"><input type="checkbox" name="pixel" ${st.gfx.pixel ? 'checked' : ''}> Pixel filter (retro look, faster on phones)</label>
         <label class="flex items-center gap-2 font-pixel mt-1"><input type="checkbox" name="shadows" ${st.gfx.shadows ? 'checked' : ''}> Shadows</label>
+        <label class="flex items-center gap-2 font-pixel mt-1"><input type="checkbox" name="fx" ${st.gfx.fx !== false ? 'checked' : ''}> ✨ ${tr('Glow & cartoon outlines (3D, prettier, uses more battery)', 'แสงเรือง & เส้นขอบการ์ตูน (3D สวยขึ้น แต่ใช้แบตมากขึ้น)')}</label>
         <div class="flex flex-wrap gap-2 mt-2"><button type="button" class="btn text-sm" data-lang>🌐 ${LANG === 'th' ? 'English' : 'ภาษาไทย'}</button><a class="btn text-sm" href="?mode=${MODE === '3d' ? '2d' : '3d'}">${MODE === '3d' ? tr('Switch to 2D (lighter)', 'สลับเป็น 2D (เบากว่า)') : tr('Switch to 3D', 'สลับเป็น 3D')}</a></div>
       </div>
       <div class="parch mt-4">
@@ -2098,7 +2111,7 @@ function openSettings() {
         st.startBalance = Math.max(0, +v('startBalance').value || 0);
         st.dailyLoss = Math.max(1, +v('dailyLoss').value || 300);
         st.volume = +v('volume').value; st.music = v('music').checked; st.cfgStamp = Date.now();
-        st.gfx = { pixel: v('pixel').checked, shadows: v('shadows').checked };
+        st.gfx = { pixel: v('pixel').checked, shadows: v('shadows').checked, fx: v('fx').checked };
         keepToken();
         const gist = parseGistId(v('gist').value);
         if (gist !== st.mt5.gist) { st.mt5.gist = gist; MT5.etag = null; }
@@ -2414,6 +2427,7 @@ const LAYOUT = {
   calendar: { pos: [-4.4, 0, -10.6], approach: [-4.4, 0, -8.7], radius: 2.2, label: '📅 Calendar', collide: 1.3 },
   mailbox: { pos: [-14, 0, -4.2], approach: [-13, 0, -3.2], radius: 2.0, label: '📮 Settings', collide: 0.5 },
   shop: { pos: [14.5, 0, -1.5], approach: [12.3, 0, -0.4], radius: 2.4, label: '🛒 Shop', collide: 1.6 },
+  cave: { pos: [-17.5, 0, -6], approach: [-15.6, 0, -4.4], radius: 2.2, label: '⛏ Cave', collide: 1.8 },
   dock: { pos: [4, 0, 20.2], approach: [4, 0, 19.3], radius: 2.2, label: '🎣 Dock', collide: 0.05 },
   bench: { pos: [-4.5, 0, 13.2], approach: [-4.5, 0, 11.7], radius: 2.2, label: '🌳 Bench', collide: 0.9 },
   telescope: { pos: [-17, 0, 8.5], approach: [-15.8, 0, 7.3], radius: 2.2, label: '🔭 Telescope', collide: 0.5 },
@@ -2426,7 +2440,7 @@ const LAYOUT = {
 };
 const FIELD = { cx: 0, cz: 4.2, cols: 6, rows: 4, gap: 1.8 };
 // spots kept free of trees for farm upgrades and the weekly boss: [x, z, radius]
-const RESERVED = [[12.4, 9.0, 2.2], [-14.2, -9.5, 1.9], [-6.6, -10.5, 1.2], [4, 19.5, 2.4], [6.1, 19.2, 1], [-4.5, 13, 2.2], [-6.5, 12.4, 1.2], [-17, 8.5, 1.6], [6.6, -6.4, 0.9], [-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
+const RESERVED = [[-17.5, -6, 2.4], [12.4, 9.0, 2.2], [-14.2, -9.5, 1.9], [-6.6, -10.5, 1.2], [4, 19.5, 2.4], [6.1, 19.2, 1], [-4.5, 13, 2.2], [-6.5, 12.4, 1.2], [-17, 8.5, 1.6], [6.6, -6.4, 0.9], [-4.8, -1.6, 1.4], [4.8, -1.6, 1.4], [0, 10.4, 1], [-15.5, -0.5, 1.4], [-14, 5, 2.9], [-10, 12.5, 1.8], [10.5, 12.5, 2.6], [15.5, 6, 2.4], [8.8, 2.5, 1.5]];
 const DECOR_POS = { flowers: [[-4.8, -1.6], [4.8, -1.6]], scarecrow: [[0, 10.4]], well: [[-15.5, -0.5]], pond: [[-14, 5]], beehive: [[-10, 12.5]], coop: [[10.5, 12.5]], windmill: [[15.5, 6]] };
 const BOSS_POS = [8.8, 2.5];
 const plotPos = (i) => [FIELD.cx + ((i % FIELD.cols) - (FIELD.cols - 1) / 2) * FIELD.gap, FIELD.cz + (Math.floor(i / FIELD.cols) - (FIELD.rows - 1) / 2) * FIELD.gap];
@@ -2461,9 +2475,9 @@ function createWorld() {
   const skyGeo = new THREE.SphereGeometry(150, 24, 12);
   skyGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(skyGeo.attributes.position.count * 3), 3));
   const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
-  scene.add(sky);
+  scene.add(sky); sky.material.userData.outlineParameters = { visible: false };
   const disc = new THREE.Mesh(new THREE.CircleGeometry(5, 20), new THREE.MeshBasicMaterial({ color: '#fff3b0', fog: false }));
-  scene.add(disc);
+  scene.add(disc); disc.material.userData.outlineParameters = { visible: false };
   const starGeo = new THREE.BufferGeometry(), starPos = [];
   const srnd = mulberry32(77);
   for (let i = 0; i < 400; i++) { const th = srnd() * Math.PI * 2, ph = srnd() * 1.3; starPos.push(Math.cos(th) * Math.sin(ph) * 140, Math.cos(ph) * 140, Math.sin(th) * Math.sin(ph) * 140); }
@@ -2481,8 +2495,9 @@ function createWorld() {
   const water = mesh(waterGeo, new THREE.MeshToonMaterial({ color: '#4f9ad6', gradientMap: grad, transparent: true, opacity: 0.92 }), 0, -1.1, 0, { cast: false });
   scene.add(water);
   const waterBase = Float32Array.from(waterGeo.attributes.position.array);
+  water.material.userData.outlineParameters = { visible: false };
   const foam = mesh(new THREE.RingGeometry(23.4, 24.8, 56), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55 }), 0, -1.0, 0, { cast: false, receive: false });
-  foam.rotation.x = -Math.PI / 2; scene.add(foam);
+  foam.rotation.x = -Math.PI / 2; scene.add(foam); foam.material.userData.outlineParameters = { visible: false };
 
   const colliders = Object.values(LAYOUT).map((o) => ({ x: o.pos[0], z: o.pos[2], r: o.collide }));
   const freeAt = (x, z, m = 1.2) => {
@@ -2610,6 +2625,15 @@ function createWorld() {
   shop.add(mesh(box(0.5, 0.4, 0.5), M('#9a6a4a'), 1.7, 0.2, 0.6));
   shop.position.set(...LAYOUT.shop.pos); shop.rotation.y = -0.9; scene.add(pickable(shop, 'shop'));
 
+  // cave entrance (dungeon)
+  const cave = new THREE.Group();
+  for (const [x, y, z, r] of [[0, 1.2, -0.4, 1.9], [-1.5, 0.8, 0, 1.3], [1.5, 0.8, 0, 1.3], [-0.8, 2.2, -0.6, 1.2], [0.9, 2.0, -0.5, 1.1], [0, 2.9, -0.8, 0.9]]) { const rk = mesh(new THREE.DodecahedronGeometry(r, 0), M(r > 1.5 ? '#8a8f96' : '#9aa0a6'), x, y, z); rk.rotation.set(x, y, z); cave.add(rk); }
+  const mouth = new THREE.Mesh(new THREE.CircleGeometry(1.0, 12, 0, Math.PI), new THREE.MeshBasicMaterial({ color: '#0b0710' })); mouth.position.set(0, 0.02, 1.35); cave.add(mouth);
+  for (const x of [-1.05, 1.05]) cave.add(mesh(box(0.15, 1.6, 0.15), M('#7a4b2a'), x, 0.8, 1.35));
+  cave.add(mesh(box(2.4, 0.15, 0.2), M('#7a4b2a'), 0, 1.6, 1.35));
+  cave.add(mesh(box(0.14, 0.2, 0.14), lampMat, 1.25, 1.5, 1.5, { cast: false }));
+  cave.position.set(...LAYOUT.cave.pos); cave.rotation.y = 0.87; scene.add(pickable(cave, 'cave'));
+
   // lamps
   const lampLights = [];
   for (const [x, z] of [[-3, -6.8], [3, -6.8], [2.4, -0.9]]) {
@@ -2723,7 +2747,7 @@ function createWorld() {
   // ---------------- labels (HTML, projected every frame)
   const labels = [];
   const addLabel = (text, pos, cls = '') => { const el = document.createElement('div'); el.className = 'label3d ' + cls; el.textContent = text; $('#labels').appendChild(el); const l = { el, pos: new THREE.Vector3(...pos), visible: true }; labels.push(l); return l; };
-  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3, dock: 1.4, bench: 1.6, telescope: 2.3, rdesk: 1.6, rshelf: 2.9, rframe: 2.8, rbed: 1.4, rfire: 2.7, rdoor: 2.5 };
+  const LABEL_H = { house: 5.9, board: 4.3, tavern: 6.2, chest: 1.9, calendar: 3.3, mailbox: 2.2, shop: 3.3, cave: 3.2, dock: 1.4, bench: 1.6, telescope: 2.3, rdesk: 1.6, rshelf: 2.9, rframe: 2.8, rbed: 1.4, rfire: 2.7, rdoor: 2.5 };
   for (const [id, o] of Object.entries(LAYOUT)) addLabel(o.label, [o.pos[0], LABEL_H[id], o.pos[2]]);
   addLabel('🌾 Field', [FIELD.cx, 1.6, FIELD.cz - 4.6]);
   const zzz = addLabel('Z z z', [0, 3, 0], 'zzz'); zzz.visible = false;
@@ -3297,7 +3321,7 @@ function createWorld() {
   const camLim = () => (photoMode ? [4, 48, 0.06, 1.45] : [9, 32, 0.42, 1.2]);
   function photo(on) { photoMode = on; if (on) keepCam(); else restoreCam(); }
   function capture(filter) {
-    renderer.render(scene, camera);
+    renderFrame();
     const src = renderer.domElement, scale = Math.max(1, Math.round(Math.min(2400, innerWidth * 2) / src.width));
     const c = document.createElement('canvas'); c.width = src.width * scale; c.height = src.height * scale;
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
@@ -3519,12 +3543,13 @@ function createWorld() {
     lampLights.forEach((l) => (l.intensity = night ? 18 : phase === 'evening' ? 8 : 0));
     fireflies.visible = night;
     cloudMat.color.set(rainy ? '#8d98a8' : night ? '#6f7aa8' : '#ffffff');
-    clouds.forEach((cl, i) => (cl.visible = rainy || i < (weather === 'cloud' ? 6 : 3)));
+    clouds.forEach((cl, i) => { cl.userData.want = rainy || i < (weather === 'cloud' ? 6 : 3); cl.visible = cl.userData.want && cl.position.distanceTo(camera.position) > 18; });
     rain.visible = rainy && !reduced && !inside;
     const season = seasonOf(new Date().getMonth())[0];
     seasonPts.userData.season = season;
     seasonPts.material.color.set({ Spring: '#f7a8c4', Fall: '#e8894a', Winter: '#ffffff' }[season] || '#ffffff');
     seasonPts.visible = season !== 'Summer' && !rainy && !reduced;
+    if (typeof tuneBloom === 'function') tuneBloom();
     if (typeof applyExtras === 'function') applyExtras();
   }
 
@@ -3609,6 +3634,7 @@ function createWorld() {
     else if (id === 'mailbox') openSettings();
     else if (id === 'shop') openShop();
     else if (id === 'dock') startFishing();
+    else if (id === 'cave') openCamp();
     else if (id === 'rdesk') openDesk(); else if (id === 'rshelf') openTrophies(); else if (id === 'rframe') openGallery(); else if (id === 'rbed') restInBed(); else if (id === 'rfire') startFire(); else if (id === 'rdoor') leaveHouse();
     else if (id === 'bench') startBreathing();
     else if (id === 'telescope') openTelescope();
@@ -3856,7 +3882,31 @@ function createWorld() {
     renderer.shadowMap.enabled = g.shadows; sun.castShadow = g.shadows;
     scene.traverse((o) => { if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.needsUpdate = true)); } });
     renderer.setSize(innerWidth, innerHeight, false);
+    setupFX();
   }
+  let composer = null, outline = null, bloom = null, fxBroken = false;
+  function setupFX() {
+    const want = FX && state.settings.gfx.fx !== false && !fxBroken && !autoLoweredFX;
+    if (!want) { composer = null; return; }
+    try {
+      if (!outline) { outline = new FX.OutlineEffect(renderer, { defaultThickness: 0.0042, defaultColor: [0.14, 0.09, 0.05], defaultAlpha: 0.85 }); outline.autoClear = true; }
+      if (!composer) {
+        composer = new FX.EffectComposer(renderer);
+        const rp = new FX.RenderPass(scene, camera);
+        rp.render = function (r, writeBuffer, readBuffer) { r.setRenderTarget(this.renderToScreen ? null : readBuffer); r.setClearColor(scene.fog.color, 1); r.clear(); outline.render(scene, camera); };
+        bloom = new FX.UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.45, 0.86);
+        composer.addPass(rp); composer.addPass(bloom); composer.addPass(new FX.OutputPass());
+      }
+      composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight);
+      tuneBloom();
+    } catch (e) { fxBroken = true; composer = null; }
+  }
+  function tuneBloom() { if (bloom) { const ph = env.phase; bloom.strength = ph === 'night' ? 0.85 : ph === 'evening' ? 0.6 : 0.28; bloom.threshold = ph === 'night' ? 0.6 : 0.88; } }
+  function renderFrame() {
+    if (composer) { try { composer.render(); return; } catch (e) { fxBroken = true; composer = null; } }
+    renderer.render(scene, camera);
+  }
+  let autoLoweredFX = false;
   function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); applyGraphics(); }
   addEventListener('resize', resize);
 
@@ -3875,7 +3925,7 @@ function createWorld() {
     if (!behind && frameMs < 200) {
       if (frameMs > 25) { slowT += frameMs; fastT = 0; } else { fastT += frameMs; if (fastT > 3000) slowT = 0; }
       if (slowT > 2500 && !autoLowered && renderer.shadowMap.enabled) {
-        autoLowered = true; renderer.shadowMap.enabled = false; sun.castShadow = false;
+        autoLowered = true; renderer.shadowMap.enabled = false; sun.castShadow = false; if (composer) { autoLoweredFX = true; composer = null; }
         scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.needsUpdate = true)); });
         toast(tr('Graphics tuned for smoothness', 'ปรับกราฟิกให้ลื่นขึ้นแล้ว'), tr('Shadows off on this device', 'ปิดเงาบนเครื่องนี้'), 'gear');
       }
@@ -3946,7 +3996,7 @@ function createWorld() {
       wp.needsUpdate = true;
       foam.scale.setScalar(1 + Math.sin(time * 1.4) * 0.01);
       trees.forEach((t) => { t.top.rotation.z = Math.sin(time * 1.2 + t.phase) * 0.04; t.top.rotation.x = Math.cos(time * 0.9 + t.phase) * 0.03; });
-      clouds.forEach((c) => { c.position.x += c.userData.speed * dt; if (c.position.x > 50) c.position.x = -50; });
+      clouds.forEach((c) => { c.position.x += c.userData.speed * dt; if (c.position.x > 50) c.position.x = -50; c.visible = c.userData.want !== false && c.position.distanceTo(camera.position) > 18; });
       smoke.forEach((s) => { s.userData.t = (s.userData.t + dt * 0.35) % 1; const k = s.userData.t; s.position.set(chimneyTop.x + Math.sin(k * 6 + time) * 0.2, chimneyTop.y + k * 2.6, chimneyTop.z); s.scale.setScalar(0.5 + k * 1.3); s.material.opacity = 0.55 * (1 - k); });
       if (rain.visible) {
         const ra = rainGeo.attributes.position.array;
@@ -3986,12 +4036,12 @@ function createWorld() {
       near = null;
     } else { promptFor = near?.id || null; promptEl.hidden = !near; }
     if (near) {
-      const pt = t({ rdesk: 'Write at the desk', rshelf: 'Look at trophies', rframe: 'Look at photos', rbed: 'Rest', rfire: 'Sit by the fire', rdoor: 'Go outside', house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
+      const pt = t({ rdesk: 'Write at the desk', rshelf: 'Look at trophies', rframe: 'Look at photos', rbed: 'Rest', rfire: 'Sit by the fire', rdoor: 'Go outside', house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', cave: 'Enter the cave', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
       if (promptText.textContent !== pt) promptText.textContent = pt;
       const o = LAYOUT[near.id], p = v3.set(o.approach[0], 2.6, o.approach[2]).project(camera);
       promptEl.style.transform = `translate(${((p.x + 1) / 2) * innerWidth}px, ${((1 - p.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
     }
-    renderer.render(scene, camera);
+    renderFrame();
   }
 
   document.fonts.ready.then(() => { drawSign(); drawCalendarTexture(); });
@@ -4054,7 +4104,7 @@ function createWorld2D() {
   // ---------------- DOM labels & prompt (same look as 3D)
   const labels = [];
   const addLabel = (text, pos, cl = '') => { const el = document.createElement('div'); el.className = 'label3d ' + cl; el.textContent = text; $('#labels').appendChild(el); const l = { el, pos, visible: true }; labels.push(l); return l; };
-  const LABEL_H = { house: 5.4, board: 4.0, tavern: 5.8, chest: 1.6, calendar: 3.2, mailbox: 2.0, shop: 3.3, dock: 1.0, bench: 1.6, telescope: 2.2, rdesk: 1.6, rshelf: 2.9, rframe: 2.8, rbed: 1.4, rfire: 2.7, rdoor: 2.5 };
+  const LABEL_H = { house: 5.4, board: 4.0, tavern: 5.8, chest: 1.6, calendar: 3.2, mailbox: 2.0, shop: 3.3, cave: 3.0, dock: 1.0, bench: 1.6, telescope: 2.2, rdesk: 1.6, rshelf: 2.9, rframe: 2.8, rbed: 1.4, rfire: 2.7, rdoor: 2.5 };
   for (const [id, o] of Object.entries(LAYOUT)) addLabel(o.label, [o.pos[0], LABEL_H[id] || 2, o.pos[2]]);
   addLabel('🌾 Field', [FIELD.cx, 1.2, FIELD.cz - 4.6]);
   const zzz = addLabel('Z z z', [0, 3, 0], 'zzz'); zzz.visible = false;
@@ -4331,6 +4381,7 @@ function createWorld2D() {
     else if (id === 'mailbox') openSettings();
     else if (id === 'shop') openShop();
     else if (id === 'dock') startFishing();
+    else if (id === 'cave') openCamp();
     else if (id === 'rdesk') openDesk(); else if (id === 'rshelf') openTrophies(); else if (id === 'rframe') openGallery(); else if (id === 'rbed') restInBed(); else if (id === 'rfire') startFire(); else if (id === 'rdoor') leaveHouse();
     else if (id === 'bench') startBreathing();
     else if (id === 'telescope') openTelescope();
@@ -4512,6 +4563,7 @@ function createWorld2D() {
     for (let i = 0; i < 7; i++) { const [px, py] = Q(3.2, 19.3 + i * 0.66); c.fillStyle = i % 2 ? '#b57b44' : '#a8703d'; c.fillRect(px, py, 1.6 * S, 0.62 * S * K); }
     for (const x of [3.25, 4.75]) for (const z of [21, 22.8, 24]) { const [px, py] = Q(x, z); c.fillStyle = '#5c3a21'; c.fillRect(px - 0.08 * S, py, 0.16 * S, 0.8 * S); }
     const [cx0, cy0] = Q(0, 0);
+    for (const [r, a] of [[25.5, 0.18], [24.3, 0.28], [23.4, 0.4]]) { c.fillStyle = `rgba(143,214,236,${a})`; c.beginPath(); c.ellipse(cx0, cy0 + 1.2 * S, r * S, r * S * K, 0, 0, TAU); c.fill(); }
     c.fillStyle = '#8a5a34'; c.beginPath(); c.ellipse(cx0, cy0 + 1.3 * S, 22.6 * S, 22.6 * S * K, 0, 0, TAU); c.fill();
     c.fillStyle = '#6e4526'; c.beginPath(); c.ellipse(cx0, cy0 + 1.8 * S, 22.2 * S, 22.2 * S * K, 0, 0, Math.PI); c.fill();
     e(0, 0, 22.4, 22.4, '#e8d6a0'); e(0, 0, 21.6, 21.6, '#7fb069');
@@ -4539,6 +4591,8 @@ function createWorld2D() {
       g.fillStyle = 'rgba(255,255,255,.28)';
       const x0 = Math.floor(cam.x - W / S / 2) - 2, x1 = Math.ceil(cam.x + W / S / 2) + 2, z0 = Math.floor(cam.z - H / S / K / 2) - 2, z1 = Math.ceil(cam.z + H / S / K / 2) + 2;
       for (let z = Math.floor(z0 / 2) * 2; z <= z1; z += 2) for (let x = Math.floor(x0 / 3) * 3; x <= x1; x += 3) { if (Math.hypot(x, z) < 22.5) continue; const [sx, sy] = P(x + ((z / 2) % 2) * 1.5 + Math.sin(time * 0.8 + z) * 0.4, z); g.fillRect(Math.round(sx), Math.round(sy + Math.sin(time * 1.3 + x) * 0.15 * S), Math.round(0.8 * S), 1); }
+      g.fillStyle = 'rgba(255,255,255,.9)';
+      for (let i = 0; i < 26; i++) { const k = (time * 0.4 + i * 0.37) % 1, a = i * 2.39, rr = 23.5 + (i % 7) * 1.6, [sx, sy] = P(Math.cos(a) * rr + cam.x * 0.2, Math.sin(a) * rr); if (k < 0.18) g.fillRect(Math.round(sx), Math.round(sy), k < 0.09 ? 2 : 1, 1); }
       buildGround();
       const [gx, gy] = P(-GB, -GB); g.drawImage(ground, Math.round(gx), Math.round(gy));
       const [fcx, fcy] = P(0, 0); g.strokeStyle = `rgba(255,255,255,${0.45 + Math.sin(time * 1.4) * 0.1})`; g.lineWidth = Math.max(1, S * 0.12); g.beginPath(); g.ellipse(fcx, fcy + S * 0.3, 23 * S, 23 * S * K, 0, 0, TAU); g.stroke();
@@ -4625,6 +4679,15 @@ function createWorld2D() {
     add(LAYOUT.calendar.pos[2], () => { const [x, , z] = LAYOUT.calendar.pos, b = block(x, z, 2.4, 0.4, 2.8, '#a7a39a', '#bdb9af'); const [px, py] = P(x - 1.02, z + 0.2, 2.6), [qx, qy] = P(x + 1.02, z + 0.2, 0.5); g.drawImage(calCanvas, Math.round(px), Math.round(py), Math.round(qx - px), Math.round(qy - py)); hit('calendar', b[0], b[1], b[2], b[3]); });
     add(LAYOUT.mailbox.pos[2], () => { const [x, , z] = LAYOUT.mailbox.pos; shadow(x, z, 0.4); const [sx, sy] = P(x, z); R(sx - 0.05 * S, sy - 1.1 * S, 0.1 * S, 1.1 * S, '#7a4b2a'); const b = block(x, z, 0.8, 0.5, 1.55, '#4f8fd6', '#6aa4e0'); R(sx + 0.35 * S, sy - 1.7 * S, 0.08 * S, 0.4 * S, '#e0453f'); hit('mailbox', b[0], b[1] - 0.3 * S, b[2], sy); });
     add(LAYOUT.shop.pos[2], () => drawShop());
+    add(LAYOUT.cave.pos[2] + 1, () => {
+      const [x, , z] = LAYOUT.cave.pos, [sx, sy] = P(x, z);
+      shadow(x, z, 2.2);
+      for (const [dx, dy, r, c] of [[0, 1.4, 2.0, '#8a8f96'], [-1.5, 0.8, 1.3, '#9aa0a6'], [1.5, 0.8, 1.3, '#9aa0a6'], [-0.7, 2.4, 1.1, '#a7adb3'], [0.8, 2.2, 1.0, '#a7adb3']]) ell(sx + dx * S, sy - dy * S, r * S, r * 0.85 * S, c);
+      g.fillStyle = '#0b0710'; g.beginPath(); g.ellipse(sx + 0.3 * S, sy, 1.0 * S, 1.3 * S, 0, Math.PI, TAU); g.fill();
+      R(sx - 0.8 * S, sy - 1.6 * S, 0.15 * S, 1.6 * S, '#7a4b2a'); R(sx + 1.25 * S, sy - 1.6 * S, 0.15 * S, 1.6 * S, '#7a4b2a'); R(sx - 0.8 * S, sy - 1.7 * S, 2.2 * S, 0.15 * S, '#7a4b2a');
+      R(sx + 1.3 * S, sy - 1.9 * S, 0.2 * S, 0.25 * S, '#ffb45e'); glow(x + 1.4, z, 1.8, 1.8, '255,180,94', 0.7);
+      hit('cave', sx - 2 * S, sy - 3.4 * S, sx + 2 * S, sy + 0.3 * S);
+    });
     add(LAYOUT.bench.pos[2], () => { const [x, , z] = LAYOUT.bench.pos, b = block(x, z, 1.8, 0.5, 0.5, '#a8703d', '#b57b44'); block(x, z - 0.24, 1.8, 0.08, 1.0, '#9a6a4a', '#a8703d'); hit('bench', b[0], b[1] - 0.6 * S, b[2], b[3]); });
     add(LAYOUT.telescope.pos[2], () => { const [x, , z] = LAYOUT.telescope.pos, [sx, sy] = P(x, z); g.strokeStyle = '#7a4b2a'; g.lineWidth = Math.max(1, 0.08 * S); g.beginPath(); for (const d of [-0.3, 0, 0.3]) { g.moveTo(sx + d * S, sy); g.lineTo(sx, sy - 1.3 * S); } g.stroke(); g.save(); g.translate(sx, sy - 1.4 * S); g.rotate(-0.7); R(-0.12 * S, -0.9 * S, 0.24 * S, 1.2 * S, '#4f7bb8'); R(-0.16 * S, -0.95 * S, 0.32 * S, 0.14 * S, '#e9b92c'); g.restore(); hit('telescope', sx - 0.6 * S, sy - 2.3 * S, sx + 0.6 * S, sy); });
     for (const [x, z] of LAMPS) add(z, () => drawLamp(x, z));
@@ -4669,7 +4732,7 @@ function createWorld2D() {
     const [sx, sy] = P(x, z); shadow(x, z, 0.9 * s);
     R(sx - 0.15 * s * S, sy - 1.5 * s * S, 0.3 * s * S, 1.5 * s * S, '#7a4b2a');
     const cx = sx + sway * S;
-    ell(cx, sy - 2.2 * s * S, 1.05 * s * S, 0.95 * s * S, col); ell(cx + 0.25 * s * S, sy - 2.9 * s * S, 0.75 * s * S, 0.7 * s * S, '#5fa352'); ell(cx - 0.3 * s * S, sy - 2.0 * s * S, 0.5 * s * S, 0.35 * s * S, 'rgba(0,0,0,.12)');
+    ell(cx, sy - 2.2 * s * S, 1.05 * s * S, 0.95 * s * S, col); ell(cx + 0.25 * s * S, sy - 2.9 * s * S, 0.75 * s * S, 0.7 * s * S, '#5fa352'); ell(cx - 0.3 * s * S, sy - 2.0 * s * S, 0.5 * s * S, 0.35 * s * S, 'rgba(0,0,0,.12)'); ell(cx - 0.35 * s * S, sy - 2.55 * s * S, 0.35 * s * S, 0.25 * s * S, 'rgba(255,255,220,.16)');
   }
   function drawLamp(x, z) {
     const [sx, sy] = P(x, z); R(sx - 0.06 * S, sy - 2.4 * S, 0.12 * S, 2.4 * S, '#3b3b3b');
@@ -4678,6 +4741,7 @@ function createWorld2D() {
     if (night) glow(x, z, 2.55, 3.5, '255,207,107', 0.9);
   }
   function drawHouse(time) {
+    ell(...P(LAYOUT.house.pos[0] + 0.4, LAYOUT.house.pos[2] + 2.2), 3.4 * S, 0.9 * S, 'rgba(0,0,0,.16)');
     const [x, , z] = LAYOUT.house.pos, lvl = state.stats.level.lvl, night = env.phase === 'night' || env.phase === 'evening';
     if (lvl >= 10) { block(x - 3.9, z, 2.8, 3.2, 2.4, '#efd7a8', '#e2c894'); roof(x - 3.9, z, 2.8, 3.2, 2.4, 3.3, '#b33b34', '#8e2a2a'); const [wx, wy] = P(x - 3.9 - 0.45, z + 1.6, 2.0); R(wx, wy, 0.9 * S, 0.7 * S, night ? '#ffcf6b' : '#8ec5f2'); }
     if (lvl >= 15) { const [sx, sy] = P(x + 3.4, z - 1); R(sx - 0.85 * S, sy - 4.6 * S * 0.9, 1.7 * S, 4.6 * S * 0.9, '#c9c2b4'); ell(sx, sy - 4.6 * S * 0.9, 0.85 * S, 0.5 * S, '#4f7bb8'); for (let i = 0; i < 3; i++) R(sx - 0.86 * S, sy - (1 + i * 1.3) * S * 0.9, 1.72 * S, 0.08 * S, '#9aa0a6'); }
@@ -4701,6 +4765,7 @@ function createWorld2D() {
     hit('board', b[0], b[1] - 0.4 * S, b[2], sy);
   }
   function drawTavern() {
+    ell(...P(LAYOUT.tavern.pos[0] + 0.4, LAYOUT.tavern.pos[2] + 2.7), 3.9 * S, 1.0 * S, 'rgba(0,0,0,.16)');
     const [x, , z] = LAYOUT.tavern.pos, night = env.phase === 'night' || env.phase === 'evening';
     const b = block(x, z, 6, 5, 3.8, '#c58b52', '#b27a44', '#a8703d');
     for (let i = 0; i < 5; i++) { const [lx, ly] = P(x - 3, z + 2.5, 0.8 + i * 0.72), [lx2] = P(x + 3, z + 2.5, 0); R(lx, ly, lx2 - lx, Math.max(1, 0.06 * S), '#a8703d'); }
@@ -4823,6 +4888,8 @@ function createWorld2D() {
     if (env.rainbow && !inside) { const cols = ['224,69,63', '255,159,90', '246,201,69', '106,168,79', '79,143,214', '122,92,196']; g.lineWidth = Math.max(2, W * 0.012); cols.forEach((c, i) => { g.strokeStyle = `rgba(${c},.28)`; g.beginPath(); g.arc(W * 0.5, H * 0.95, W * 0.62 - i * g.lineWidth, Math.PI, TAU); g.stroke(); }); }
     if (env.storm && !inside && !document.hidden) { boltT -= dt; if (boltT <= 0) { boltT = 9 + Math.random() * 14; flash = 0.7; setTimeout(() => Sfx.thunder(), 400 + Math.random() * 900); } }
     if (flash > 0.01) { g.fillStyle = `rgba(255,255,255,${flash})`; g.fillRect(0, 0, W, H); flash *= Math.exp(-dt * 10); }
+    if (!inside && (phase === 'day' || phase === 'morning')) { const lg = g.createLinearGradient(0, 0, W, H); lg.addColorStop(0, 'rgba(255,240,200,.10)'); lg.addColorStop(0.6, 'rgba(255,240,200,0)'); g.fillStyle = lg; g.fillRect(0, 0, W, H); }
+    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.75); vg.addColorStop(0, 'rgba(20,10,30,0)'); vg.addColorStop(1, `rgba(20,10,30,${inside ? 0.45 : 0.28})`); g.fillStyle = vg; g.fillRect(0, 0, W, H);
   }
   function catchBugNow(b) { if (!canCatchBug()) return; burst(b.x, b.y, b.z, '#fff27a', 12, { speed: 1.2, up: 1.5, size: 0.08, grav: 2 }); b.away = 25 + Math.random() * 20; caughtBug(); }
 
@@ -5010,7 +5077,7 @@ function createWorld2D() {
       const [sx, sy] = toCss(P(player.x, player.z, 2.9)); promptEl.style.transform = `translate(${sx}px, ${sy}px) translate(-50%, -100%)`; near = null;
     } else { promptFor = near?.id || null; promptEl.hidden = !near; }
     if (near) {
-      const pt = t({ rdesk: 'Write at the desk', rshelf: 'Look at trophies', rframe: 'Look at photos', rbed: 'Rest', rfire: 'Sit by the fire', rdoor: 'Go outside', house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
+      const pt = t({ rdesk: 'Write at the desk', rshelf: 'Look at trophies', rframe: 'Look at photos', rbed: 'Rest', rfire: 'Sit by the fire', rdoor: 'Go outside', house: 'Enter Farmhouse', board: 'Open Quest Board', tavern: 'Enter Tavern', chest: 'Open chest', calendar: 'Read calendar', mailbox: 'Settings', shop: 'Open shop', cave: 'Enter the cave', dock: 'Go fishing', bench: 'Sit & breathe', telescope: 'Look at the stars' }[near.id]);
       if (promptText.textContent !== pt) promptText.textContent = pt;
       const o = LAYOUT[near.id], [sx, sy] = toCss(P(o.approach[0], o.approach[2], 2.6));
       promptEl.style.transform = `translate(${sx}px, ${sy}px) translate(-50%, -100%)`;
@@ -5191,6 +5258,7 @@ const GUIDE = {
       ['calendar', '📅', 'Calendar stone', 'ป้ายหินปฏิทิน', 'This month at a glance: green days and red days.', 'ดูทั้งเดือนในแวบเดียว วันเขียววันแดง'],
       ['shop', '🛒', 'Farm shop', 'ร้านค้าฟาร์ม', 'Spend discipline seeds 🌰 on a windmill, pond, pets… Seeds come from journals, kept rules and beaten bosses — never from profit.', 'ใช้เมล็ดวินัย 🌰 ซื้อกังหันลม บ่อปลา สัตว์เลี้ยง… เมล็ดได้จากการเขียนบันทึก ทำตามกฎ และปราบบอส ไม่ใช่จากกำไร'],
       ['field', '⚔️', 'Weekly boss', 'บอสประจำสัปดาห์', 'A bad habit stands by the field. Each good trading day hits it; 4 hits win.', 'นิสัยเสียหนึ่งอย่างยืนอยู่ข้างแปลง วันเทรดที่ดีแต่ละวัน = โจมตี 1 ครั้ง ครบ 4 ครั้งชนะ'],
+      ['cave', '⛏', 'Cave', 'ถ้ำ', 'Turn-based dungeon. Monsters are your bad habits; your power comes from kept rules, journals and plans.', 'ดันเจี้ยนต่อสู้แบบเทิร์น มอนสเตอร์คือนิสัยเสียของคุณ พลังมาจากการทำตามกฎ บันทึก และแผน'],
       ['dock', '🎣', 'Dock', 'ท่าตกปลา', 'Fishing mini-game. Some fish only bite at night, in the rain, or on a green day.', 'มินิเกมตกปลา บางชนิดกินเบ็ดเฉพาะกลางคืน ตอนฝนตก หรือวันที่พอร์ตเขียว'],
       ['bench', '🌳', 'Breathing bench', 'ม้านั่งหายใจ', 'Sit under the tree for 1–3 minutes of box breathing before trading.', 'นั่งใต้ต้นไม้ หายใจแบบกล่อง 1–3 นาทีก่อนเทรด'],
       ['telescope', '🔭', 'Telescope', 'กล้องดูดาว', 'Find 8 hidden constellations in the night sky.', 'ตามหากลุ่มดาว 8 กลุ่มบนท้องฟ้า'],
@@ -5332,6 +5400,7 @@ const Music = {
     day: { bpm: 112, key: 55, prog: [0, 5, 9, 7], minor: [0, 0, 1, 0], pent: [0, 2, 4, 7, 9], lead: 'square', hats: true },
     evening: { bpm: 88, key: 53, prog: [0, 4, 9, 5], minor: [0, 1, 1, 0], pent: [0, 2, 4, 7, 9], lead: 'triangle', hats: false },
     night: { bpm: 70, key: 57, prog: [0, 8, 3, 10], minor: [1, 0, 0, 0], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: false },
+    cave: { bpm: 84, key: 45, prog: [0, 8, 5, 7], minor: [1, 0, 1, 1], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: true },
     rain: { bpm: 76, key: 50, prog: [0, 5, 8, 7], minor: [1, 1, 0, 1], pent: [0, 3, 5, 7, 10], lead: 'triangle', hats: false },
   },
   want() { return !!Sfx.ctx && Sfx.on && state.settings.music !== false && state.settings.fun.musicMode !== 'off' && !document.hidden; },
@@ -5430,6 +5499,7 @@ const Music = {
   },
 };
 function musicMood() {
+  if (Music.dungeon) return 'cave';
   const fixed = state.settings.fun?.musicMode;
   if (Music.SONGS[fixed]) return fixed;
   if (weatherNow() === 'rain') return 'rain';
@@ -5775,6 +5845,7 @@ function openFun(tab = 'do') {
   const card = (icon, title, desc, btn, attrs, dis = false) => `<div class="slot flex items-center gap-3"><div class="text-3xl w-10 text-center shrink-0">${icon}</div><div class="flex-1 min-w-0"><div class="font-pixel font-bold">${title}</div><div class="text-xs text-[#8b5a2b]">${desc}</div></div><button class="btn text-sm whitespace-nowrap ${dis ? '' : 'btn-green'}" ${attrs} ${dis ? 'disabled style="opacity:.55"' : ''}>${btn}</button></div>`;
   const tabs = {
     do: () => `${festHTML()}<div class="flex flex-col gap-2">
+      ${card('⛏', tr('Cave dungeon', 'ดันเจี้ยนถ้ำ'), tr(`Fight your bad habits · deepest floor ${state.settings.dun.best || 0}`, `สู้กับนิสัยเสีย · ลึกสุดชั้น ${state.settings.dun.best || 0}`), tr('Go ▶', 'ไป ▶'), 'data-fgo="cave"')}
       ${card('🏡', tr('Inside the farmhouse', 'เข้าไปในบ้าน'), tr('Desk, trophies, photos, bed, fireplace', 'โต๊ะเขียน ถ้วยรางวัล รูปถ่าย เตียง เตาผิง'), tr('Enter', 'เข้า'), 'data-fgo="house-in"')}
       ${card('⛵', tr('Boat ride', 'ล่องเรือ'), tr(`A slow lap around the island · laps ${f.laps || 0}`, `ล่องช้าๆ รอบเกาะ · ครบ ${f.laps || 0} รอบ`), tr('Sail', 'ออกเรือ'), 'data-fgo="boat"')}
       ${card('🍳', tr('Cook with Rosa', 'ทำอาหารกับโรซ่า'), tr(`Fish + pumpkins → dishes · ${Object.values(f.dishes).reduce((a, b) => a + b, 0)} cooked`, `ปลา + ฟักทอง → อาหาร · ทำแล้ว ${Object.values(f.dishes).reduce((a, b) => a + b, 0)} จาน`), tr('Cook', 'ทำ'), 'data-fgo="kitchen"')}
@@ -6243,7 +6314,7 @@ function syncPayload() {
   const manual = state.trades.filter((t) => t.source !== 'mt5' && !String(t.id).startsWith('demo-')).map((t) => ({ ...t, shot: null }));
   const { thumbs, ...fun } = st.fun;
   return { app: 'harvest-ledger', kind: 'journal', v: 1, stamp: st.stamp || 0, cfgStamp: st.cfgStamp || 0, days: state.days, plans: state.plans, ann, manual, deleted: st.deleted || [], achievements: state.achievements,
-    settings: { name: st.name, startBalance: st.startBalance, dailyLoss: st.dailyLoss, rules: st.rules, farm: st.farm, fun, goals: st.goals, reviews: st.reviews, compare: st.compare } };
+    settings: { name: st.name, startBalance: st.startBalance, dailyLoss: st.dailyLoss, rules: st.rules, farm: st.farm, fun, goals: st.goals, reviews: st.reviews, compare: st.compare, dun: st.dun } };
 }
 function mergeDeep(a, b, bNewer) { // numbers → max, primitive arrays → union, objects → recurse, rest → newer side
   if (Array.isArray(a) && Array.isArray(b)) return a.every((x) => typeof x !== 'object') && b.every((x) => typeof x !== 'object') ? [...new Set([...a, ...b])] : bNewer ? b : a;
@@ -6265,6 +6336,7 @@ function mergeJournal(R) {
   if ((R.cfgStamp || 0) > (st.cfgStamp || 0)) { for (const k of ['name', 'startBalance', 'dailyLoss', 'rules', 'compare']) if (S[k] !== undefined) st[k] = S[k]; st.cfgStamp = R.cfgStamp; }
   st.fun = mergeDeep(st.fun, S.fun || {}, newer);
   st.farm = mergeDeep(st.farm, S.farm || {}, newer);
+  if (S.dun) st.dun = mergeDeep(st.dun, S.dun, newer);
   st.goals = { ...(S.goals || {}), ...st.goals, ...(newer ? S.goals || {} : {}) };
   st.reviews = { ...(S.reviews || {}), ...st.reviews };
   const changed = strHash(JSON.stringify(syncPayload())) !== before;
@@ -6302,6 +6374,394 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-open-goals]')) { openGoals(); return; }
   if (e.target.closest('[data-enter-house]')) { windows.slice().forEach((w) => w.close()); setTimeout(() => world?.enterHouse(), 250); }
 });
+
+// ------------------------------------------------------------------ the cave dungeon: turn-based fights against your own bad habits
+// Power comes from discipline (kept-rule streak, journals, plans, plan adherence), never from profit.
+// Monsters grow stronger with the habit they stand for in your last 7 days of trades.
+const DSPR = {"hero": ["....yyyy....", "...yyyyyy...", "..yrrrrrry..", ".yyyyyyyyyy.", "...nnnnnn...", "...nnknnk...", "...nnnnnn...", "....nnnn....", "..gggggggg..", ".nggguuuggn.", ".nggguuuggn.", "..guuuuuug..", "...uuuuuu...", "...uu..uu...", "...uu..uu...", "..kkk..kkk.."], "slime": ["....llllll....", "..llwlllllll..", ".lllwwlllllllG", "lllllllllllllG", "llkwllllkwlllG", "llkkllllkklllG", "lllllllllllllG", "llllllkklllllG", ".lllllllllllGG", "..GGGGGGGGGGG."], "bat": ["k..............k", "kk....kkkk....kk", "kpk..kppppk..kpk", "kppkkpwkkwpkkppk", ".kppppppppppppk.", "..kkppprrpppkk..", "....kk.kk.kk...."], "goblin": ["...GGGGGG...", ".GGllllllGG.", "Gl.lyllyl.lG", "...llllll...", "...lkkkkl...", "....llll....", "..bbbbbbbb..", ".lbbbbbbbbl.", ".lbbbbbbbbl.", "..bbbbbbbb..", "...DD..DD...", "...DD..DD...", "..kkk..kkk.."], "ghost": ["....cccc....", "..cccccccc..", ".cccccccccc.", ".cckkcckkcc.", ".cckkcckkcc.", ".cccccccccc.", ".ccccRRcccc.", ".cccccccccc.", ".cccccccccc.", ".cccccccccc.", ".cc.cc.cc.c.", ".c..c..c..c."], "dragon": ["........RR..........", ".......RrrR.....RR..", "......RrrrrR...RrrR.", "..RRRRrrwkrR..RrrrrR", ".RrrrrrrrrrRRRrrrrR.", "RrrrrrrrrrrrrrrrrR..", "Rrryyyrrrrrrrrrrr...", ".RryyyyyrrrrrrrrR...", "..RyyyyyyrrrrrrR....", "...RyyyyyyrrrrR.....", "....RRyyyyrrrR......", "......RR.RR.RR......", "......kk..kk.kk....."], "chest": ["..BBBBBBBB..", ".BbbbbbbbbB.", "BbbbbbbbbbbB", "yyyyyykyyyyy", "BbbbbbybbbbB", "BbbbbbbbbbbB", "BbbbbbbbbbbB", "BBBBBBBBBBBB"]};
+const dsprCache = {};
+function dsprite(name, map = null) {
+  const key = name + JSON.stringify(map || {});
+  if (dsprCache[key]) return dsprCache[key];
+  const rows = DSPR[name], c = document.createElement('canvas'); c.width = rows[0].length; c.height = rows.length;
+  const g = c.getContext('2d');
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { const k = map?.[ch] || ch; if (PAL[k]) { g.fillStyle = PAL[k]; g.fillRect(x, y, 1, 1); } }));
+  return (dsprCache[key] = c);
+}
+const MONS = {
+  bat: { en: 'FOMO Bat', th: 'ค้างคาว FOMO', hp: 16, atk: 4, spr: 'bat', habit: 'fomo', hintEn: 'Hits twice. Defend when it swoops.', hintTh: 'ตีสองครั้งติด ป้องกันตอนมันโฉบ' },
+  slime: { en: 'Revenge Slime', th: 'สไลม์แก้แค้น', hp: 28, atk: 5, spr: 'slime', map: { l: 'r', G: 'R', w: 'p' }, habit: 'revenge', hintEn: 'Gets angrier every time you hit it. Finish it fast.', hintTh: 'ยิ่งตียิ่งโกรธ ต้องจบให้เร็ว' },
+  goblin: { en: 'Overtrade Goblin', th: 'ก็อบลินเทรดเกิน', hp: 24, atk: 3, spr: 'goblin', habit: 'overtrade', hintEn: 'Many small hits — a good Defend blocks most of them.', hintTh: 'ตีรัวหลายที การป้องกันกันได้เกือบหมด' },
+  ghost: { en: 'Tilt Ghost', th: 'ผีหัวร้อน', hp: 26, atk: 7, spr: 'ghost', dodge: 0.3, habit: 'tilt', hintEn: 'Dodges sloppy hits. Only a perfect strike always lands.', hintTh: 'หลบการโจมตีมั่วๆ ได้ มีแต่จังหวะเพอร์เฟกต์ที่โดนแน่นอน' },
+  dragon: { en: 'Margin Call Dragon', th: 'มังกร Margin Call', hp: 150, atk: 9, spr: 'dragon', boss: true, habit: 'loss', hintEn: 'Charges a huge breath. Stop-Loss or Defend when it glows!', hintTh: 'ชาร์จลมหายใจไฟ ใช้ Stop-Loss หรือป้องกันตอนมันเรืองแสง!' },
+};
+const GEAR = [
+  { id: 'wood', icon: '🗡', en: 'Wooden sword', th: 'ดาบไม้', slot: 'weapon', atk: 3, cost: { coins: 20 } },
+  { id: 'tp', icon: '⚔️', en: 'Take-Profit Sword', th: 'ดาบ Take-Profit', slot: 'weapon', atk: 8, crit: 0.05, cost: { coins: 80, iron: 6, gold: 2 } },
+  { id: 'sl', icon: '🛡', en: 'Stop-Loss Shield', th: 'โล่ Stop-Loss', slot: 'shield', def: 6, cost: { coins: 60, iron: 8 } },
+  { id: 'helm', icon: '⛑', en: 'Risk-Manager Helm', th: 'หมวกบริหารความเสี่ยง', slot: 'head', hp: 25, cost: { coins: 70, iron: 5, gold: 1 } },
+  { id: 'boots', icon: '👢', en: 'Boots of Patience', th: 'รองเท้าแห่งความอดทน', slot: 'feet', dodge: 0.1, cost: { coins: 50, iron: 3, stone: 2 } },
+  { id: 'charm', icon: '🎃', en: 'Golden Pumpkin Charm', th: 'เครื่องรางฟักทองทอง', slot: 'charm', crit: 0.1, hp: 10, cost: { coins: 120, gold: 4, crystal: 2, pumpkin: 3 } },
+];
+const ORE = { iron: ['⛓', 'Iron', 'เหล็ก'], gold: ['🟡', 'Gold ore', 'แร่ทอง'], crystal: ['💎', 'Crystal', 'คริสตัล'] };
+const DISH_HEAL = { grilled: 0.3, soup: 0.35, stew: 0.5, sushi: 0.6, pie: 1, feast: 1 };
+const DUN_RUNS = 3, DUN_FLOORS = 5, DUN_ROOMS = 6;
+const DUN = () => state.settings.dun;
+function dunGear() {
+  const own = new Set(DUN().gear || []), out = { atk: 0, def: 0, hp: 0, crit: 0, dodge: 0 };
+  const best = GEAR.filter((g) => own.has(g.id)).reduce((m, g) => { if (!m[g.slot] || (g.atk || 0) + (g.def || 0) + (g.hp || 0) / 3 > (m[g.slot].atk || 0) + (m[g.slot].def || 0) + (m[g.slot].hp || 0) / 3) m[g.slot] = g; return m; }, {});
+  for (const g of Object.values(best)) for (const k of Object.keys(out)) out[k] += g[k] || 0;
+  return { ...out, best };
+}
+function dunStats() {
+  const I = dtreeInfo(), plans = Object.keys(state.plans || {}).length, journals = Object.keys(state.days || {}).length;
+  const pc = Object.keys(state.plans || {}).map(planCheck).filter((c) => c && c.score != null), adh = pc.length ? pc.reduce((a, c) => a + c.score, 0) / pc.length : 0.4;
+  const G = dunGear();
+  return {
+    hp: 40 + Math.min(20, I.streak) * 5 + Math.min(40, I.kept) * 2 + G.hp, atk: 6 + Math.min(30, journals) + G.atk, def: 2 + Math.min(15, Math.floor(plans / 2)) + G.def,
+    crit: Math.min(0.6, 0.05 + adh * 0.25 + G.crit), dodge: G.dodge, src: { streak: I.streak, kept: I.kept, journals, plans, adh },
+    skills: { sl: I.kept >= 3, tp: journals >= 3, pat: (state.settings.fun.breath || 0) >= 1 },
+  };
+}
+// how strong each habit was in the last 7 days (0..1)
+function habitHeat() {
+  const s = state.stats, B = s.beh, from = isoOf(new Date(Date.now() - 6 * 864e5));
+  const recent = state.trades.filter((t) => t.date >= from), n = recent.length || 1;
+  const days = [...B.days.entries()].filter(([d]) => d >= from);
+  const fomoDays = days.filter(([, D]) => D.fomo).length;
+  return {
+    fomo: days.length ? fomoDays / days.length : 0,
+    revenge: recent.filter((t) => B.flags.get(t.id)?.includes('revenge')).length / n * 4,
+    tilt: recent.filter((t) => B.flags.get(t.id)?.includes('tilt')).length / n * 3,
+    overtrade: days.length ? days.filter(([, D]) => D.n > golemLimit(s)).length / days.length : 0,
+    loss: days.length ? days.filter(([, D]) => D.low <= -state.settings.dailyLoss * 0.8).length / days.length : 0,
+  };
+}
+function dunLocked() {
+  const D = DUN(), today = todayISO();
+  if (state.stats.todayN && state.stats.energy <= 0) return tr('You hit your daily loss limit today. The cave is closed — rest, like the rules say. It opens tomorrow.', 'วันนี้ขาดทุนถึงลิมิตแล้ว ถ้ำปิด พักตามกฎนะ พรุ่งนี้เปิดใหม่');
+  if (D.day === today && D.runs >= DUN_RUNS) return tr(`You already explored ${DUN_RUNS} times today. Come back tomorrow.`, `วันนี้ลงถ้ำครบ ${DUN_RUNS} รอบแล้ว พรุ่งนี้มาใหม่นะ`);
+  if (D.lock?.on && minutesOf(D.lock.from) != null && minutesOf(D.lock.to) != null) {
+    const m = new Date().getHours() * 60 + new Date().getMinutes(), a = minutesOf(D.lock.from), b = minutesOf(D.lock.to);
+    if (a < b ? m >= a && m < b : m >= a || m < b) return tr(`The cave is closed during your trading hours (${D.lock.from}–${D.lock.to}). Focus on the chart.`, `ถ้ำปิดช่วงเวลาเทรดของคุณ (${D.lock.from}–${D.lock.to}) โฟกัสที่กราฟก่อนนะ`);
+  }
+  return null;
+}
+const costTxt = (c) => Object.entries(c).map(([k, v]) => `${k === 'coins' ? '🪙' : k === 'pumpkin' ? '🎃' : k === 'stone' ? '🪨' : ORE[k][0]}${v}`).join(' ');
+function haveCost(c) {
+  const D = DUN(), f = state.settings.fun;
+  return Object.entries(c).every(([k, v]) => (k === 'coins' ? D.coins : k === 'pumpkin' ? f.bag.pumpkin || 0 : k === 'stone' ? f.beach.stone || 0 : D.ore[k] || 0) >= v);
+}
+function payCost(c) {
+  const D = DUN(), f = state.settings.fun;
+  for (const [k, v] of Object.entries(c)) { if (k === 'coins') D.coins -= v; else if (k === 'pumpkin') f.bag.pumpkin -= v; else if (k === 'stone') f.beach.stone -= v; else D.ore[k] -= v; }
+}
+function openCamp() {
+  const D = DUN(), st = dunStats(), lock = dunLocked(), H = habitHeat(), today = todayISO(), runsLeft = D.day === today ? DUN_RUNS - D.runs : DUN_RUNS;
+  const stat = (icon, k, v, src) => `<div class="slot"><div class="text-xs text-[#8b5a2b] font-semibold">${icon} ${k}</div><div class="num text-lg">${v}</div><div class="text-[10px] text-[#8b5a2b] leading-tight">${src}</div></div>`;
+  const own = new Set(D.gear || []);
+  openWindow({
+    title: tr('Cave camp', 'แคมป์หน้าถ้ำ'), width: 620, autofocus: false,
+    html: `<div class="flex items-center gap-3 mb-2"><div class="text-4xl">⛏</div><div class="text-sm">${tr('Below the island live the monsters of bad habits. Your strength comes from discipline — not from profit.', 'ใต้เกาะมีมอนสเตอร์แห่งนิสัยเสียอาศัยอยู่ ความแข็งแกร่งของคุณมาจากวินัย ไม่ใช่กำไร')}</div></div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        ${stat('❤️', 'HP', st.hp, tr(`streak ${st.src.streak} · kept ${st.src.kept}`, `ติดต่อกัน ${st.src.streak} · ทำตามกฎ ${st.src.kept} วัน`))}
+        ${stat('⚔️', 'ATK', st.atk, tr(`${st.src.journals} journals`, `บันทึก ${st.src.journals} วัน`))}
+        ${stat('🛡', 'DEF', st.def, tr(`${st.src.plans} plans`, `แผนเทรด ${st.src.plans} วัน`))}
+        ${stat('✨', 'CRIT', pct(st.crit), tr(`plan followed ${pct(st.src.adh)}`, `ทำตามแผน ${pct(st.src.adh)}`))}
+      </div>
+      <div class="font-pixel font-bold mt-3 mb-1">✨ ${tr('Skills', 'สกิล')}</div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+        <div class="slot ${st.skills.sl ? '' : 'opacity-50'}"><b>🛡 Stop-Loss</b><br>${tr('Blocks the next hit completely', 'กันการโจมตีครั้งถัดไปได้ทั้งหมด')}${st.skills.sl ? '' : `<br>🔒 ${tr('keep your rules 3 days', 'ทำตามกฎครบ 3 วัน')}`}</div>
+        <div class="slot ${st.skills.tp ? '' : 'opacity-50'}"><b>💰 Take-Profit</b><br>${tr('A 2.5× strike', 'โจมตีแรง 2.5 เท่า')}${st.skills.tp ? '' : `<br>🔒 ${tr('write 3 journals', 'เขียนบันทึก 3 วัน')}`}</div>
+        <div class="slot ${st.skills.pat ? '' : 'opacity-50'}"><b>🍃 Patience</b><br>${tr('Heal 30% HP', 'ฟื้น HP 30%')}${st.skills.pat ? '' : `<br>🔒 ${tr('finish a breathing session', 'นั่งหายใจที่ม้านั่ง 1 ครั้ง')}`}</div>
+      </div>
+      <div class="font-pixel font-bold mt-3 mb-1">💢 ${tr('This week\'s monsters', 'มอนสเตอร์สัปดาห์นี้')}</div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">${['bat', 'slime', 'goblin', 'ghost'].map((k) => { const M = MONS[k], heat = Math.min(0.5, (H[M.habit] || 0) * 2); return `<div class="slot text-center"><img class="mx-auto px" style="width:40px;image-rendering:pixelated" src="${dsprite(M.spr, M.map).toDataURL()}" alt=""><b>${tr(M.en, M.th)}</b><br>${heat > 0.05 ? `<span class="down">+${pct(heat)} ${tr('from your trades', 'จากเทรดของคุณ')}</span>` : `<span class="up">${tr('weak this week', 'อ่อนแอสัปดาห์นี้')}</span>`}</div>`; }).join('')}</div>
+      <div class="font-pixel font-bold mt-3 mb-1">🔨 ${tr('Blacksmith', 'ช่างตีเหล็ก')} <span class="text-xs text-[#8b5a2b]">🪙${D.coins} ⛓${D.ore.iron || 0} 🟡${D.ore.gold || 0} 💎${D.ore.crystal || 0}</span></div>
+      <div class="flex flex-col gap-1">${GEAR.map((g) => { const has = own.has(g.id), ok = !has && haveCost(g.cost); return `<div class="slot flex items-center gap-2"><span class="text-2xl w-8 text-center">${g.icon}</span><div class="flex-1 min-w-0"><div class="font-pixel font-bold text-sm">${tr(g.en, g.th)}</div><div class="text-xs text-[#8b5a2b]">${[g.atk && `ATK+${g.atk}`, g.def && `DEF+${g.def}`, g.hp && `HP+${g.hp}`, g.crit && `CRIT+${pct(g.crit)}`, g.dodge && `${tr('dodge', 'หลบ')}+${pct(g.dodge)}`].filter(Boolean).join(' · ')}</div></div>${has ? `<span class="tag good">✔</span>` : `<button class="btn text-xs ${ok ? 'btn-green' : ''}" data-forge="${g.id}" ${ok ? '' : 'disabled style="opacity:.55"'}>${costTxt(g.cost)}</button>`}</div>`; }).join('')}</div>
+      <label class="flex items-center gap-2 text-sm mt-3"><input type="checkbox" data-dlock ${D.lock?.on ? 'checked' : ''}> ${tr('Close the cave during my trading hours', 'ปิดถ้ำช่วงเวลาเทรดของฉัน')} <input type="time" class="inp !w-auto !py-0" data-dfrom value="${esc(D.lock?.from || '19:00')}">–<input type="time" class="inp !w-auto !py-0" data-dto value="${esc(D.lock?.to || '23:00')}"></label>
+      ${lock ? `<div class="parch mt-3 text-sm">🔒 ${lock}</div>` : ''}
+      <div class="flex flex-wrap items-center gap-2 mt-4"><div class="text-xs text-[#8b5a2b] flex-1">${tr(`Runs left today: ${runsLeft} · deepest floor: ${D.best}`, `เหลือวันนี้ ${runsLeft} รอบ · ลึกสุด ชั้น ${D.best}`)}</div><button class="btn" data-close>${tr('Later', 'ไว้ก่อน')}</button><button class="btn btn-orange text-lg" data-dstart ${lock ? 'disabled style="opacity:.55"' : ''}>⚔️ ${tr('Enter the cave', 'ลงถ้ำ')}</button></div>`,
+    onMount(win, w) {
+      win.addEventListener('click', (e) => {
+        const f = e.target.closest('[data-forge]');
+        if (f && !f.disabled) { const g = GEAR.find((x) => x.id === f.dataset.forge); if (!haveCost(g.cost)) return; payCost(g.cost); D.gear = [...new Set([...(D.gear || []), g.id])]; save(); Sfx.coin(); Sfx.levelUp(); w.close(); toast(`${g.icon} ${tr(g.en, g.th)}`, tr('Forged!', 'ตีเสร็จแล้ว!'), 'star'); setTimeout(openCamp, 300); return; }
+        if (e.target.closest('[data-dstart]') && !dunLocked()) { w.close(); setTimeout(startDungeon, 250); }
+      });
+      win.addEventListener('change', () => { D.lock = { on: $('[data-dlock]', win).checked, from: $('[data-dfrom]', win).value, to: $('[data-dto]', win).value }; save(); });
+    },
+  });
+}
+
+// --- a run through the cave
+const dunEl = $('#dungeon');
+let RUN = null;
+function genFloor(floor) {
+  const r = Math.random, rooms = [];
+  for (let i = 0; i < DUN_ROOMS - 1; i++) {
+    const x = r();
+    rooms.push(i === 0 ? { t: 'mon' } : x < 0.55 ? { t: 'mon' } : x < 0.72 ? { t: 'chest' } : x < 0.86 ? { t: 'ore' } : { t: 'spring' });
+  }
+  rooms.push(floor === DUN_FLOORS ? { t: 'boss' } : { t: 'stairs' });
+  rooms.forEach((rm) => { if (rm.t === 'mon') rm.m = ['bat', 'slime', 'goblin', 'ghost'][Math.floor(r() * 4)]; if (rm.t === 'boss') rm.m = 'dragon'; });
+  return rooms;
+}
+function startDungeon() {
+  const D = DUN(), today = todayISO();
+  if (D.day !== today) { D.day = today; D.runs = 0; }
+  D.runs++; save();
+  const st = dunStats();
+  RUN = { st, hp: st.hp, floor: 1, room: 0, rooms: genFloor(1), loot: { coins: 0, iron: 0, gold: 0, crystal: 0 }, cd: { sl: 0, tp: 0, pat: 0 }, heat: habitHeat(), mode: 'walk', t0: performance.now(), shake: 0, fx: [], scroll: 0, done: new Set() };
+  stopActivity(); activity = 'dungeon'; windows.slice().forEach((w) => w.close());
+  dunEl.hidden = false; dunEl.innerHTML = `<canvas data-dc class="absolute inset-0 w-full h-full" style="image-rendering:pixelated"></canvas>
+    <div class="absolute left-2 right-2 top-2 safe-top flex items-start gap-2 pointer-events-none"><div class="wood pointer-events-auto p-2 flex-1 max-w-[420px]" data-dhud></div><button class="btn btn-red pointer-events-auto" data-dquit aria-label="leave">✕</button></div>
+    <div class="absolute left-1/2 -translate-x-1/2 safe-bottom bottom-3 w-[min(520px,calc(100vw-16px))] wood p-3" data-dbar></div>`;
+  Music.dungeon = true; Music.key = null; Music.sync();
+  dunDraw(); dunBar(); dunHud();
+}
+activityClose.dungeon = () => { if (RUN) cancelAnimationFrame(RUN.raf); RUN = null; activity = null; dunEl.hidden = true; dunEl.innerHTML = ''; Music.dungeon = false; Music.key = null; Music.sync(); };
+function dunHud() {
+  const R = RUN; if (!R) return;
+  const H = $('[data-dhud]', dunEl), M = R.mon;
+  H.innerHTML = `<div class="flex items-center gap-2 font-pixel text-sm"><span>⛏ ${tr('Floor', 'ชั้น')} ${R.floor}/${DUN_FLOORS} · ${tr('room', 'ห้อง')} ${R.room + 1}/${DUN_ROOMS}</span><span class="ml-auto text-xs">🪙${R.loot.coins} ⛓${R.loot.iron} 🟡${R.loot.gold} 💎${R.loot.crystal}</span></div>
+    <div class="track bar sm mt-1"><div class="fill" style="width:${pct(R.hp / R.st.hp, 1)};background-color:#d0554b"></div><div class="val">❤ ${R.hp}/${R.st.hp}${R.shield ? ' 🛡' : ''}</div></div>
+    ${M ? `<div class="flex items-center gap-2 font-pixel text-sm mt-2"><span>${tr(MONS[M.k].en, MONS[M.k].th)}</span>${M.heat > 0.05 ? `<span class="tag bad">💢+${pct(M.heat)}</span>` : ''}<span class="ml-auto">${M.intent.icon} ${M.intent.txt}</span></div>
+      <div class="track bar sm mt-1"><div class="fill" style="width:${pct(M.hp / M.max, 1)};background-color:#8a4fb8"></div><div class="val">${M.hp}/${M.max}</div></div>` : ''}`;
+}
+function dunBar(msg = '') {
+  const R = RUN; if (!R) return;
+  const B = $('[data-dbar]', dunEl), rm = R.rooms[R.room], done = R.done.has(R.room);
+  if (R.mode === 'battle') {
+    const S = R.st.skills, cd = R.cd, dishes = Object.entries(state.settings.fun.dishes || {}).filter(([k, n]) => n > 0 && DISH_HEAL[k]);
+    const sk = (k, icon, name, ok) => `<button class="btn text-sm" data-dact="${k}" ${ok && !cd[k] ? '' : 'disabled style="opacity:.5"'}>${icon} ${name}${cd[k] ? ` (${cd[k]})` : ''}</button>`;
+    B.innerHTML = `<div class="text-sm mb-2 min-h-[1.4em]" data-dmsg>${msg}</div>
+      ${R.timing ? `<div class="track bar relative mb-2" style="height:26px"><div class="absolute top-0 bottom-0" style="left:30%;width:40%;background:#e9b92c"></div><div class="absolute top-0 bottom-0" style="left:44%;width:12%;background:#6aa84f"></div><div data-dneedle class="absolute top-0 bottom-0 w-[4px] bg-[#fff4d6]"></div></div>` : ''}
+      <div class="grid grid-cols-2 gap-2 mb-2"><button class="btn btn-orange text-lg" data-dact="atk">⚔️ ${R.timing ? tr('Strike!', 'ฟัน!') : tr('Attack', 'โจมตี')}</button><button class="btn btn-green text-lg" data-dact="def" ${R.timing ? 'disabled style="opacity:.5"' : ''}>🛡 ${tr('Defend', 'ป้องกัน')}</button></div>
+      ${R.timing ? '' : `<div class="flex flex-wrap gap-1">${sk('sl', '🛡', 'Stop-Loss', S.sl)}${sk('tp', '💰', 'Take-Profit', S.tp)}${sk('pat', '🍃', tr('Patience', 'อดทน'), S.pat)}
+        ${dishes.length ? `<button class="btn text-sm" data-dact="item">🍲 ${tr('Food', 'อาหาร')} (${dishes.reduce((a, [, n]) => a + n, 0)})</button>` : ''}${MONS[R.mon.k].boss ? '' : `<button class="btn text-sm" data-dact="flee">🏃 ${tr('Run', 'หนี')}</button>`}</div>`}`;
+    return;
+  }
+  const next = `<button class="btn btn-orange text-lg flex-1" data-dnext>▶ ${tr('Go on', 'เดินต่อ')}</button>`;
+  let body = '', act = '';
+  if (rm.t === 'chest' && !done) { body = tr('A treasure chest!', 'หีบสมบัติ!'); act = `<button class="btn btn-green flex-1" data-droom>🗝 ${tr('Open', 'เปิด')}</button>`; }
+  else if (rm.t === 'ore' && !done) { body = tr('An ore vein glitters in the wall.', 'สายแร่ระยิบระยับอยู่ในผนังถ้ำ'); act = `<button class="btn btn-green flex-1" data-droom>⛏ ${tr('Mine', 'ขุด')}</button>`; }
+  else if (rm.t === 'spring' && !done) { body = tr('A calm spring. Rest here — your loot is safe from this point.', 'บ่อน้ำพุสงบ พักที่นี่ได้ ของที่เก็บมาจะปลอดภัยตั้งแต่ตรงนี้'); act = `<button class="btn btn-green flex-1" data-droom>💧 ${tr('Drink (+50% HP)', 'ดื่ม (+50% HP)')}</button>`; }
+  else if (rm.t === 'stairs') { body = tr('Stairs go deeper. Or climb out with your loot.', 'บันไดลงไปชั้นล่าง หรือกลับขึ้นไปพร้อมของ'); act = `<button class="btn btn-green flex-1" data-ddown>⬇ ${tr('Go deeper', 'ลงลึกอีก')}</button><button class="btn flex-1" data-dout>🏡 ${tr('Climb out', 'กลับขึ้นไป')}</button>`; }
+  else if (rm.t === 'mon' || rm.t === 'boss') body = done ? tr('The room is quiet now.', 'ห้องนี้เงียบแล้ว') : '';
+  B.innerHTML = `<div class="text-sm mb-2 min-h-[1.4em]">${msg || body}</div><div class="flex gap-2">${act}${rm.t === 'stairs' ? '' : next}</div>`;
+}
+function dunAdvance() {
+  const R = RUN; if (!R || R.anim) return;
+  if (R.room >= DUN_ROOMS - 1) return;
+  R.anim = true; Sfx.step(0);
+  const t0 = performance.now();
+  (function slide() { const k = Math.min(1, (performance.now() - t0) / 600); R.scroll = k; if (k < 1) requestAnimationFrame(slide); else { R.scroll = 0; R.room++; R.anim = false; dunEnter(); } })();
+}
+function dunEnter() {
+  const R = RUN, rm = R.rooms[R.room];
+  if ((rm.t === 'mon' || rm.t === 'boss') && !R.done.has(R.room)) startBattle(rm.m);
+  else { dunBar(); dunHud(); }
+  if (rm.t === 'spring' || rm.t === 'stairs') bankLoot(false);
+}
+function bankLoot(announce) {
+  const R = RUN, D = DUN();
+  D.coins += R.loot.coins; for (const k of ['iron', 'gold', 'crystal']) D.ore[k] = (D.ore[k] || 0) + R.loot[k];
+  R.banked = { ...(R.banked || {}), coins: (R.banked?.coins || 0) + R.loot.coins };
+  R.loot = { coins: 0, iron: 0, gold: 0, crystal: 0 }; save();
+  if (announce) toast(tr('Loot stored safely', 'เก็บของปลอดภัยแล้ว'), '', 'coin');
+}
+function dunRoomAction() {
+  const R = RUN, rm = R.rooms[R.room]; if (R.done.has(R.room)) return;
+  R.done.add(R.room);
+  if (rm.t === 'chest') { const c = 10 + Math.floor(Math.random() * 12) * R.floor; R.loot.coins += c; const ore = R.floor >= 3 && Math.random() < 0.5 ? 'gold' : 'iron'; R.loot[ore] += 2; if (R.floor >= 4 && Math.random() < 0.4) R.loot.crystal++; Sfx.chest(true); Sfx.coin(); dunFx('✨', '#f6c945'); dunBar(`🪙+${c} ${ORE[ore][0]}+2`); }
+  else if (rm.t === 'ore') { const ore = R.floor >= 4 && Math.random() < 0.35 ? 'crystal' : R.floor >= 2 && Math.random() < 0.5 ? 'gold' : 'iron', n = ore === 'crystal' ? 1 : 2 + Math.floor(Math.random() * 3); R.loot[ore] += n; Sfx.dirt(); Sfx.coin(2); dunFx('⛏', '#c6ccd6'); dunBar(`${ORE[ore][0]} ${tr(ORE[ore][1], ORE[ore][2])} +${n}`); }
+  else if (rm.t === 'spring') { R.hp = Math.min(R.st.hp, R.hp + Math.round(R.st.hp * 0.5)); Sfx.success(); dunFx('💧', '#6fb4ee'); bankLoot(true); dunBar(tr('You feel refreshed.', 'รู้สึกสดชื่นขึ้น')); }
+  dunHud();
+}
+
+// --- battle
+function mkIntent(M) {
+  const def = MONS[M.k], a = Math.round(M.atk * (0.9 + Math.random() * 0.2));
+  if (def.boss) {
+    const cycle = M.hp < M.max / 2 ? 2 : 3;
+    if (M.turn % cycle === cycle - 1) return { type: 'charge', icon: '🔥', txt: tr('charging…', 'กำลังชาร์จ…') };
+    if (M.charged) return { type: 'blast', icon: '💥', dmg: Math.round(M.atk * 3.2), txt: `${Math.round(M.atk * 3.2)}` };
+    return { type: 'hit', icon: '⚔️', dmg: a, txt: String(a) };
+  }
+  if (M.k === 'bat') return { type: 'multi', n: 2, dmg: Math.max(1, Math.round(a * 0.6)), icon: '🦇', txt: `${Math.max(1, Math.round(a * 0.6))}×2` };
+  if (M.k === 'goblin') return { type: 'multi', n: 3, dmg: Math.max(1, Math.round(a * 0.55)), icon: '👊', txt: `${Math.max(1, Math.round(a * 0.55))}×3` };
+  if (M.k === 'slime') { const d = Math.round(a * (1 + 0.25 * (M.rage || 0))); return { type: 'hit', dmg: d, icon: M.rage ? '😡' : '⚔️', txt: String(d) }; }
+  return { type: 'hit', dmg: a, icon: '⚔️', txt: String(a) };
+}
+function startBattle(k) {
+  const R = RUN, def = MONS[k], f = R.floor, heat = Math.min(0.5, (R.heat[def.habit] || 0) * 2);
+  const hp = Math.round(def.hp * (1 + 0.35 * (f - 1)) * (1 + heat)), atk = Math.round(def.atk * (1 + 0.25 * (f - 1)) * (1 + heat));
+  R.mon = { k, hp, max: hp, atk, heat, turn: 0, rage: 0, charged: false, hitT: 0 };
+  R.mon.intent = mkIntent(R.mon);
+  R.mode = 'battle'; R.timing = false; R.shield = false;
+  Sfx.error(); dunHud(); dunBar(`${def.boss ? '🐉 ' : ''}${tr(def.hintEn, def.hintTh)}`);
+}
+function dunFx(text, col, big = false) { RUN?.fx.push({ text, col, t: 0, big, side: 'm' }); }
+function dmgFx(n, side, col = '#fff4d6', crit = false) { RUN?.fx.push({ text: String(n), col, t: 0, big: crit, side }); }
+function playerAttack(mult, perfect) {
+  const R = RUN, M = R.mon, def = MONS[M.k];
+  if (def.dodge && !perfect && Math.random() < def.dodge) { dunFx(tr('MISS', 'หลบ!'), '#cfd8ea'); Sfx.hover(); return false; }
+  const crit = perfect || Math.random() < R.st.crit, dmg = Math.max(1, Math.round(R.st.atk * mult * (crit ? 1.8 : 1) * (0.9 + Math.random() * 0.2)));
+  M.hp = Math.max(0, M.hp - dmg); M.hitT = 1; R.shake = crit ? 0.8 : 0.4;
+  dmgFx(dmg, 'm', crit ? '#ffe08a' : '#fff4d6', crit); crit ? Sfx.firework(1) : Sfx.click(); Sfx.noise(0.08, { vol: 0.12, freq: 1500 });
+  if (M.k === 'slime') M.rage = (M.rage || 0) + 1;
+  return true;
+}
+function enemyTurn(defending) {
+  const R = RUN, M = R.mon; if (!M || M.hp <= 0) return;
+  const I = M.intent;
+  M.turn++;
+  const hitMe = (d) => {
+    if (R.st.dodge && Math.random() < R.st.dodge) { dmgFx(tr('dodge', 'หลบ'), 'p', '#9bd35a'); return; }
+    if (R.shield) { R.shield = false; dmgFx('🛡 0', 'p', '#9fd3f0'); Sfx.chest(false); return; }
+    let x = Math.max(1, Math.round(d - R.st.def * 0.5)); if (defending) x = Math.max(0, Math.round(x * 0.4));
+    R.hp = Math.max(0, R.hp - x); R.pHit = 1; dmgFx(x, 'p', '#e0453f'); Sfx.error();
+  };
+  if (I.type === 'charge') { M.charged = true; dunFx('🔥', '#ff9f5a', true); Sfx.warp(); }
+  else if (I.type === 'blast') { M.charged = false; hitMe(I.dmg); R.shake = 1; Sfx.thunder(); }
+  else if (I.type === 'multi') for (let i = 0; i < I.n; i++) setTimeout(() => { if (RUN === R) { hitMe(I.dmg); dunHud(); if (R.hp <= 0) dunDefeat(); } }, i * 220);
+  else hitMe(I.dmg);
+  M.intent = mkIntent(M);
+  for (const k of Object.keys(R.cd)) if (R.cd[k] > 0) R.cd[k]--;
+  dunHud();
+  if (R.hp <= 0) setTimeout(dunDefeat, 400);
+}
+function afterPlayer(defending = false, msg = '') {
+  const R = RUN, M = R.mon;
+  dunHud();
+  if (M.hp <= 0) { setTimeout(winBattle, 500); dunBar(msg); return; }
+  dunBar(msg);
+  R.busy = true;
+  setTimeout(() => { if (RUN !== R) return; enemyTurn(defending); R.busy = false; if (R.hp > 0 && RUN) dunBar(msg); }, 650);
+}
+function dunAct(a) {
+  const R = RUN; if (!R || R.mode !== 'battle' || R.busy) return;
+  if (a === 'atk') {
+    if (!R.timing) { R.timing = true; R.tT0 = performance.now(); dunBar(tr('Tap Strike when the needle is in the green!', 'กด "ฟัน!" ตอนเข็มอยู่ในช่องเขียว!')); needle(); R.timeout = setTimeout(() => { if (RUN === R && R.timing) resolveStrike(); }, 1600); return; }
+    resolveStrike(); return;
+  }
+  if (R.timing) return;
+  if (a === 'def') { Sfx.select(); dunFx('🛡', '#9fd3f0'); afterPlayer(true, tr('You brace yourself.', 'ตั้งรับไว้')); return; }
+  if (a === 'sl') { R.shield = true; R.cd.sl = 3; Sfx.chest(true); dunFx('🛡 Stop-Loss', '#9fd3f0'); afterPlayer(false, tr('Stop-Loss set: the next hit does nothing.', 'ตั้ง Stop-Loss แล้ว: การโจมตีครั้งถัดไปไม่ทำอะไรคุณ')); return; }
+  if (a === 'tp') { R.cd.tp = 4; playerAttack(2.5, true); afterPlayer(false, tr('Take-Profit!', 'Take-Profit!')); return; }
+  if (a === 'pat') { R.cd.pat = 5; const h = Math.round(R.st.hp * 0.3); R.hp = Math.min(R.st.hp, R.hp + h); dmgFx('+' + h, 'p', '#9bd35a'); Sfx.success(); afterPlayer(false, tr('You breathe slowly and recover.', 'หายใจช้าๆ แล้วฟื้นตัว')); return; }
+  if (a === 'item') {
+    const f = state.settings.fun, k = Object.keys(DISH_HEAL).sort((x, y) => DISH_HEAL[x] - DISH_HEAL[y]).find((x) => (f.dishes[x] || 0) > 0 && R.hp + R.st.hp * DISH_HEAL[x] <= R.st.hp * 1.1) || Object.keys(DISH_HEAL).find((x) => (f.dishes[x] || 0) > 0);
+    if (!k) return;
+    f.dishes[k]--; save(); const h = Math.round(R.st.hp * DISH_HEAL[k]); R.hp = Math.min(R.st.hp, R.hp + h);
+    const rc = RECIPES.find((r) => r.id === k); dmgFx(`${rc.icon}+${h}`, 'p', '#9bd35a'); Sfx.success(); afterPlayer(false, tr(`You eat ${rc.en}.`, `กิน${rc.th}`)); return;
+  }
+  if (a === 'flee') { if (Math.random() < 0.6) { Sfx.warp(); R.mode = 'walk'; R.mon = null; R.done.add(R.room); dunHud(); dunBar(tr('You slipped away.', 'หนีมาได้')); } else afterPlayer(false, tr('Couldn\'t get away!', 'หนีไม่พ้น!')); }
+}
+function needle() { const R = RUN; if (!R?.timing) return; const k = ((performance.now() - R.tT0) / 1000) * 1.4, x = 1 - Math.abs((k % 2) - 1); R.nx = x; const n = $('[data-dneedle]', dunEl); if (n) n.style.left = `calc(${(x * 100).toFixed(1)}% - 2px)`; requestAnimationFrame(needle); }
+function resolveStrike() {
+  const R = RUN; clearTimeout(R.timeout); R.timing = false;
+  const x = R.nx ?? 0, perfect = x >= 0.44 && x <= 0.56, good = x >= 0.3 && x <= 0.7;
+  const landed = playerAttack(perfect ? 1 : good ? 1 : 0.5, perfect);
+  afterPlayer(false, perfect ? tr('Perfect strike!', 'จังหวะเพอร์เฟกต์!') : good ? tr('Good hit.', 'โดนดี') : landed ? tr('A weak hit…', 'โดนเบาๆ…') : tr('Missed!', 'พลาด!'));
+}
+function winBattle() {
+  const R = RUN, M = R.mon, def = MONS[M.k];
+  const coins = Math.round((6 + Math.random() * 8) * R.floor * (def.boss ? 6 : 1));
+  R.loot.coins += coins; if (Math.random() < 0.5) R.loot.iron++; if (def.boss) { R.loot.gold += 4; R.loot.crystal += 3; }
+  R.done.add(R.room); R.mode = 'walk'; R.mon = null;
+  Sfx.success(); dunFx(`🪙+${coins}`, '#f6c945', true);
+  const D = DUN(); D.kills = (D.kills || 0) + 1; D.best = Math.max(D.best || 0, R.floor);
+  if (def.boss) {
+    D.bossKills = (D.bossKills || 0) + 1; bankLoot(false); save(); Sfx.levelUp(); world?.fireworks();
+    dunHud(); $('[data-dbar]', dunEl).innerHTML = `<div class="text-center"><div class="text-4xl">🏆</div><div class="font-pixel text-lg font-bold">${tr('Margin Call Dragon defeated!', 'ปราบมังกร Margin Call ได้แล้ว!')}</div><p class="text-sm">${tr('Discipline is the only armor that never breaks.', 'วินัยคือเกราะเดียวที่ไม่มีวันแตก')}</p><button class="btn btn-green mt-2" data-dout>🏡 ${tr('Return home', 'กลับบ้าน')}</button></div>`;
+    checkAchievements(true); return;
+  }
+  save(); dunHud(); dunBar(`${tr('Victory!', 'ชนะ!')} 🪙+${coins}`); checkAchievements(true);
+}
+function dunDefeat() {
+  const R = RUN; if (!R || R.over) return; R.over = true;
+  const lost = Math.ceil(R.loot.coins / 2); R.loot.coins -= lost; for (const k of ['iron', 'gold', 'crystal']) R.loot[k] = Math.floor(R.loot[k] / 2);
+  bankLoot(false); Sfx.fail();
+  $('[data-dbar]', dunEl).innerHTML = `<div class="text-center"><div class="text-4xl">😵</div><div class="font-pixel text-lg font-bold">${tr('You fainted…', 'คุณหมดสติ…')}</div><p class="text-sm">${tr(`Tom carried you out. You dropped half your unsaved loot. Discipline makes you stronger — keep your rules and come back.`, `ลุงทอมแบกคุณออกมา ของที่ยังไม่ได้เก็บหายไปครึ่งหนึ่ง วินัยจะทำให้คุณแข็งแกร่งขึ้น ทำตามกฎแล้วกลับมาใหม่นะ`)}</p><button class="btn btn-green mt-2" data-dout>🏡 ${tr('Back to the farm', 'กลับฟาร์ม')}</button></div>`;
+}
+function dunDown() {
+  const R = RUN; R.floor++; R.room = 0; R.rooms = genFloor(R.floor); R.done = new Set(); Sfx.warp();
+  DUN().best = Math.max(DUN().best || 0, R.floor); save(); checkAchievements(true);
+  dunEnter();
+}
+function dunLeave() { const R = RUN; if (R && !R.over && R.mode !== 'battle') bankLoot(false); const got = R?.banked?.coins || 0; stopActivity(); if (got) toast(tr('Back from the cave', 'กลับจากถ้ำแล้ว'), `🪙 ${DUN().coins} · ⛓${DUN().ore.iron || 0} 🟡${DUN().ore.gold || 0} 💎${DUN().ore.crystal || 0}`, 'coin'); }
+dunEl.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-dquit]')) {
+    if (RUN?.mode === 'battle' || RUN?.loot.coins) { if (!(await ask(tr('Leave the cave now? Unsaved loot (since the last spring or stairs) is halved.', 'ออกจากถ้ำตอนนี้เลยไหม? ของที่ยังไม่ได้เก็บ (หลังน้ำพุหรือบันไดล่าสุด) จะหายไปครึ่งหนึ่ง'), { yes: tr('Leave', 'ออก'), no: tr('Stay', 'อยู่ต่อ') }))) return; const R = RUN; if (R) { R.loot.coins = Math.floor(R.loot.coins / 2); for (const k of ['iron', 'gold', 'crystal']) R.loot[k] = Math.floor(R.loot[k] / 2); R.mode = 'walk'; } }
+    dunLeave(); return;
+  }
+  const b = e.target.closest('[data-dact]'); if (b && !b.disabled) { dunAct(b.dataset.dact); return; }
+  if (e.target.closest('[data-dnext]')) dunAdvance();
+  else if (e.target.closest('[data-droom]')) dunRoomAction();
+  else if (e.target.closest('[data-ddown]')) dunDown();
+  else if (e.target.closest('[data-dout]')) dunLeave();
+});
+
+// --- the cave scene (side view, pixel canvas)
+function dunDraw() {
+  const R = RUN; if (!R) return;
+  R.raf = requestAnimationFrame(dunDraw);
+  const c = $('[data-dc]', dunEl); if (!c) return;
+  const portrait = innerHeight > innerWidth, W = portrait ? 200 : 300, H = Math.round(W * innerHeight / innerWidth);
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+  const t = performance.now() / 1000, floor = R.floor, hue = [0, 20, 260, 200, 330, 10][floor] || 0;
+  const sh = R.shake > 0.01 ? (Math.random() - 0.5) * R.shake * 6 : 0; R.shake *= 0.9;
+  g.save(); g.translate(Math.round(sh), 0);
+  const gy = Math.round(H * (portrait ? 0.6 : 0.7)), off = (R.scroll || 0) * W;
+  // wall
+  g.fillStyle = `hsl(${hue},18%,${13 + floor}%)`; g.fillRect(-4, 0, W + 8, H);
+  for (let y = 0; y < gy; y += 8) for (let x = -16; x < W + 16; x += 16) { const xx = x - (off % 16) + ((y / 8) % 2) * 8; g.fillStyle = `hsl(${hue},16%,${17 + floor + ((x * 7 + y) % 3)}%)`; g.fillRect(xx + 1, y + 1, 14, 6); }
+  // torches
+  for (let i = 0; i < Math.ceil((W + 60) / 60); i++) {
+    const tx = ((i * 60 + 30 - off) % (W + 60) + W + 60) % (W + 60) - 30, ty = gy - 40, f = 0.6 + Math.sin(t * 12 + i) * 0.2;
+    const gr = g.createRadialGradient(tx, ty, 0, tx, ty, 34); gr.addColorStop(0, `rgba(255,180,94,${0.35 * f})`); gr.addColorStop(1, 'rgba(255,180,94,0)'); g.fillStyle = gr; g.fillRect(tx - 34, ty - 34, 68, 68);
+    g.fillStyle = '#5c3a21'; g.fillRect(tx - 1, ty, 3, 8); g.fillStyle = '#ffb45e'; g.fillRect(tx - 2, ty - 4 - Math.round(f * 2), 5, 5); g.fillStyle = '#ffe08a'; g.fillRect(tx - 1, ty - 3, 3, 3);
+  }
+  // floor
+  g.fillStyle = `hsl(${hue},14%,${10 + floor}%)`; g.fillRect(-4, gy, W + 8, H - gy);
+  g.fillStyle = `hsl(${hue},14%,${18 + floor}%)`; for (let x = -16; x < W + 16; x += 12) g.fillRect(x - (off % 12), gy, 8, 2);
+  // room object
+  const rm = R.rooms[R.room], done = R.done.has(R.room), ox = (portrait ? 138 : 190) - off;
+  const put = (spr, map, scale, x, yb, flip = false) => { const s = dsprite(spr, map), w = s.width * scale, h = s.height * scale; g.save(); if (flip) { g.translate(x, 0); g.scale(-1, 1); g.translate(-x, 0); } g.drawImage(s, Math.round(x - w / 2), Math.round(yb - h), w, h); g.restore(); };
+  if (R.mon) {
+    const def = MONS[R.mon.k], sc = def.boss ? 3 : 2.4, bob = Math.sin(t * 3) * 2, hit = R.mon.hitT > 0;
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(ox, gy + 2, def.boss ? 30 : 14, 3, 0, 0, 6.3); g.fill();
+    if (R.mon.intent.type === 'charge' || R.mon.charged) { const gr = g.createRadialGradient(ox, gy - 20, 0, ox, gy - 20, 50); gr.addColorStop(0, `rgba(255,120,60,${0.4 + Math.sin(t * 10) * 0.15})`); gr.addColorStop(1, 'rgba(255,120,60,0)'); g.fillStyle = gr; g.fillRect(ox - 50, gy - 70, 100, 100); }
+    g.globalAlpha = R.mon.k === 'ghost' ? 0.8 : 1;
+    put(def.spr, def.map, sc, ox + (hit ? 4 : 0), gy + (R.mon.k === 'bat' || R.mon.k === 'ghost' ? -14 + bob : 0), true);
+    g.globalAlpha = 1;
+    if (hit) { g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(ox - 20, gy - 40, 40, 40); R.mon.hitT *= 0.8; if (R.mon.hitT < 0.05) R.mon.hitT = 0; }
+  } else if (rm.t === 'chest') put('chest', null, 2, ox, gy, false);
+  else if (rm.t === 'ore' && !done) { for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#c6ccd6' : '#f6c945'; g.fillRect(ox - 14 + i * 5, gy - 26 - (i % 3) * 5, 4, 4); } g.fillStyle = '#6b4f2e'; g.fillRect(ox - 18, gy - 8, 36, 8); }
+  else if (rm.t === 'spring') { g.fillStyle = '#4f9ad6'; g.beginPath(); g.ellipse(ox, gy + 2, 22, 5, 0, 0, 6.3); g.fill(); g.fillStyle = '#9fd3f0'; g.fillRect(ox - 10 + Math.round(Math.sin(t * 2) * 4), gy, 6, 1); const gr = g.createRadialGradient(ox, gy, 0, ox, gy, 30); gr.addColorStop(0, 'rgba(159,211,240,.35)'); gr.addColorStop(1, 'rgba(159,211,240,0)'); g.fillStyle = gr; g.fillRect(ox - 30, gy - 30, 60, 60); }
+  else if (rm.t === 'stairs') { for (let i = 0; i < 5; i++) { g.fillStyle = `hsl(${hue},12%,${8 + i * 3}%)`; g.fillRect(ox - 16 + i * 3, gy - 30 + i * 6, 32 - i * 6, 6); } g.fillStyle = '#000'; g.fillRect(ox - 6, gy - 4, 12, 4); }
+  // hero
+  const walk = R.anim ? Math.sin(t * 20) * 1.5 : 0, hx = portrait ? 52 : 110;
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(hx, gy + 2, 10, 2.5, 0, 0, 6.3); g.fill();
+  put('hero', null, 2, hx + (R.pHit ? -3 : 0), gy + walk * 0.3);
+  const G = dunGear().best;
+  g.fillStyle = G.weapon?.id === 'tp' ? '#f6c945' : G.weapon ? '#a8703d' : '#c6ccd6'; g.save(); g.translate(hx + 12, gy - 18); g.rotate(-0.6 + (R.fx.some((f) => f.side === 'm' && f.t < 0.2) ? 1.2 : 0)); g.fillRect(0, -14, 3, 16); g.fillStyle = '#5c3a21'; g.fillRect(-2, 0, 7, 2); g.restore();
+  if (G.shield) { g.fillStyle = '#4f7bb8'; g.fillRect(hx - 13, gy - 20, 6, 9); g.fillStyle = '#f6c945'; g.fillRect(hx - 11, gy - 17, 2, 3); }
+  if (R.shield) { g.strokeStyle = `rgba(159,211,240,${0.6 + Math.sin(t * 8) * 0.3})`; g.lineWidth = 1; g.beginPath(); g.arc(hx, gy - 16, 20, 0, 6.3); g.stroke(); }
+  if (R.pHit) { g.fillStyle = 'rgba(224,69,63,.35)'; g.fillRect(0, 0, W, H); R.pHit *= 0.8; if (R.pHit < 0.05) R.pHit = 0; }
+  // floating numbers
+  for (let i = R.fx.length - 1; i >= 0; i--) {
+    const f = R.fx[i]; f.t += 1 / 60; if (f.t > 1.2) { R.fx.splice(i, 1); continue; }
+    g.font = `700 ${f.big ? 14 : 10}px "Pixelify Sans", monospace`; g.textAlign = 'center';
+    const x = f.side === 'p' ? hx : ox, y = gy - 50 - f.t * 22;
+    g.fillStyle = 'rgba(0,0,0,.6)'; g.fillText(f.text, x + 1, y + 1); g.fillStyle = f.col; g.fillText(f.text, x, y);
+  }
+  // darkness vignette
+  const v = g.createRadialGradient(W / 2, gy - 20, 30, W / 2, gy - 20, W * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); g.fillStyle = v; g.fillRect(-4, 0, W + 8, H);
+  g.restore();
+}
 
 // ------------------------------------------------------------------ live update
 // When a new version is deployed, reload by itself (data lives in localStorage, so nothing is lost).
