@@ -7,7 +7,7 @@
   🌾 Field = one 3D crop per trade (win = pumpkin, big win = golden pumpkin + star, loss = withered) · 💰 Chest = balance · 📮 Mailbox = settings.
   Logging a trade plays a scene: the camera flies to the plot, the crop grows, then coins fly into the chest (win) or a rain cloud appears (loss).
   Sky follows your local time, weather follows today's PnL, fireworks on level-up, the farmer passes out when the daily loss limit is hit.
-- `harvest-ledger/2d.html` — **2D pixel version** (lighter, for older phones). **Same data** — both read the same save.
+- `harvest-ledger/?mode=2d` — **2D farm** (lighter, no WebGL needed; `2d.html` redirects here). It is the same app with the same features and the same save — only the world is drawn on a 2D canvas instead of Three.js. Devices without WebGL fall back to 2D automatically.
 - Both are single self-contained files: Tailwind + Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage.
 - Controls: `WASD`/click the ground to walk · `E` interact · drag to rotate · scroll/pinch to zoom · `N` new trade · `1–4` fast travel · `M` sound.
   On phones: tap to walk / tap a building, or use the bottom travel bar.
