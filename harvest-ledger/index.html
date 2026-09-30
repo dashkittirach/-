@@ -3305,6 +3305,7 @@ function createWorld() {
   const restoreCam = () => { if (savedCam) { Object.assign(cam, savedCam); savedCam = null; } };
   function seat(kind) {
     nav.target = null; nav.pending = null; marker.visible = false;
+    if (kind && kind !== 'fire') exitInside();
     if (kind && kind !== 'scope' && kind !== 'fire') keepCam();
     if (kind === 'fish') { player.position.set(4, 0, 22.4); player.rotation.y = 0; cam.focus = new THREE.Vector3(4, 0.3, 23.8); cam.yaw = Math.PI - 0.5; cam.pitch = 0.8; cam.dist = isTouch ? 15 : 12; fishVisual('ready'); }
     else if (kind === 'bench') { player.position.set(LAYOUT.bench.pos[0], 0, LAYOUT.bench.pos[2] + 0.05); player.rotation.y = 0; pose = 'sit'; cam.focus = new THREE.Vector3(LAYOUT.bench.pos[0], 0.8, LAYOUT.bench.pos[2] + 2); cam.yaw = Math.PI - 0.35; cam.pitch = 0.32; cam.dist = 9; }
@@ -3402,13 +3403,14 @@ function createWorld() {
       const im = new Image(); im.onload = () => { const c = f.tex.image; c.width = 256; c.height = 176; c.getContext('2d').drawImage(im, 0, 0, 256, 176); f.tex.needsUpdate = true; f.pic.material.map = f.tex; f.pic.material.color.set('#ffffff'); f.pic.material.needsUpdate = true; }; im.src = src;
     });
   }
+  function exitInside() { if (!inside) return; inside = false; roomLight.intensity = 0; fireLight.intensity = 0; }
   function enterHouse() {
     if (activity) stopActivity();
     const fade = $('#fade'); Sfx.warp(); fade.classList.add('on');
     setTimeout(() => {
       inside = true; keepCam(); syncRoom();
       player.position.set(RX - 3.6, 0, RZ + 2.6); player.rotation.y = Math.PI / 2; nav.target = null;
-      cam.focus = new THREE.Vector3(RX, 0.2, RZ - 0.6); cam.yaw = 0; cam.pitch = 0.95; cam.dist = clamp(12.5 / Math.min(1, (innerWidth / innerHeight) * 1.25), 13, 27);
+      cam.focus = new THREE.Vector3(RX, 0.2, RZ - 0.6); cam.yaw = 0; cam.pitch = 0.95; cam.dist = clamp(15 / Math.min(1, (innerWidth / innerHeight) * 1.25), 14, 30);
       roomLight.intensity = 14; fireLight.intensity = 10;
       fade.classList.remove('on');
       toast(tr('Home sweet home 🏡', 'บ้านแสนสุข 🏡'), tr('Desk, trophies, photos, bed and fireplace. Door to go out.', 'มีโต๊ะเขียน ถ้วยรางวัล รูปถ่าย เตียง และเตาผิง ออกทางประตู'), 'house');
@@ -3430,7 +3432,7 @@ function createWorld() {
   const boatSt = { on: false, a: 0, a0: 0, R: 25.5 };
   function boat(on) {
     boatSt.on = on; boatG.visible = on;
-    if (on) { keepCam(); boatSt.a = boatSt.a0 = Math.atan2(21.5, 4); pose = 'boat'; cam.pitch = 0.45; cam.dist = isTouch ? 16 : 13; }
+    if (on) { exitInside(); keepCam(); boatSt.a = boatSt.a0 = Math.atan2(21.5, 4); pose = 'boat'; cam.pitch = 0.45; cam.dist = isTouch ? 16 : 13; }
     else { pose = null; cam.focus = null; restoreCam(); player.position.set(4, 0, 19.4); player.rotation.y = Math.PI; }
   }
   function tickBoat(dt, time) {
@@ -3996,8 +3998,8 @@ function createWorld() {
     enterHouse, leaveHouse, boat, isInside: () => inside,
     seat, fishVisual, fishCatch, petAction, decoMode, decoAction, addItem, photo, capture,
     goField() { travel('field'); setTimeout(() => walkTo(FIELD.cx - 0.9, FIELD.cz - 2.7), reduced ? 50 : 700); },
-    goBeach() { const b = [...beachG].sort((a, c) => Math.hypot(a.x - player.position.x, a.z - player.position.z) - Math.hypot(c.x - player.position.x, c.z - player.position.z))[0]; if (b) { walkTo(b.x, b.z); cam.focus = null; } },
-    goNpc(id) { const n = npcs.find((x) => x.id === id); if (Math.hypot(player.position.x - n.x, player.position.z - n.z) < 3) talkTo(id); else walkTo(n.x + 0.9, n.z - 0.9, () => talkTo(id)); },
+    goBeach() { if (inside) { leaveHouse(); setTimeout(() => this.goBeach(), 450); return; } const b = [...beachG].sort((a, c) => Math.hypot(a.x - player.position.x, a.z - player.position.z) - Math.hypot(c.x - player.position.x, c.z - player.position.z))[0]; if (b) { walkTo(b.x, b.z); cam.focus = null; } },
+    goNpc(id) { if (inside) { leaveHouse(); setTimeout(() => this.goNpc(id), 450); return; } const n = npcs.find((x) => x.id === id); if (Math.hypot(player.position.x - n.x, player.position.z - n.z) < 3) talkTo(id); else walkTo(n.x + 0.9, n.z - 0.9, () => talkTo(id)); },
     interactNearest() { if (promptFor) interact(promptFor); },
   };
 }
@@ -4954,7 +4956,7 @@ function renderCompare() {
     <div class="text-xs text-[#8b5a2b] mb-2">${tr('Pick the day you changed something (new rules, new strategy) and see if it helped.', 'เลือกวันที่เริ่มเปลี่ยนอะไรบางอย่าง (กฎใหม่ กลยุทธ์ใหม่) แล้วดูว่าดีขึ้นจริงไหม')}</div>`;
   if (!date) { el.innerHTML = head + `<div class="text-sm">${tr('Choose a date above.', 'เลือกวันที่ด้านบน')}</div>`; return; }
   const A = metricsOf(state.trades.filter((t) => t.date < date)), B = metricsOf(state.trades.filter((t) => t.date >= date));
-  const row = (label, a, b, fmt, better = 1) => { const d = (b - a) * better, col = Math.abs(b - a) < 1e-9 ? '' : d > 0 ? 'up' : 'down'; return `<tr><td class="py-1 pr-2 text-sm">${label}</td><td class="num text-right">${A.n ? fmt(a) : '—'}</td><td class="num text-right ${col}">${B.n ? fmt(b) : '—'} ${A.n && B.n && col ? (d > 0 ? '▲' : '▼') : ''}</td></tr>`; };
+  const row = (label, a, b, fmt, better = 1) => { const d = (b - a) * better, col = Math.abs(b - a) <= Math.abs(a) * 0.02 + 1e-9 ? '' : d > 0 ? 'up' : 'down'; return `<tr><td class="py-1 pr-2 text-sm">${label}</td><td class="num text-right">${A.n ? fmt(a) : '—'}</td><td class="num text-right ${col}">${B.n ? fmt(b) : '—'} ${A.n && B.n && col ? (d > 0 ? '▲' : '▼') : ''}</td></tr>`; };
   el.innerHTML = head + `<table class="w-full"><thead><tr class="font-pixel text-xs text-[#8b5a2b]"><th class="text-left"></th><th class="text-right">${tr('Before', 'ก่อน')} (${A.n})</th><th class="text-right">${tr('After', 'หลัง')} (${B.n})</th></tr></thead><tbody>
     ${row(tr('Trades / day', 'ไม้ต่อวัน'), A.tpd, B.tpd, (v) => v.toFixed(1), -1)}
     ${row(tr('Win rate', 'อัตราชนะ'), A.wr, B.wr, (v) => pct(v, 1))}
