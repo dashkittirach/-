@@ -5,7 +5,13 @@
 - `harvest-ledger/index.html` — **3D version** (Three.js, low-poly toon shading + pixel filter). Walk around a farm island:
   🏠 Farmhouse = stats + calendar · 📜 Quest Board = log / browse trades · 🍺 Tavern = analytics ·
   🌾 Field = one 3D crop per trade (win = pumpkin, big win = golden pumpkin + star, loss = withered) · 💰 Chest = balance · 📮 Mailbox = settings.
-  Logging a trade plays a scene: the camera flies to the plot, the crop grows, then coins fly into the chest (win) or a rain cloud appears (loss).
+  Logging a trade plays a short film (the *Harvest Moment*): letterbox bars, a seed of light falls, a shockwave, the crop shoots up in a spiral of light,
+  then an instanced coin fountain bounces and homes into the chest — big wins add slow-motion, a pillar of light, god rays, confetti and fireworks;
+  losses bring a storm cloud, forked lightning, rain and a glowing lesson. GPU particle systems (custom shaders, one draw call each), a shader sky with
+  twinkling stars and an aurora on good nights, wind in the grass that bends around the farmer, pollen motes, water glints and footstep dust.
+  The Tavern's equity chart is drawn in raw WebGL (glowing line that draws itself in, shimmering area, sparks along the curve).
+  Sound is fully synthesised: a mixing desk with reverb, ping-pong echo and ducking; FM bells, plucks, pads, choir; and a live composer that writes
+  motif-based music per time of day (pads with 7th/9th chords, bass, arps, drums, sections), getting fuller on good trading days.
   Sky follows your local time, weather follows today's PnL, fireworks on level-up, the farmer passes out when the daily loss limit is hit.
 - `harvest-ledger/?mode=2d` — **2D farm** (lighter, no WebGL needed; `2d.html` redirects here). It is the same app with the same features and the same save — only the world is drawn on a 2D canvas instead of Three.js. Devices without WebGL fall back to 2D automatically.
 - One self-contained file: Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage. Works offline after the first visit (`sw.js` caches it; the network is always tried first, so updates stay live).
