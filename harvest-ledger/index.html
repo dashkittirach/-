@@ -7326,7 +7326,7 @@ function openFun(tab = 'do') {
 }
 $('#btn-fun').onclick = () => openFun();
 $('#btn-friends').onclick = () => { Sfx.click(); openFriends(); };
-document.addEventListener('click', (e) => { if (e.target.closest('[data-open-pre]')) { Sfx.click(); openPreTrade(); } });
+document.addEventListener('click', (e) => { if (e.target.closest('[data-open-pre]')) { Sfx.click(); openPreTrade(); } if (e.target.closest('[data-open-week]')) { Sfx.click(); openWeekReport(); } });
 
 // ------------------------------------------------------------------ view filter: show stats for a date range (Farmhouse + Tavern)
 const VIEW_RANGES = [['all', tr('All', 'ทั้งหมด')], ['7', tr('7 days', '7 วัน')], ['30', tr('30 days', '30 วัน')], ['90', tr('90 days', '90 วัน')], ['month', tr('This month', 'เดือนนี้')], ['lastmonth', tr('Last month', 'เดือนก่อน')], ['since', tr('Since…', 'ตั้งแต่…')]];
@@ -7462,11 +7462,98 @@ function openReview(wk = reviewWeek()) {
 function renderReviewBox() {
   const el = $('#review-box'); if (!el) return;
   const wk = reviewWeek(), R = state.settings.reviews[wk], lastGoal = Object.entries(state.settings.reviews).sort((a, b) => b[0].localeCompare(a[0]))[0];
-  el.innerHTML = `<div class="flex items-center gap-2"><div class="font-pixel font-bold flex-1">🔁 ${tr('Weekly review', 'ทบทวนสัปดาห์')}</div><button class="btn text-sm ${reviewPending() ? 'btn-orange' : ''}" data-open-review>${R ? '✎ ' + tr('Open', 'เปิดดู') : '✦ ' + tr('Start', 'เริ่ม')}</button></div>
+  el.innerHTML = `<div class="flex items-center gap-2"><div class="font-pixel font-bold flex-1">🔁 ${tr('Weekly review', 'ทบทวนสัปดาห์')}</div><button class="btn text-sm" data-open-week aria-label="${esc(tr('Week report picture', 'รูปสรุปสัปดาห์'))}">📸</button><button class="btn text-sm ${reviewPending() ? 'btn-orange' : ''}" data-open-review>${R ? '✎ ' + tr('Open', 'เปิดดู') : '✦ ' + tr('Start', 'เริ่ม')}</button></div>
     <div class="text-xs text-[#8b5a2b] mt-1">${R ? tr('Done for this week ✔', 'สัปดาห์นี้ทบทวนแล้ว ✔') : reviewPending() ? tr('Rosa is waiting at the tavern with tea ☕', 'โรซ่ารอที่โรงเตี๊ยมพร้อมชา ☕') : tr('Opens on the weekend', 'เปิดให้ทำช่วงสุดสัปดาห์')}</div>
     ${lastGoal?.[1].goal ? `<div class="text-sm mt-1">🎯 ${esc(lastGoal[1].goal)}</div>` : ''}`;
 }
 
+// ------------------------------------------------------------------ weekly report card: one picture (1080×1350) to keep or send to friends
+function weekStats(wk) {
+  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() + i); return isoOf(d); });
+  const list = state.trades.filter((t) => days.includes(t.date)).sort(byTime), S = state.stats;
+  const wins = list.filter((t) => t.pnl > 0), losses = list.filter((t) => t.pnl < 0), net = list.reduce((a, t) => a + t.pnl, 0);
+  const rs = list.map(rOf).filter((r) => r != null), daily = days.map((d) => list.filter((t) => t.date === d).reduce((a, t) => a + t.pnl, 0));
+  const setups = {}; for (const t of list) { const g = (setups[t.setup || tr('Unsorted', 'ไม่ระบุ')] ||= { n: 0, net: 0, rs: [] }); g.n++; g.net += t.pnl; const r = rOf(t); if (r != null) g.rs.push(r); }
+  const ss = Object.entries(setups).sort((a, b) => b[1].net - a[1].net);
+  const flags = { revenge: 0, tilt: 0, oversize: 0 }; for (const t of list) for (const f of S.beh.flags.get(t.id) || []) if (f in flags) flags[f]++;
+  const moods = {}; for (const t of list) for (const e of t.emotions || []) { const m = (moods[e] ||= { n: 0, net: 0 }); m.n++; m.net += t.pnl; }
+  const kept = days.map((d) => S.ruleDays.get(d)?.ok ?? null), keptN = kept.filter((x) => x).length;
+  const checked = list.filter((t) => t.pre).length;
+  // one focus for next week: the most expensive habit wins
+  const focus = flags.revenge ? tr('No revenge trades: wait 10 min after a loss', 'ห้ามเทรดแก้แค้น: รอ 10 นาทีหลังแพ้')
+    : flags.tilt ? tr('Stop after your loss streak limit', 'หยุดเมื่อแพ้ติดกันถึงลิมิต')
+    : flags.oversize ? tr('Keep the lot size normal', 'ใช้ขนาดไม้ปกติเสมอ')
+    : ss.length > 1 && ss.at(-1)[1].net < 0 ? tr(`Rest the "${ss.at(-1)[0]}" setup`, `พัก setup "${ss.at(-1)[0]}" ก่อน`)
+    : keptN < 4 && list.length ? tr('Keep your farm rules 5 days', 'ทำตามกฎฟาร์มให้ได้ 5 วัน')
+    : checked < list.length / 2 && list.length ? tr('Run the pre-trade check before every trade', 'เช็คก่อนเข้าไม้ทุกครั้ง')
+    : tr('Same plan, same patience. Keep going.', 'แผนเดิม ใจนิ่งเหมือนเดิม ไปต่อ');
+  return { wk, days, list, n: list.length, wr: list.length ? wins.length / list.length : 0, net, r: rs.length ? rs.reduce((a, b) => a + b, 0) : null, daily, best: ss[0], worst: ss.length > 1 ? ss.at(-1) : null, flags, moods, kept, keptN, checked, focus, avgWin: wins.length ? wins.reduce((a, t) => a + t.pnl, 0) / wins.length : 0, avgLoss: losses.length ? -losses.reduce((a, t) => a + t.pnl, 0) / losses.length : 0 };
+}
+function drawWeekCard(Wk) {
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), F = (w, px) => `${w} ${px}px "Pixelify Sans", Mali, Nunito, sans-serif`, N = (w, px) => `${w} ${px}px Nunito, Mali, sans-serif`;
+  const up = Wk.net >= 0, accent = up ? '#2f7a3a' : '#b83d34';
+  // frame
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#6e4526'); bg.addColorStop(1, '#3b2314'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#f7e9c6'; g.fillRect(28, 28, W - 56, H - 56); g.strokeStyle = '#b89968'; g.lineWidth = 6; g.strokeRect(46, 46, W - 92, H - 92);
+  const d0 = new Date(Wk.days[0] + 'T12:00:00'), d6 = new Date(Wk.days[6] + 'T12:00:00'), loc = LANG === 'th' ? 'th-TH' : 'en-US';
+  g.textAlign = 'left'; g.fillStyle = '#5c3a21'; g.font = F(700, 54); g.fillText(tr('Week on the farm', 'สรุปสัปดาห์ในฟาร์ม'), 86, 132);
+  g.font = F(600, 30); g.fillStyle = '#8b5a2b'; g.fillText(`${d0.toLocaleDateString(loc, { day: 'numeric', month: 'short' })} – ${d6.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })}`, 86, 178);
+  g.textAlign = 'right'; g.font = F(700, 30); g.fillStyle = '#5c3a21'; g.fillText(state.settings.name, W - 86, 132);
+  g.font = F(600, 24); g.fillStyle = '#d97706'; g.fillText(`Lv ${state.stats.level.lvl} · ${t(state.stats.level.title)}`, W - 86, 170);
+  // the headline number
+  g.textAlign = 'center'; g.font = N(800, 120); g.fillStyle = accent; g.fillText(Wk.n ? signed(Wk.net, 0) : '—', W / 2, 330);
+  g.font = F(600, 34); g.fillStyle = '#5c3a21'; g.fillText(Wk.r != null ? `${fmtR(Wk.r, 1)} ${tr('total', 'รวม')} · ${Wk.n} ${tr('trades', 'ไม้')}` : `${Wk.n} ${tr('trades', 'ไม้')}`, W / 2, 386);
+  // daily bars + equity line
+  const cx = 86, cy = 430, cw = W - 172, ch = 230, maxA = Math.max(1, ...Wk.daily.map(Math.abs)), bw = cw / 7;
+  g.fillStyle = '#efdcae'; g.fillRect(cx, cy, cw, ch); const zero = cy + ch / 2;
+  g.strokeStyle = 'rgba(92,58,33,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, zero); g.lineTo(cx + cw, zero); g.stroke();
+  const DAYS = LANG === 'th' ? ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  Wk.daily.forEach((v, i) => { const h = (Math.abs(v) / maxA) * (ch / 2 - 18); g.fillStyle = v >= 0 ? '#4a7c59' : '#c0443c'; if (v) g.fillRect(cx + i * bw + bw * 0.25, v >= 0 ? zero - h : zero, bw * 0.5, h); g.fillStyle = '#8b5a2b'; g.font = F(600, 24); g.fillText(DAYS[i], cx + i * bw + bw / 2, cy + ch + 34); });
+  let run = 0; const pts = Wk.daily.map((v, i) => [cx + i * bw + bw / 2, (run += v)]), mx = Math.max(1, ...pts.map((p) => Math.abs(p[1])));
+  g.strokeStyle = '#d97706'; g.lineWidth = 5; g.lineJoin = 'round'; g.beginPath(); pts.forEach(([x, v], i) => { const y = zero - (v / mx) * (ch / 2 - 14); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+  pts.forEach(([x, v]) => { const y = zero - (v / mx) * (ch / 2 - 14); g.fillStyle = '#fff8e6'; g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); g.strokeStyle = '#d97706'; g.lineWidth = 4; g.stroke(); });
+  // tiles
+  const tile = (x, y, w, label, value, col = '#3b2314') => { g.fillStyle = '#efdcae'; g.fillRect(x, y, w, 120); g.textAlign = 'left'; g.fillStyle = '#8b5a2b'; g.font = N(700, 26); g.fillText(label, x + 22, y + 40); g.fillStyle = col; g.font = N(800, 46); g.fillText(value, x + 22, y + 98); };
+  const tw = (W - 172 - 40) / 3, ty = 720;
+  tile(86, ty, tw, tr('Win rate', 'อัตราชนะ'), Wk.n ? pct(Wk.wr) : '—');
+  tile(86 + tw + 20, ty, tw, tr('Rules kept', 'ทำตามกฎ'), `${Wk.keptN}/7`, Wk.keptN >= 5 ? '#2f7a3a' : '#3b2314');
+  tile(86 + 2 * (tw + 20), ty, tw, tr('Checked first', 'เช็คก่อนเข้า'), Wk.n ? `${Wk.checked}/${Wk.n}` : '—');
+  // rule pips
+  Wk.kept.forEach((k, i) => { g.fillStyle = k === true ? '#4a7c59' : k === false ? '#c0443c' : '#d9c7a1'; g.fillRect(86 + tw + 20 + tw - 22 - (7 - i) * 22, ty + 78, 16, 16); });
+  // setups & habits
+  g.textAlign = 'left'; g.font = F(700, 32); g.fillStyle = '#5c3a21'; g.fillText(tr('Setups', 'Setup'), 86, 900); g.fillText(tr('Habits', 'นิสัย'), W / 2 + 10, 900);
+  const line = (x, y, txt, val, col) => { g.font = N(700, 28); g.fillStyle = '#3b2314'; g.fillText(txt, x, y); g.textAlign = 'right'; g.fillStyle = col; g.fillText(val, x + W / 2 - 110, y); g.textAlign = 'left'; };
+  if (Wk.best) line(86, 950, '🌟 ' + Wk.best[0], signed(Wk.best[1].net, 0), Wk.best[1].net >= 0 ? '#2f7a3a' : '#b83d34');
+  if (Wk.worst) line(86, 996, '🥀 ' + Wk.worst[0], signed(Wk.worst[1].net, 0), Wk.worst[1].net >= 0 ? '#2f7a3a' : '#b83d34');
+  if (!Wk.best) line(86, 950, tr('No trades this week', 'สัปดาห์นี้ไม่มีเทรด'), '', '#3b2314');
+  Object.entries(Wk.flags).forEach(([k, v], i) => line(W / 2 + 10, 950 + i * 46, (v ? '🌿 ' : '✔ ') + tr(FLAG_NAMES[k][0], FLAG_NAMES[k][1]), String(v), v ? '#b83d34' : '#2f7a3a'));
+  // focus
+  g.fillStyle = '#5c3a21'; g.fillRect(86, 1120, W - 172, 120); g.fillStyle = '#ffe08a'; g.font = F(700, 28); g.fillText('🎯 ' + tr('Focus next week', 'โฟกัสสัปดาห์หน้า'), 112, 1166);
+  g.fillStyle = '#fff4d6'; g.font = N(700, 32); g.fillText(Wk.focus, 112, 1214);
+  g.textAlign = 'center'; g.fillStyle = '#8b5a2b'; g.font = F(600, 24); g.fillText('🌾 Harvest Ledger', W / 2, H - 70);
+  return c;
+}
+function openWeekReport(wk = weekStart(todayISO())) {
+  if (visitBlock()) return;
+  const Wk = weekStats(wk), cv = drawWeekCard(Wk), url = cv.toDataURL('image/png');
+  openWindow({
+    title: tr('Week report', 'สรุปสัปดาห์'), width: 520, autofocus: false,
+    html: `<div class="flex items-center gap-2 mb-2"><button class="btn !px-2" data-wk="-7" aria-label="${esc(tr('Previous week', 'สัปดาห์ก่อน'))}">◀</button><div class="flex-1 text-center font-pixel">${esc(wk)}</div><button class="btn !px-2" data-wk="7" aria-label="${esc(tr('Next week', 'สัปดาห์ถัดไป'))}" ${wk >= weekStart(todayISO()) ? 'disabled style="opacity:.5"' : ''}>▶</button></div>
+      <img src="${url}" alt="${esc(tr('Week report card', 'การ์ดสรุปสัปดาห์'))}" class="w-full border-4 border-[#5c3a21]">
+      <div class="flex flex-wrap gap-2 justify-end mt-3"><button class="btn" data-wdl>💾 ${tr('Save picture', 'บันทึกรูป')}</button><button class="btn btn-green" data-wshare>📤 ${tr('Share', 'แชร์')}</button></div>`,
+    onMount(win, w) {
+      win.addEventListener('click', (e) => { const b = e.target.closest('[data-wk]'); if (b && !b.disabled) { const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() + +b.dataset.wk); w.close(); setTimeout(() => openWeekReport(isoOf(d)), 200); } });
+      const out = async (share) => cv.toBlob(async (blob) => {
+        const file = new File([blob], `harvest-week-${wk}.png`, { type: 'image/png' });
+        if (share) try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Harvest Ledger', text: tr('My trading week 🌾', 'สัปดาห์การเทรดของฉัน 🌾') }); return; } } catch (err) { if (err.name === 'AbortError') return; }
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        Sfx.coin(); toast(tr('Picture saved', 'บันทึกรูปแล้ว'), file.name, 'note');
+      }, 'image/png');
+      $('[data-wdl]', win).onclick = () => out(false); $('[data-wshare]', win).onclick = () => out(true);
+    },
+  });
+}
 // ------------------------------------------------------------------ before / after comparison
 function metricsOf(list) {
   const days = new Set(list.map((t) => t.date)).size || 1, wins = list.filter((t) => t.pnl > 0), losses = list.filter((t) => t.pnl < 0);
