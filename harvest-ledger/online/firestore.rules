@@ -11,7 +11,7 @@ service cloud.firestore {
     match /farmers/{uid} {
       allow read: if signedIn();
       allow create, update: if isMe(uid) && shortText(request.resource.data.name, 24)
-        && request.resource.data.keys().hasOnly(['v', 'name', 'level', 'stats', 'crops', 'ruleDays', 'boss', 'ach', 'farm', 'fun', 'code', 'updatedAt']);
+        && request.resource.data.keys().hasOnly(['v', 'name', 'level', 'stats', 'crops', 'ruleDays', 'boss', 'ach', 'farm', 'fun', 'code', 'updatedAt', 'seen']);
       allow delete: if isMe(uid);
 
       // friends: you manage your own list; someone else may only add or remove themselves
@@ -34,6 +34,33 @@ service cloud.firestore {
         allow read, delete: if isMe(uid);
         allow create, update: if isMe(vid) && vid != uid && shortText(request.resource.data.day, 10)
           && shortText(request.resource.data.name, 24) && request.resource.data.keys().hasOnly(['name', 'day', 'at']);
+      }
+    }
+    // weekly raid boss: one hit doc per farmer per week (the damage comes from that week's discipline)
+    match /raid/{wk}/hits/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isMe(uid) && wk.size() == 10 && shortText(request.resource.data.name, 24)
+        && request.resource.data.dmg is int && request.resource.data.dmg >= 0 && request.resource.data.dmg <= 5000
+        && request.resource.data.keys().hasOnly(['name', 'dmg', 'parts', 'at']);
+      allow delete: if isMe(uid);
+    }
+    // village chat: one room for the server; short lines signed with the writer's uid, only the writer deletes
+    match /chat/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.from == request.auth.uid
+        && shortText(request.resource.data.text, 200) && request.resource.data.text.size() > 0
+        && shortText(request.resource.data.name, 24) && request.resource.data.keys().hasOnly(['from', 'name', 'text', 'at']);
+      allow delete: if signedIn() && resource.data.from == request.auth.uid;
+    }
+    // encrypted backup: ciphertext only (sealed on the device), readable and writable by its owner alone
+    match /vault/{uid} {
+      allow read, delete: if isMe(uid);
+      allow create, update: if isMe(uid) && request.resource.data.n is int && request.resource.data.n >= 1 && request.resource.data.n <= 40
+        && request.resource.data.keys().hasOnly(['v', 'n', 'salt', 'iv', 'z', 'bytes', 'trades', 'at']);
+      match /chunks/{i} {
+        allow read, delete: if isMe(uid);
+        allow create, update: if isMe(uid) && request.resource.data.d is string && request.resource.data.d.size() <= 900000
+          && request.resource.data.keys().hasOnly(['d']);
       }
     }
     // friend codes → uid, each claimed once by its owner
