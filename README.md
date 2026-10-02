@@ -15,8 +15,19 @@
   Sky follows your local time, weather follows today's PnL, fireworks on level-up, the farmer passes out when the daily loss limit is hit.
 - `harvest-ledger/?mode=2d` — **2D farm** (lighter, no WebGL needed; `2d.html` redirects here). It is the same app with the same features and the same save — only the world is drawn on a 2D canvas instead of Three.js. Devices without WebGL fall back to 2D automatically.
 - One self-contained file: Three.js from CDN, 8-bit Web Audio sound effects, data in localStorage. Works offline after the first visit (`sw.js` caches it; the network is always tried first, so updates stay live).
-- Styling is Tailwind, precompiled and inlined into `<style id="tw">`. After adding new Tailwind classes, run `npm run css:harvest`.
+- **Source lives in `harvest-ledger/src/`** (`00-head.html`, `01-env.js` … `19-boot.js`, `99-tail.html`). `npm run build:harvest` joins them into the
+  single `index.html` that Pages serves and inlines the Tailwind CSS (`<style id="tw">`). Edit the parts, never `index.html` directly;
+  `npm run build:harvest -- --check` fails if `index.html` is stale.
+- **Trading tools:** R-multiples from Stop/Target/Risk, a 30-second pre-trade check with a cooldown timer, a candle replay of each trade (WebGL, bars from
+  the MT5 EA or Binance for crypto), and a shareable weekly report card (1080×1350 PNG). Weekly quests unlock seasonal decorations.
+- **Game:** a wardrobe unlocked by discipline (the look shows in 3D, 2D and to visiting friends), pets that grow with love and react to today's trading,
+  and a 10-floor cave: Leverage Golems, Greed Mimics, elite monsters, the Margin Call Dragon on floor 5 and the monthly Overtrade Hydra on floor 10,
+  with relics that drop from chests, elites and bosses.
+- **Diagnostics:** Mailbox → 🩺 shows FPS, GPU, renderer load, audio and storage, with a copyable report (no trades, money or tokens in it).
 - **Friends (optional, Firebase):** Google sign-in, friend codes / invite links, a discipline leaderboard, visiting a friend's farm (read-only), watering it and leaving guestbook notes.
+  Also: a weekly challenge among friends (the winner gets a golden trophy for their farm), a weekly server raid boss hit with discipline,
+  friends who are online stroll around your farm, a village chat, and an **encrypted cloud backup** (gzip + AES-GCM-256, key from your passphrase
+  via PBKDF2-SHA256 310k — the server only stores ciphertext). After updating, re-publish `firestore.rules` (new: `raid`, `chat`, `vault`, `seen`).
   Only game data is shared (level, rule-kept days, farm, win/loss crops) — never amounts, assets, notes or journals; the journal itself stays on each device.
   Setup guide: `harvest-ledger/online/` · security rules: `harvest-ledger/online/firestore.rules` · the SDK is bundled to `harvest-ledger/vendor/firebase.js` (`npm run build:firebase`).
   Put the Firebase web config in `ONLINE_CONFIG` in `index.html`, or paste it in the app (👥) — invite links then carry it to friends.

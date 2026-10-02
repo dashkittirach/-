@@ -1,6 +1,6 @@
-/* Tailwind input for harvest-ledger/index.html. Build with: npm run css:harvest */
+/* Tailwind input for harvest-ledger (scans src/). Build with: npm run build:harvest */
 @import "tailwindcss" source(none);
-@source "../harvest-ledger/index.html";
+@source "../harvest-ledger/src";
 @theme static {
   --color-cream: #f4ebd0; --color-sand: #e3d2b2; --color-wood: #8b5a2b; --color-bark: #5c3a21; --color-ink: #3b2314;
   --color-leaf: #4a7c59; --color-sprout: #6aa84f; --color-sunset: #d97706; --color-berry: #b83d34; --color-parch: #f7e9c6;
