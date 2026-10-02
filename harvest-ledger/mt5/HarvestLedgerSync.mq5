@@ -11,13 +11,14 @@
 //|        "Allow WebRequest for listed URL" + https://api.github.com|
 //+------------------------------------------------------------------+
 #property copyright   "Harvest Ledger"
-#property version     "1.10"
+#property version     "1.20"
 #property description "Exports closed trades to Harvest Ledger (JSON file + optional GitHub Gist sync)."
 
 input string InpGistId  = "";   // Gist ID (the long code at the end of the gist URL)
 input string InpToken   = "";   // GitHub token with the "gist" scope
 input int    InpDays    = 90;   // Days of history to send
 input int    InpMinGap  = 15;   // Minimum seconds between uploads
+input int    InpBarDays = 14;   // Send price bars (for the replay) for trades of the last N days, 0 = off
 
 #define FILE_NAME "harvest-ledger.json"
 bool     g_dirty   = true;      // something changed since the last upload
@@ -180,7 +181,7 @@ string PositionJson(const ulong pid)
       return("");
    string   sym = "";
    long     side = -1;
-   double   inVol = 0, inVal = 0, outVol = 0, outVal = 0, profit = 0, costs = 0;
+   double   inVol = 0, inVal = 0, outVol = 0, outVal = 0, profit = 0, costs = 0, sl = 0, tp = 0, slOut = 0;
    datetime tOut = 0, tIn = 0;
    int n = HistoryDealsTotal();
    for(int i = 0; i < n; i++)
@@ -206,9 +207,19 @@ string PositionJson(const ulong pid)
             tIn = tm;
          inVol += vol;
          inVal += vol * price;
+         // the stop / target set when the position was opened (deal first, then its order)
+         if(sl == 0) sl = HistoryDealGetDouble(d, DEAL_SL);
+         if(tp == 0) tp = HistoryDealGetDouble(d, DEAL_TP);
+         ulong ord = (ulong)HistoryDealGetInteger(d, DEAL_ORDER);
+         if((sl == 0 || tp == 0) && ord > 0 && HistoryOrderSelect(ord))
+           {
+            if(sl == 0) sl = HistoryOrderGetDouble(ord, ORDER_SL);
+            if(tp == 0) tp = HistoryOrderGetDouble(ord, ORDER_TP);
+           }
         }
       else
         {
+         if(slOut == 0) slOut = HistoryDealGetDouble(d, DEAL_SL);
          outVol += vol;
          outVal += vol * price;
          if(tm > tOut)
@@ -228,6 +239,22 @@ string PositionJson(const ulong pid)
    TimeToStruct((datetime)(tOut + offset), dt);
 
    string id = "mt5-" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + "-" + IntegerToString((long)pid);
+   double entryPx = inVal / inVol;
+   if(sl == 0) sl = slOut;                // stop added after the entry
+   // risk in account money from the stop distance: R = profit / risk
+   double risk = 0;
+   if(sl > 0)
+     {
+      double ts = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE), tv = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_LOSS);
+      if(tv <= 0) tv = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
+      if(ts > 0 && tv > 0) risk = MathAbs(entryPx - sl) / ts * tv * inVol;
+     }
+   string extra = "";
+   if(sl > 0) extra += ",\"sl\":" + DoubleToString(sl, digits);
+   if(tp > 0) extra += ",\"tp\":" + DoubleToString(tp, digits);
+   if(risk > 0) extra += ",\"risk\":" + DoubleToString(risk, 2);
+   if(InpBarDays > 0 && tOut > TimeTradeServer() - (datetime)((long)InpBarDays * 86400))
+      extra += BarsJson(sym, tIn, tOut, digits);
    return("{\"id\":\"" + id + "\"" +
           ",\"date\":\"" + StringFormat("%04d-%02d-%02d", dt.year, dt.mon, dt.day) + "\"" +
           ",\"time\":\"" + StringFormat("%02d:%02d", dt.hour, dt.min) + "\"" +
@@ -238,7 +265,39 @@ string PositionJson(const ulong pid)
           ",\"size\":" + DoubleToString(inVol, 2) +
           ",\"fees\":" + DoubleToString(-costs, 2) +
           ",\"pnl\":" + DoubleToString(profit + costs, 2) +
-          ",\"dur\":" + IntegerToString(tIn > 0 && tOut >= tIn ? (long)(tOut - tIn) : 0) + "}");
+          ",\"dur\":" + IntegerToString(tIn > 0 && tOut >= tIn ? (long)(tOut - tIn) : 0) + extra + "}");
+  }
+
+//+------------------------------------------------------------------+
+//| Price bars around a trade for the replay: ~40 bars across the     |
+//| trade, 30 before the entry and 12 after the exit                  |
+//+------------------------------------------------------------------+
+string BarsJson(const string sym, const datetime tIn, const datetime tOut, const int digits)
+  {
+   if(tIn <= 0 || tOut < tIn)
+      return("");
+   long span = (long)(tOut - tIn);
+   ENUM_TIMEFRAMES tfs[] = { PERIOD_M1, PERIOD_M5, PERIOD_M15, PERIOD_H1, PERIOD_H4, PERIOD_D1 };
+   ENUM_TIMEFRAMES tf = PERIOD_D1;
+   for(int i = 0; i < ArraySize(tfs); i++)
+      if(span / PeriodSeconds(tfs[i]) <= 40) { tf = tfs[i]; break; }
+   int sec = PeriodSeconds(tf);
+   datetime from = tIn - (datetime)(30 * sec), to = tOut + (datetime)(12 * sec);
+   MqlRates r[];
+   int n = CopyRates(sym, tf, from, to, r);
+   if(n <= 0)
+      return("");
+   if(n > 160) n = 160;
+   string o = "", h = "", l = "", c = "";
+   for(int i = 0; i < n; i++)
+     {
+      string sep = (i > 0) ? "," : "";
+      o += sep + DoubleToString(r[i].open, digits);  h += sep + DoubleToString(r[i].high, digits);
+      l += sep + DoubleToString(r[i].low, digits);   c += sep + DoubleToString(r[i].close, digits);
+     }
+   return(",\"tin\":" + IntegerToString((long)tIn) + ",\"tout\":" + IntegerToString((long)tOut) +
+          ",\"bars\":{\"tf\":" + IntegerToString(sec) + ",\"t0\":" + IntegerToString((long)r[0].time) +
+          ",\"o\":[" + o + "],\"h\":[" + h + "],\"l\":[" + l + "],\"c\":[" + c + "]}");
   }
 
 //+------------------------------------------------------------------+
