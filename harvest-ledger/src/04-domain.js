@@ -222,4 +222,4 @@ const ACHIEVEMENTS = [
 // ------------------------------------------------------------------ persistence (same key as the 2D version)
 const FUN_DEFAULT_WORLD = { fish: {}, fishBest: {}, beach: {}, beachDay: '', beachTaken: [], jars: 0, jarNight: '', jarN: 0, breath: 0, breathMin: 0, stars: [], water: { date: '', ids: [] }, harvestDate: '', basket: 0, petLove: 0, petDay: '', petN: 0, fedDay: '', items: [], place: {}, musicMode: 'auto', photos: 0, talks: 0 };
 const KEY = 'harvest-ledger-v1';
-const DEFAULT_SETTINGS = { name: 'Farmer', startBalance: 10000, dailyLoss: 300, sound: true, volume: 0.6, gfx: { pixel: true, shadows: true, fx: true } };
+const DEFAULT_SETTINGS = { name: 'Farmer', startBalance: 10000, dailyLoss: 300, sound: true, volume: 0.6, gfx: { pixel: false, shadows: true, fx: true } };

@@ -119,6 +119,8 @@ state.settings.rules = { ...RULES_DEFAULT, ...(state.settings.rules || {}) };
 state.settings.farm = { owned: [], pet: '', petName: '', festival: '', ...(state.settings.farm || {}) };
 state.settings.fun = { ...JSON.parse(JSON.stringify(FUN_DEFAULT_WORLD)), ...(state.settings.fun || {}) };
 state.settings = { view: { range: 'all', since: '' }, reviews: {}, goals: {}, compare: { date: '' }, deleted: [], notify: false, ...state.settings };
+// v2 look: the smooth HD render with film lighting is the new default (pixel filter stays one tap away in Settings)
+if ((state.settings.gfxV || 0) < 2) { state.settings.gfx.pixel = false; state.settings.gfxV = 2; }
 state.settings.dun = { coins: 0, ore: {}, gear: [], day: '', runs: 0, best: 0, kills: 0, bossKills: 0, lock: { on: false, from: '19:00', to: '23:00' }, ...(state.settings.dun || {}) };
 state.settings.fun = { bag: {}, dishes: {}, fest: null, prizes: 0, laps: 0, thumbs: [], ...state.settings.fun };
 

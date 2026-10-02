@@ -738,17 +738,28 @@ const colourNeed = { '#8a5ac6': ['Keep your rules 5 days', 'ทำตามก�
 const myLook = () => ({ ...LOOK_DEFAULT, ...(state.settings.look || {}) });
 // a small pixel portrait of the farmer, used by the wardrobe preview
 function drawLookPortrait(cv, look) {
-  const g = cv.getContext('2d'), W = cv.width, H = cv.height, u = W / 4, cx = W / 2, top = H * 0.2;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, u = W / 3.4, hu = u * 1.25, cx = W / 2, by = H * 0.96, top = by - 2.0 * u, ht = top - 0.1 * u;
   g.clearRect(0, 0, W, H); g.imageSmoothingEnabled = false;
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
-  R(cx - 0.36 * u, top + 2.25 * u, 0.3 * u, 0.9 * u, look.pants); R(cx + 0.06 * u, top + 2.25 * u, 0.3 * u, 0.9 * u, look.pants);
-  R(cx - 0.55 * u, top + 1.05 * u, 1.1 * u, 1.25 * u, look.shirt); R(cx - 0.55 * u, top + 1.8 * u, 1.1 * u, 0.45 * u, look.pants);
-  R(cx - 0.4 * u, top + 1.05 * u, 0.14 * u, 0.8 * u, look.pants); R(cx + 0.26 * u, top + 1.05 * u, 0.14 * u, 0.8 * u, look.pants);
-  R(cx - 0.8 * u, top + 1.1 * u, 0.25 * u, 0.9 * u, look.shirt); R(cx + 0.55 * u, top + 1.1 * u, 0.25 * u, 0.9 * u, look.shirt);
-  R(cx - 0.45 * u, top, 0.9 * u, 0.85 * u, '#f5c9a0'); R(cx - 0.47 * u, top - 0.04 * u, 0.94 * u, 0.24 * u, look.hair);
-  R(cx - 0.24 * u, top + 0.36 * u, 0.12 * u, 0.16 * u, '#3b2314'); R(cx + 0.12 * u, top + 0.36 * u, 0.12 * u, 0.16 * u, '#3b2314');
-  R(cx - 0.38 * u, top + 0.56 * u, 0.14 * u, 0.07 * u, '#f28fad'); R(cx + 0.24 * u, top + 0.56 * u, 0.14 * u, 0.07 * u, '#f28fad');
-  hatPixels(R, look.hat, cx, top, u);
+  const tri = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+  const ell = (x, y, rx, ry, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); };
+  const cape = '#b8322a', leather = '#8a5a34', dark = '#4a2e1c', steel = '#c3c8d0';
+  tri([[cx - 0.32 * u, top + 0.62 * u], [cx + 0.32 * u, top + 0.62 * u], [cx + 0.6 * u, by - 0.15 * u], [cx - 0.55 * u, by - 0.2 * u]], '#8e2420');
+  for (const ox of [-0.25, 0.05]) { R(cx + ox * u, by - 0.55 * u, 0.2 * u, 0.5 * u, look.pants); R(cx + (ox - 0.02) * u, by - 0.25 * u, 0.24 * u, 0.22 * u, dark); R(cx + (ox - 0.02) * u, by - 0.29 * u, 0.24 * u, 0.05 * u, leather); }
+  R(cx - 0.32 * u, top + 0.62 * u, 0.64 * u, 0.62 * u, look.shirt); R(cx - 0.24 * u, top + 0.7 * u, 0.48 * u, 0.4 * u, leather);
+  R(cx - 0.17 * u, top + 0.7 * u, 0.05 * u, 0.4 * u, dark); R(cx + 0.12 * u, top + 0.7 * u, 0.05 * u, 0.4 * u, dark);
+  R(cx - 0.33 * u, top + 1.12 * u, 0.66 * u, 0.1 * u, dark); R(cx - 0.06 * u, top + 1.12 * u, 0.12 * u, 0.1 * u, '#e0b04a');
+  for (const ox of [-0.48, 0.32]) { const y = top + 0.68 * u; R(cx + ox * u, y, 0.16 * u, 0.5 * u, look.shirt); R(cx + (ox - 0.01) * u, y + 0.3 * u, 0.18 * u, 0.18 * u, leather); R(cx + ox * u, y + 0.48 * u, 0.16 * u, 0.1 * u, '#f8d2b0'); }
+  ell(cx - 0.4 * u, top + 0.68 * u, 0.16 * u, 0.1 * u, steel); ell(cx + 0.4 * u, top + 0.68 * u, 0.16 * u, 0.1 * u, steel);
+  R(cx - 0.3 * u, top + 0.56 * u, 0.6 * u, 0.12 * u, cape); R(cx + 0.1 * u, top + 0.64 * u, 0.1 * u, 0.24 * u, cape);
+  ell(cx, ht + 0.32 * hu, 0.34 * hu, 0.31 * hu, '#f8d2b0');
+  g.fillStyle = look.hair; g.beginPath(); g.ellipse(cx, ht + 0.22 * hu, 0.37 * hu, 0.26 * hu, 0, Math.PI, 0); g.fill();
+  for (let i = -3; i <= 3; i++) tri([[cx + i * 0.1 * hu - 0.07 * hu, ht + 0.06 * hu], [cx + i * 0.1 * hu + 0.07 * hu, ht + 0.06 * hu], [cx + i * 0.13 * hu, ht - (0.12 + (3 - Math.abs(i)) * 0.025) * hu]], look.hair);
+  tri([[cx - 0.38 * hu, ht + 0.16 * hu], [cx - 0.26 * hu, ht + 0.16 * hu], [cx - 0.4 * hu, ht + 0.52 * hu]], look.hair); tri([[cx + 0.38 * hu, ht + 0.16 * hu], [cx + 0.26 * hu, ht + 0.16 * hu], [cx + 0.4 * hu, ht + 0.52 * hu]], look.hair);
+  for (let i = -2; i <= 2; i++) tri([[cx + i * 0.13 * hu - 0.08 * hu, ht + 0.18 * hu], [cx + i * 0.13 * hu + 0.08 * hu, ht + 0.18 * hu], [cx + i * 0.13 * hu + (i <= 0 ? -0.03 : 0.03) * hu, ht + 0.33 * hu]], look.hair);
+  for (const s2 of [-1, 1]) { const x0 = cx + s2 * 0.13 * hu - 0.05 * hu, y0 = ht + 0.34 * hu; R(x0, y0, 0.1 * hu, 0.14 * hu, '#2a1608'); R(x0 + 0.02 * hu, y0 + 0.06 * hu, 0.06 * hu, 0.07 * hu, '#8a4f22'); R(x0 + 0.01 * hu, y0 + 0.02 * hu, 0.04 * hu, 0.04 * hu, '#ffffff'); }
+  R(cx - 0.27 * hu, ht + 0.5 * hu, 0.08 * hu, 0.04 * hu, '#f39a9a'); R(cx + 0.19 * hu, ht + 0.5 * hu, 0.08 * hu, 0.04 * hu, '#f39a9a'); R(cx - 0.025 * hu, ht + 0.54 * hu, 0.05 * hu, 0.015 * hu, '#2a1608');
+  if (look.hat && look.hat !== 'none') hatPixels(R, look.hat, cx, ht + 0.06 * hu, hu * 0.72);
 }
 function hatPixels(R, hat, cx, top, u) {
   if (hat === 'straw') { R(cx - 0.75 * u, top - 0.06 * u, 1.5 * u, 0.16 * u, '#f6c945'); R(cx - 0.42 * u, top - 0.42 * u, 0.84 * u, 0.4 * u, '#f6c945'); R(cx - 0.42 * u, top - 0.12 * u, 0.84 * u, 0.09 * u, '#e0453f'); }

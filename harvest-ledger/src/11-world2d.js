@@ -160,7 +160,7 @@ function createWorld2D() {
     for (const p of list) {
       if (guests.has(p.uid)) continue;
       const L = { ...LOOK_DEFAULT, ...(p.look || {}) }, [x, z] = wp();
-      guests.set(p.uid, { look: { shirt: L.shirt, pants: L.pants, straps: L.pants, hair: L.hair, hatStyle: L.hat }, label: addLabel('👋 ' + p.name, [x, 2.4, z], 'guest'), x, z, tx: x, tz: z, wait: Math.random() * 2, ph: 0, dir: 'down', moving: false });
+      guests.set(p.uid, { look: { hero: true, shirt: L.shirt, pants: L.pants, straps: L.pants, hair: L.hair, hatStyle: L.hat }, label: addLabel('👋 ' + p.name, [x, 2.4, z], 'guest'), x, z, tx: x, tz: z, wait: Math.random() * 2, ph: 0, dir: 'down', moving: false });
     }
   }
   function tickGuests(dt) {
@@ -506,6 +506,7 @@ function createWorld2D() {
     if (sleepy) { g.translate(bx, by - 0.3 * u); g.rotate(-Math.PI / 2); g.translate(-bx, -(by - 0.3 * u)); }
     const sit = ps === 'sit' || ps === 'boat', lift = sit ? 0.45 * u : 0, bob = moving ? Math.abs(sw) * 0.08 * u : Math.sin(t * 2) * 0.02 * u;
     const top = by - 1.9 * u + lift - bob, side = dir === 'left' ? -1 : dir === 'right' ? 1 : 0, back = dir === 'up';
+    if (look.hero) { drawHero(bx, by, u, look, { sw, sit, lift, bob, side, back, ps, t, moving }); g.restore(); return; }
     // legs
     if (sit) { R(bx - 0.3 * u, by - 0.62 * u + lift - bob, 0.6 * u, 0.22 * u, look.pants); }
     else { R(bx - 0.28 * u, by - 0.62 * u - bob, 0.22 * u, 0.62 * u - (sw > 0 ? sw * 0.12 * u : 0), look.pants); R(bx + 0.06 * u, by - 0.62 * u - bob, 0.22 * u, 0.62 * u + (sw < 0 ? sw * 0.12 * u : 0), look.pants); }
@@ -531,7 +532,44 @@ function createWorld2D() {
     else if (look.hat) { ell(bx, top + 0.02 * u, 0.62 * u, 0.2 * u, look.hat); R(bx - 0.3 * u, top - 0.26 * u, 0.6 * u, 0.28 * u, look.hat); if (look.band) R(bx - 0.3 * u, top - 0.06 * u, 0.6 * u, 0.07 * u, look.band); }
     g.restore();
   }
-  const farmerLook = () => { const L = { ...LOOK_DEFAULT, ...(state.settings.look || {}) }; return { shirt: L.shirt, pants: L.pants, straps: L.pants, hair: L.hair, hatStyle: L.hat }; };
+  const farmerLook = () => { const L = { ...LOOK_DEFAULT, ...(state.settings.look || {}) }; return { hero: true, shirt: L.shirt, pants: L.pants, straps: L.pants, hair: L.hair, hatStyle: L.hat }; };
+  // the chibi adventurer (player and visiting friends): big head, anime eyes, spiky hair, leather + steel, red scarf and cape
+  function drawHero(bx, by, u, look, { sw, sit, lift, bob, side, back, ps, t, moving }) {
+    const hu = u * 1.25, top = by - 2.0 * u + lift - bob, ht = top - 0.1 * u, cape = '#b8322a', capeDk = '#8e2420', leather = '#8a5a34', dark = '#4a2e1c', steel = '#c3c8d0';
+    const tri = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+    // cape: behind the body, swinging back when walking
+    const fl = moving ? 0.12 * u + Math.abs(sw) * 0.06 * u : Math.sin(t * 1.6) * 0.03 * u, cw = back ? 0.62 : 0.5;
+    tri([[bx - 0.32 * u, top + 0.62 * u], [bx + 0.32 * u, top + 0.62 * u], [bx + cw * u + fl * (side || 1), by - 0.2 * u], [bx - cw * u - fl * (side || 1), by - 0.2 * u]], back ? cape : capeDk);
+    // legs + boots
+    if (sit) R(bx - 0.28 * u, by - 0.55 * u + lift - bob, 0.56 * u, 0.2 * u, look.pants);
+    else for (const [ox, k] of [[-0.25, sw > 0 ? -sw : 0], [0.05, sw < 0 ? sw : 0]]) { const lh = 0.5 * u + k * 0.12 * u; R(bx + ox * u, by - 0.55 * u - bob, 0.2 * u, lh, look.pants); R(bx + (ox - 0.02) * u, by - 0.55 * u - bob + lh - 0.2 * u, 0.24 * u, 0.22 * u, dark); R(bx + (ox - 0.02) * u, by - 0.55 * u - bob + lh - 0.24 * u, 0.24 * u, 0.05 * u, leather); }
+    // torso: tunic, leather chest piece, belt + buckle
+    R(bx - 0.32 * u, top + 0.62 * u, 0.64 * u, 0.62 * u, look.shirt);
+    if (!back) { R(bx - 0.24 * u, top + 0.7 * u, 0.48 * u, 0.4 * u, leather); R(bx - 0.17 * u, top + 0.7 * u, 0.05 * u, 0.4 * u, dark); R(bx + 0.12 * u, top + 0.7 * u, 0.05 * u, 0.4 * u, dark); }
+    R(bx - 0.33 * u, top + 1.12 * u, 0.66 * u, 0.1 * u, dark); if (!back) R(bx - 0.06 * u, top + 1.12 * u, 0.12 * u, 0.1 * u, '#e0b04a');
+    // arms with gauntlets, steel pauldrons
+    const armSwing = ps === 'fish' ? -0.25 * u : ps === 'water' ? -0.2 * u : sw * 0.12 * u;
+    for (const [ox, s2] of [[-0.48, 1], [0.32, -1]]) { const y = top + 0.68 * u + armSwing * s2; R(bx + ox * u, y, 0.16 * u, 0.5 * u, look.shirt); R(bx + (ox - 0.01) * u, y + 0.3 * u, 0.18 * u, 0.18 * u, leather); R(bx + ox * u, y + 0.48 * u, 0.16 * u, 0.1 * u, '#f8d2b0'); }
+    ell(bx - 0.4 * u, top + 0.68 * u, 0.16 * u, 0.1 * u, steel); ell(bx + 0.4 * u, top + 0.68 * u, 0.16 * u, 0.1 * u, steel);
+    // scarf
+    R(bx - 0.3 * u, top + 0.56 * u, 0.6 * u, 0.12 * u, cape); if (!back) R(bx + 0.1 * u, top + 0.64 * u, 0.1 * u, 0.24 * u, cape);
+    // head (big, round)
+    ell(bx, ht + 0.32 * hu, 0.34 * hu, 0.31 * hu, back ? look.hair : '#f8d2b0');
+    // hair: cap + spikes
+    g.fillStyle = look.hair; g.beginPath(); g.ellipse(bx, ht + 0.22 * hu, 0.37 * hu, 0.26 * hu, 0, Math.PI, 0); g.fill();
+    for (let i = -3; i <= 3; i++) tri([[bx + i * 0.1 * hu - 0.07 * hu, ht + 0.06 * hu], [bx + i * 0.1 * hu + 0.07 * hu, ht + 0.06 * hu], [bx + i * 0.13 * hu, ht - (0.12 + (3 - Math.abs(i)) * 0.025) * hu]], look.hair);
+    tri([[bx - 0.38 * hu, ht + 0.16 * hu], [bx - 0.26 * hu, ht + 0.16 * hu], [bx - 0.4 * hu, ht + 0.52 * hu]], look.hair); tri([[bx + 0.38 * hu, ht + 0.16 * hu], [bx + 0.26 * hu, ht + 0.16 * hu], [bx + 0.4 * hu, ht + 0.52 * hu]], look.hair);
+    if (!back) {
+      // fringe
+      for (let i = -2; i <= 2; i++) tri([[bx + i * 0.13 * hu - 0.08 * hu, ht + 0.18 * hu], [bx + i * 0.13 * hu + 0.08 * hu, ht + 0.18 * hu], [bx + i * 0.13 * hu + (i <= 0 ? -0.03 : 0.03) * hu, ht + 0.33 * hu]], look.hair);
+      // anime eyes
+      const ex = side * 0.07 * hu;
+      for (const s2 of [-1, 1]) { if (side && s2 !== side && Math.abs(side)) continue; const x0 = bx + s2 * 0.13 * hu + ex - 0.05 * hu, y0 = ht + 0.34 * hu; R(x0, y0, 0.1 * hu, 0.14 * hu, '#2a1608'); R(x0 + 0.02 * hu, y0 + 0.06 * hu, 0.06 * hu, 0.07 * hu, '#8a4f22'); R(x0 + 0.01 * hu, y0 + 0.02 * hu, 0.04 * hu, 0.04 * hu, '#ffffff'); }
+      if (!side) { R(bx - 0.27 * hu, ht + 0.5 * hu, 0.08 * hu, 0.04 * hu, '#f39a9a'); R(bx + 0.19 * hu, ht + 0.5 * hu, 0.08 * hu, 0.04 * hu, '#f39a9a'); }
+      R(bx - 0.025 * hu + ex, ht + 0.54 * hu, 0.05 * hu, 0.015 * hu, '#2a1608');
+    }
+    if (look.hatStyle && look.hatStyle !== 'none') hatPixels(R, look.hatStyle, bx, ht + 0.06 * hu, hu * 0.72);
+  }
   function drawPet(p, t) {
     const u = S, [bx, by] = P(p.x, p.z, Math.sin(p.jump * Math.PI) * 0.8), c = p.kind === 'cat' ? '#e9954a' : '#b57b44', c2 = p.kind === 'cat' ? '#fff1dc' : '#f0dcb8';
     shadow(p.x, p.z, 0.3);
